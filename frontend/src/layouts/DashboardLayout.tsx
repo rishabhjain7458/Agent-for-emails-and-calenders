@@ -30,6 +30,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
 import { useAuth } from '../contexts/AuthContext';
 
 const drawerWidth = 260;
@@ -51,7 +52,7 @@ export function DashboardLayout() {
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#ffffff' }}>
-      <Toolbar sx={{ px: 3, minHeight: 76 }}>
+      <Toolbar sx={{ px: { xs: 2, sm: 3 }, minHeight: { xs: 64, sm: 76 }, justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box sx={{ width: 38, height: 38, display: 'grid', placeItems: 'center', borderRadius: 2, bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 900 }}>
             AI
@@ -61,6 +62,11 @@ export function DashboardLayout() {
             <Typography variant="body2" color="text.secondary">Assistant</Typography>
           </Box>
         </Box>
+        {isMobile && (
+          <IconButton onClick={() => setOpen(false)} aria-label="Close navigation">
+            <CloseIcon />
+          </IconButton>
+        )}
       </Toolbar>
       <Divider />
       <List sx={{ p: 1.5, flex: 1 }}>
@@ -115,7 +121,7 @@ export function DashboardLayout() {
           backdropFilter: 'blur(14px)'
         }}
       >
-        <Toolbar sx={{ gap: 1.5, minHeight: 72 }}>
+        <Toolbar sx={{ gap: { xs: 0.75, sm: 1.5 }, minHeight: { xs: 64, sm: 72 }, px: { xs: 1.25, sm: 2 } }}>
           {isMobile && (
             <IconButton onClick={() => setOpen(true)} aria-label="Open navigation">
               <MenuIcon />
@@ -123,12 +129,18 @@ export function DashboardLayout() {
           )}
           <TextField
             size="small"
-            placeholder="Search emails, meetings, tasks"
-            sx={{ maxWidth: 560, flex: 1, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            placeholder={isMobile ? 'Search' : 'Search emails, meetings, tasks'}
+            sx={{
+              maxWidth: { xs: 'none', md: 560 },
+              flex: 1,
+              minWidth: 0,
+              '& .MuiOutlinedInput-root': { borderRadius: 2 },
+              '& .MuiInputBase-input': { px: { xs: 0.5, sm: 1.75 } }
+            }}
             InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
           />
           {!isMobile && <Chip size="small" label={`${user?.provider === 'microsoft' ? 'Outlook' : 'Google'} connected`} color="secondary" variant="outlined" />}
-          <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main' }}>{user?.name?.[0] ?? 'U'}</Avatar>
+          <Avatar sx={{ width: { xs: 32, sm: 36 }, height: { xs: 32, sm: 36 }, bgcolor: 'primary.main' }}>{user?.name?.[0] ?? 'U'}</Avatar>
           {!isMobile && <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 220 }}>{user?.email}</Typography>}
           <Tooltip title="Logout">
             <IconButton onClick={logout} aria-label="Logout">
@@ -156,7 +168,7 @@ export function DashboardLayout() {
         {drawer}
       </Drawer>
 
-      <Box component="main" sx={{ flex: 1, ml: { md: `${drawerWidth}px` }, pt: 11, px: { xs: 2, md: 4 }, pb: 5 }}>
+      <Box component="main" sx={{ flex: 1, ml: { md: `${drawerWidth}px` }, pt: { xs: 9, sm: 10, md: 11 }, px: { xs: 1.5, sm: 2.5, md: 4 }, pb: { xs: 3, md: 5 }, minWidth: 0 }}>
         <Box sx={{ maxWidth: 1320, mx: 'auto' }}>
           <Outlet />
         </Box>

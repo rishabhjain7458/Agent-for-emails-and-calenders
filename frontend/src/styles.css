@@ -11,6 +11,7 @@ html {
 body {
   margin: 0;
   background: #f4f6fa;
+  overflow-x: hidden;
 }
 
 .fc {
@@ -80,4 +81,37 @@ body {
 
 .fc .fc-timegrid-event-harness {
   margin-right: 2px;
+}
+
+@media (max-width: 600px) {
+  .fc .fc-toolbar {
+    align-items: stretch;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: 1fr;
+  }
+
+  .fc .fc-toolbar-chunk {
+    display: flex;
+    justify-content: center;
+  }
+
+  .fc .fc-toolbar-title {
+    font-size: 1rem;
+    text-align: center;
+  }
+
+  .fc .fc-button {
+    font-size: 0.78rem;
+    min-height: 34px;
+    padding: 0 8px;
+  }
+
+  .fc .fc-view-harness {
+    min-height: 520px;
+  }
+
+  .fc .fc-timegrid-slot {
+    height: 2.4rem;
+  }
 }

@@ -4,6 +4,8 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField, Typography } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import AddIcon from '@mui/icons-material/Add';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import { PageHeader } from '../components/PageHeader';
@@ -13,6 +15,8 @@ import type { CalendarEvent } from '../types';
 const initialForm = { title: '', date: '', startTime: '', endTime: '', timezone: 'Asia/Kolkata', description: '', attendees: '' };
 
 export function CalendarPage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [form, setForm] = useState(initialForm);
   const [conflict, setConflict] = useState<any>(null);
@@ -84,17 +88,17 @@ export function CalendarPage() {
         <Grid item xs={12} lg={8}>
           <Card>
             <CardContent>
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent="space-between" spacing={1.25} sx={{ mb: 2 }}>
                 <Box>
                   <Typography variant="h6">Schedule</Typography>
                   <Typography color="text.secondary" variant="body2">{events.length} events on your primary calendar</Typography>
                 </Box>
-                <Chip icon={<EventAvailableIcon />} label="Live calendar" color="primary" variant="outlined" />
+                <Chip icon={<EventAvailableIcon />} label="Live calendar" color="primary" variant="outlined" sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }} />
               </Stack>
               <FullCalendar
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                initialView="timeGridWeek"
-                headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
+                initialView={isMobile ? 'timeGridDay' : 'timeGridWeek'}
+                headerToolbar={isMobile ? { left: 'prev,next', center: 'title', right: 'today' } : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
                 events={calendarEvents}
                 height="auto"
                 expandRows

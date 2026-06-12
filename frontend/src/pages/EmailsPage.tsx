@@ -69,10 +69,10 @@ export function EmailsPage() {
                     ))}
                   </Stack>
                 </Box>
-                <TextField label="Gmail query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="from:john@example.com is:unread" />
+                <TextField label="Mail query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="from:john@example.com is:unread" />
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Query operators</Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap">
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                   {['is:unread', 'has:attachment', 'newer_than:7d', 'from:'].map((operator) => (
                     <Chip key={operator} label={operator} variant="outlined" onClick={() => setQuery((current) => `${current} ${operator}`.trim())} />
                   ))}
@@ -98,16 +98,16 @@ export function EmailsPage() {
               <Stack divider={<Divider flexItem />} spacing={0}>
             {emails.map((email) => (
               <Box key={email.id} component={RouterLink} to={`/emails/${email.id}`} sx={{ display: 'block', textDecoration: 'none', color: 'inherit', py: 1.6, px: 1, borderRadius: 2, transition: 'background 160ms ease', '&:hover': { bgcolor: 'action.hover' } }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: 'flex-start' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: { xs: 0.75, sm: 2 }, alignItems: 'flex-start', flexDirection: { xs: 'column', sm: 'row' } }}>
                     <Box sx={{ minWidth: 0 }}>
-                      <Stack direction="row" spacing={1} alignItems="center">
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
                         {email.unread && <Chip size="small" label="Unread" color="primary" />}
-                        <Typography variant="subtitle1" sx={{ fontWeight: 800 }} noWrap>{email.subject}</Typography>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800, overflowWrap: 'anywhere' }}>{email.subject}</Typography>
                       </Stack>
-                      <Typography color="text.secondary" variant="body2" noWrap>{email.sender}</Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{email.snippet}</Typography>
+                      <Typography color="text.secondary" variant="body2" sx={{ overflowWrap: 'anywhere' }}>{email.sender}</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, display: '-webkit-box', WebkitLineClamp: { xs: 3, sm: 2 }, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{email.snippet}</Typography>
                     </Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>{email.date}</Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: { xs: 'normal', sm: 'nowrap' } }}>{email.date}</Typography>
                   </Box>
               </Box>
             ))}

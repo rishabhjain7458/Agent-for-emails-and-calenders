@@ -42,7 +42,7 @@ export function TasksPage() {
 
   return (
     <>
-      <PageHeader title="Tasks" subtitle="Create, complete, and sync work with Google Tasks." />
+      <PageHeader title="Tasks" subtitle="Create, complete, and sync work with your task list." />
       {error && <Alert sx={{ mb: 2 }} severity="warning">{error}</Alert>}
       <Grid container spacing={2.5}>
         <Grid item xs={12} md={4}>
@@ -60,7 +60,7 @@ export function TasksPage() {
         <Grid item xs={12} md={8}>
           <Card>
             <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }} spacing={1}>
                 <Box>
                   <Typography variant="h6">Task List</Typography>
                   <Typography color="text.secondary" variant="body2">{loading ? 'Loading tasks...' : `${pendingTasks.length} pending, ${completedTasks.length} completed`}</Typography>
@@ -72,10 +72,10 @@ export function TasksPage() {
                   <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.75, fontWeight: 800 }}>Pending</Typography>
                   <Stack divider={<Divider flexItem />} spacing={0}>
                     {pendingTasks.map((task) => (
-                      <Box key={task.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1.25 }}>
-                  <Checkbox checked={task.status === 'completed'} onChange={async () => { await completeTask(task.id); load(); }} />
-                  <Stack sx={{ flex: 1 }}>
-                    <Typography sx={{ textDecoration: task.status === 'completed' ? 'line-through' : 'none', fontWeight: 700 }}>{task.title}</Typography>
+                      <Box key={task.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 0.75, sm: 1.5 }, py: 1.25 }}>
+                  <Checkbox checked={task.status === 'completed'} onChange={async () => { await completeTask(task.id); load(); }} sx={{ mt: -0.5 }} />
+                  <Stack sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography sx={{ textDecoration: task.status === 'completed' ? 'line-through' : 'none', fontWeight: 700, overflowWrap: 'anywhere' }}>{task.title}</Typography>
                     <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                       <Typography variant="body2" color="text.secondary">{task.due_date ?? 'No due date'}</Typography>
                       <Chip size="small" label="pending" color="warning" variant="outlined" />
@@ -95,10 +95,10 @@ export function TasksPage() {
                     <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.75, fontWeight: 800 }}>Completed</Typography>
                     <Stack divider={<Divider flexItem />} spacing={0}>
                       {completedTasks.map((task) => (
-                        <Box key={task.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1.25, opacity: 0.72 }}>
-                          <Checkbox checked onChange={async () => { await completeTask(task.id); load(); }} />
-                          <Stack sx={{ flex: 1 }}>
-                            <Typography sx={{ textDecoration: 'line-through', fontWeight: 700 }}>{task.title}</Typography>
+                        <Box key={task.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 0.75, sm: 1.5 }, py: 1.25, opacity: 0.72 }}>
+                          <Checkbox checked onChange={async () => { await completeTask(task.id); load(); }} sx={{ mt: -0.5 }} />
+                          <Stack sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography sx={{ textDecoration: 'line-through', fontWeight: 700, overflowWrap: 'anywhere' }}>{task.title}</Typography>
                             <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                               <Typography variant="body2" color="text.secondary">{task.due_date ?? 'No due date'}</Typography>
                               <Chip size="small" label="completed" color="success" variant="outlined" />

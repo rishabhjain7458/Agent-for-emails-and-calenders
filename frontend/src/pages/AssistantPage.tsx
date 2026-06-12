@@ -111,9 +111,9 @@ export function AssistantPage() {
       <PageHeader title="AI Assistant" subtitle="Ask for calendar, email, task, and general productivity help." />
       <Card>
         <CardContent>
-          <Stack spacing={2} sx={{ minHeight: 560 }}>
+          <Stack spacing={2} sx={{ minHeight: { xs: 'calc(100vh - 150px)', md: 560 } }}>
             {error && <Alert severity="error">{error}</Alert>}
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.25}>
               <Stack direction="row" spacing={1.25} alignItems="center">
                 <Avatar sx={{ bgcolor: 'primary.main' }}><SmartToyIcon /></Avatar>
                 <Box>
@@ -121,9 +121,9 @@ export function AssistantPage() {
                   <Typography variant="body2" color="text.secondary">Mail, calendar, and tasks in one conversation.</Typography>
                 </Box>
               </Stack>
-              <Chip size="small" label={conversationId ? 'Conversation saved' : 'New chat'} color={conversationId ? 'success' : 'default'} variant="outlined" />
+              <Chip size="small" label={conversationId ? 'Conversation saved' : 'New chat'} color={conversationId ? 'success' : 'default'} variant="outlined" sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }} />
             </Stack>
-            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: '#f8faff', minHeight: 340 }}>
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, p: { xs: 1.25, sm: 2 }, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: '#f8faff', minHeight: { xs: 300, sm: 340 } }}>
               {messages.length === 0 && (
                 <Box sx={{ my: 'auto', textAlign: 'center', mx: 'auto', maxWidth: 480 }}>
                   <Typography variant="h6">What should we move forward?</Typography>
@@ -131,7 +131,7 @@ export function AssistantPage() {
                 </Box>
               )}
               {messages.map((message, index) => (
-                <Box key={index} sx={{ alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: { xs: '92%', md: '78%' }, bgcolor: message.role === 'user' ? 'primary.main' : '#ffffff', color: message.role === 'user' ? 'white' : 'text.primary', p: 1.5, borderRadius: 2, border: message.role === 'assistant' ? '1px solid' : 0, borderColor: 'divider', whiteSpace: 'pre-wrap', boxShadow: message.role === 'assistant' ? '0 10px 24px rgba(18, 26, 43, 0.06)' : 'none' }}>
+                <Box key={index} sx={{ alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: { xs: '96%', md: '78%' }, bgcolor: message.role === 'user' ? 'primary.main' : '#ffffff', color: message.role === 'user' ? 'white' : 'text.primary', p: 1.5, borderRadius: 2, border: message.role === 'assistant' ? '1px solid' : 0, borderColor: 'divider', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', boxShadow: message.role === 'assistant' ? '0 10px 24px rgba(18, 26, 43, 0.06)' : 'none' }}>
                   <Typography variant="body2">{message.content}</Typography>
                 </Box>
               ))}
@@ -146,7 +146,7 @@ export function AssistantPage() {
                 onKeyDown={(event) => { if (event.key === 'Enter') send(); }}
                 helperText={speechMessage}
               />
-              <Stack direction="row" spacing={1}>
+              <Stack direction="row" spacing={1} justifyContent={{ xs: 'space-between', sm: 'flex-start' }}>
                 <Tooltip title={speechSupported ? (listening ? 'Stop voice input' : 'Start voice input') : 'Voice input not supported'}>
                   <span>
                     <IconButton
@@ -159,7 +159,7 @@ export function AssistantPage() {
                     </IconButton>
                   </span>
                 </Tooltip>
-                <Button variant="contained" endIcon={<SendIcon />} onClick={send}>Send</Button>
+                <Button variant="contained" endIcon={<SendIcon />} onClick={send} sx={{ flex: { xs: 1, sm: 'initial' } }}>Send</Button>
               </Stack>
             </Stack>
           </Stack>
