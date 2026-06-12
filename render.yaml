@@ -3,7 +3,7 @@ services:
     name: ai-executive-assistant
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build && npm run migrate:prod
+    buildCommand: npm install --include=dev && npm run build && npm run migrate:prod
     startCommand: npm start
     healthCheckPath: /health
     envVars:
