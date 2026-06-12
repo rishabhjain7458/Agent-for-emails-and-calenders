@@ -19,6 +19,7 @@ export function AssistantPage() {
   const [speechSupported, setSpeechSupported] = useState(false);
   const [speechMessage, setSpeechMessage] = useState('');
   const recognitionRef = useRef<any>(null);
+  const dictationBaseRef = useRef('');
 
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -43,10 +44,11 @@ export function AssistantPage() {
     };
 
     recognition.onresult = (event: any) => {
-      const result = event.results[event.resultIndex];
-      if (!result) return;
-      const transcript = Array.from(result).map((r: any) => r.transcript).join(' ');
-      setInput((current) => (current ? `${current} ${transcript}` : transcript));
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0]?.transcript ?? '')
+        .join(' ')
+        .trim();
+      setInput([dictationBaseRef.current, transcript].filter(Boolean).join(' '));
     };
 
     recognition.onend = () => {
@@ -98,6 +100,7 @@ export function AssistantPage() {
     }
 
     setError('');
+    dictationBaseRef.current = input.trim();
     try {
       recognitionRef.current.start();
     } catch (startError) {
