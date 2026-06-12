@@ -68,7 +68,17 @@ export async function generateEmailSummary(tenantId: string, userId: string, ema
   return generateText(
     tenantId,
     userId,
-    'Summarize important emails concisely. Prioritize security alerts, financial notifications, work emails, and meeting invitations. Ignore promotions and marketing.',
+    [
+      'Summarize important emails concisely in plain text only.',
+      'Do not use Markdown, asterisks, bold markers, tables, or code fences.',
+      'Use this readable format:',
+      'Overview: one short sentence.',
+      'Priority items:',
+      '- Sender - subject: action or risk.',
+      'Other notes:',
+      '- Sender - subject: useful context.',
+      'Keep spacing between sections. Prioritize security alerts, financial notifications, work emails, and meeting invitations. Ignore promotions and marketing.'
+    ].join(' '),
     JSON.stringify(emails.slice(0, 20))
   );
 }
@@ -95,7 +105,7 @@ export async function answerGeneralQuestion(tenantId: string, userId: string, me
   return generateText(
     tenantId,
     userId,
-    'You are an executive productivity assistant. Be concise and action-oriented.',
+    'You are an executive productivity assistant. Be concise and action-oriented. Use plain text only, without Markdown bold markers or asterisks.',
     message
   );
 }

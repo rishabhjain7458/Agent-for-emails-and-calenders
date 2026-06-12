@@ -9,6 +9,54 @@ import { chat } from '../api/endpoints';
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
+function cleanAssistantText(content: string) {
+  return content
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/^\s*#{1,6}\s+/gm, '')
+    .replace(/^\s*[-*]\s+/gm, '- ')
+    .trim();
+}
+
+function AssistantMessageContent({ content }: { content: string }) {
+  const cleaned = cleanAssistantText(content);
+  const blocks = cleaned.split(/\n{2,}/).filter(Boolean);
+
+  return (
+    <Stack spacing={1}>
+      {blocks.map((block, blockIndex) => {
+        const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
+        const isList = lines.every((line) => line.startsWith('- '));
+
+        if (isList) {
+          return (
+            <Stack key={blockIndex} component="ul" spacing={0.5} sx={{ pl: 2.25, my: 0 }}>
+              {lines.map((line, lineIndex) => (
+                <Typography key={lineIndex} component="li" variant="body2" sx={{ lineHeight: 1.6 }}>
+                  {line.replace(/^- /, '')}
+                </Typography>
+              ))}
+            </Stack>
+          );
+        }
+
+        return (
+          <Stack key={blockIndex} spacing={0.5}>
+            {lines.map((line, lineIndex) => {
+              const isSection = /^[A-Z][A-Za-z ]+:$/.test(line) || /^[A-Z][A-Za-z ]+:\s/.test(line);
+              return (
+                <Typography key={lineIndex} variant="body2" sx={{ lineHeight: 1.65, fontWeight: isSection && lineIndex === 0 ? 750 : 400 }}>
+                  {line}
+                </Typography>
+              );
+            })}
+          </Stack>
+        );
+      })}
+    </Stack>
+  );
+}
+
 export function AssistantPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -135,7 +183,7 @@ export function AssistantPage() {
               )}
               {messages.map((message, index) => (
                 <Box key={index} sx={{ alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: { xs: '96%', md: '78%' }, bgcolor: message.role === 'user' ? 'primary.main' : '#ffffff', color: message.role === 'user' ? 'white' : 'text.primary', p: 1.5, borderRadius: 2, border: message.role === 'assistant' ? '1px solid' : 0, borderColor: 'divider', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', boxShadow: message.role === 'assistant' ? '0 10px 24px rgba(18, 26, 43, 0.06)' : 'none' }}>
-                  <Typography variant="body2">{message.content}</Typography>
+                  {message.role === 'assistant' ? <AssistantMessageContent content={message.content} /> : <Typography variant="body2">{message.content}</Typography>}
                 </Box>
               ))}
               {loading && <Typography color="text.secondary">Thinking...</Typography>}
