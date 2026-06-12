@@ -1,0 +1,17 @@
+{
+  "name": "ai-executive-assistant",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "build": "npm run build -w backend && npm run build -w frontend",
+    "start": "npm run start -w backend",
+    "migrate": "npm run migrate -w backend",
+    "migrate:prod": "npm run migrate:prod -w backend"
+  }
+}
