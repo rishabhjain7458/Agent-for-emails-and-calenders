@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Avatar, Box, Button, Card, CardContent, Chip, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import { Alert, Avatar, Box, Button, Card, CardContent, Chip, Divider, Grid, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import type { AxiosError } from 'axios';
 import MicIcon from '@mui/icons-material/Mic';
 import SendIcon from '@mui/icons-material/Send';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
+import AddIcon from '@mui/icons-material/Add';
 import { PageHeader } from '../components/PageHeader';
-import { chat } from '../api/endpoints';
+import { chat, getAssistantConversation, getAssistantConversations } from '../api/endpoints';
+import type { AssistantConversation } from '../types';
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -62,6 +64,8 @@ export function AssistantPage() {
   const [input, setInput] = useState('');
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [conversations, setConversations] = useState<AssistantConversation[]>([]);
   const [error, setError] = useState('');
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
@@ -69,6 +73,15 @@ export function AssistantPage() {
   const recognitionRef = useRef<any>(null);
   const dictationBaseRef = useRef('');
   const sendingRef = useRef(false);
+
+  async function loadConversations() {
+    setHistoryLoading(true);
+    try {
+      setConversations(await getAssistantConversations());
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
 
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -118,6 +131,24 @@ export function AssistantPage() {
     recognitionRef.current = recognition;
   }, []);
 
+  useEffect(() => {
+    loadConversations();
+  }, []);
+
+  async function openConversation(id: string) {
+    setError('');
+    const conversation = await getAssistantConversation(id);
+    setConversationId(conversation.id);
+    setMessages(conversation.messages.map((message) => ({ role: message.role, content: message.content })));
+  }
+
+  function startNewChat() {
+    setConversationId(undefined);
+    setMessages([]);
+    setInput('');
+    setError('');
+  }
+
   async function send() {
     if (!input.trim() || sendingRef.current) return;
     sendingRef.current = true;
@@ -130,6 +161,7 @@ export function AssistantPage() {
       const response = await chat(prompt, conversationId);
       setConversationId(response.conversation?.id);
       setMessages((current) => [...current, { role: 'assistant', content: typeof response.result === 'string' ? response.result : JSON.stringify(response.result, null, 2) }]);
+      loadConversations();
     } catch (caught) {
       const axiosError = caught as AxiosError<{ error?: { message?: string } }>;
       const message = axiosError.response?.data?.error?.message ?? axiosError.message ?? 'Assistant request failed.';
@@ -164,8 +196,51 @@ export function AssistantPage() {
   return (
     <>
       <PageHeader title="AI Assistant" subtitle="Ask for calendar, email, task, and general productivity help." />
-      <Card>
-        <CardContent>
+      <Grid container spacing={2.5}>
+        <Grid item xs={12} md={3.5} lg={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Stack spacing={2}>
+                <Button variant="contained" startIcon={<AddIcon />} onClick={startNewChat}>New Chat</Button>
+                <Box>
+                  <Typography variant="h6">History</Typography>
+                  <Typography variant="body2" color="text.secondary">{historyLoading ? 'Loading chats...' : `${conversations.length} saved conversations`}</Typography>
+                </Box>
+                <Stack divider={<Divider flexItem />} spacing={0} sx={{ maxHeight: { md: 560 }, overflowY: 'auto' }}>
+                  {conversations.map((conversation) => (
+                    <Box
+                      key={conversation.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openConversation(conversation.id)}
+                      onKeyDown={(event) => { if (event.key === 'Enter') openConversation(conversation.id); }}
+                      sx={{
+                        cursor: 'pointer',
+                        py: 1.25,
+                        px: 1,
+                        borderRadius: 2,
+                        bgcolor: conversationId === conversation.id ? 'action.selected' : 'transparent',
+                        transition: 'background 160ms ease, transform 160ms ease',
+                        '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(3px)' } }
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ fontWeight: 750 }} noWrap>{conversation.title || 'New conversation'}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {new Date(conversation.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                      </Typography>
+                    </Box>
+                  ))}
+                  {!historyLoading && conversations.length === 0 && (
+                    <Alert severity="info">Your saved chats will appear here.</Alert>
+                  )}
+                </Stack>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={8.5} lg={9}>
+          <Card>
+            <CardContent>
           <Stack spacing={2} sx={{ minHeight: { xs: 'calc(100vh - 150px)', md: 560 } }}>
             {error && <Alert severity="error">{error}</Alert>}
             <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.25}>
@@ -226,8 +301,10 @@ export function AssistantPage() {
               </Stack>
             </Stack>
           </Stack>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
     </>
   );
 }

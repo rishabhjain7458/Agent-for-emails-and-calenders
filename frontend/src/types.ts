@@ -33,3 +33,17 @@ export type CalendarEvent = {
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
 };
+
+export type AssistantConversationMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+};
+
+export type AssistantConversation = {
+  id: string;
+  title: string;
+  messages: AssistantConversationMessage[];
+  created_at: string;
+  updated_at: string;
+};

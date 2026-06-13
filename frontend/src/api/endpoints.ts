@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { CalendarEvent, EmailMessage, Task, User } from '../types';
+import type { AssistantConversation, CalendarEvent, EmailMessage, Task, User } from '../types';
 
 export async function getMe() {
   const { data } = await api.get<{ data: User }>('/auth/me');
@@ -87,6 +87,16 @@ export async function removeTask(id: string) {
 
 export async function chat(message: string, conversationId?: string) {
   const { data } = await api.post('/assistant/chat', { message, conversationId });
+  return data.data;
+}
+
+export async function getAssistantConversations() {
+  const { data } = await api.get<{ data: AssistantConversation[] }>('/assistant/conversations');
+  return data.data;
+}
+
+export async function getAssistantConversation(id: string) {
+  const { data } = await api.get<{ data: AssistantConversation }>(`/assistant/conversations/${id}`);
   return data.data;
 }
 
