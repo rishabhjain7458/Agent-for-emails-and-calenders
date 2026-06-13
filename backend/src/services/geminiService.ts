@@ -49,6 +49,15 @@ function parseIntent(text: string): AssistantIntent {
   }
 }
 
+function parseJsonObject(text: string) {
+  const cleaned = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return {};
+  }
+}
+
 export async function classifyIntent(tenantId: string, userId: string, message: string): Promise<AssistantIntent> {
   const text = await generateText(
     tenantId,
@@ -62,6 +71,28 @@ export async function classifyIntent(tenantId: string, userId: string, message: 
     message
   );
   return parseIntent(text);
+}
+
+export async function extractAssistantParameters(tenantId: string, userId: string, intent: AssistantIntent, message: string, timezone: string) {
+  const now = new Date().toISOString();
+  const text = await generateText(
+    tenantId,
+    userId,
+    [
+      'Extract safe structured parameters for the requested productivity action.',
+      `Intent: ${intent.intent}. Current ISO time: ${now}. User timezone: ${timezone}.`,
+      'Resolve relative dates like today, tomorrow, next Monday using the provided current time and timezone.',
+      'Return only valid JSON. Do not include markdown.',
+      'For calendar_create return: {"title":"","date":"YYYY-MM-DD","startTime":"HH:mm","endTime":"HH:mm","timezone":"","description":"","attendees":[],"missing":[]}.',
+      'Use 24-hour HH:mm time. If a person is named without an email address, include the name in title/description but do not put it in attendees.',
+      'If required calendar fields are missing or ambiguous, list them in missing. Required calendar fields are title, date, startTime, endTime.',
+      'For task_create return: {"title":"","dueDate":null,"missing":[]}.',
+      'For email_search and email_summary return: {"query":"in:inbox","missing":[]}.',
+      'For general_question return: {"missing":[]}.'
+    ].join(' '),
+    message
+  );
+  return parseJsonObject(text);
 }
 
 export async function generateEmailSummary(tenantId: string, userId: string, emails: EmailMessage[]) {

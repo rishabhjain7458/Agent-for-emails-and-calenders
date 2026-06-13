@@ -3,15 +3,21 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 import timezone from 'dayjs/plugin/timezone.js';
 import { getAuthorizedGoogleClient } from './googleAuthService.js';
+import { HttpError } from '../utils/http.js';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
 function eventTimes(input: any) {
   const zone = input.timezone || 'UTC';
+  const startDate = dayjs.tz(`${input.date} ${input.startTime}`, 'YYYY-MM-DD HH:mm', zone);
+  const endDate = dayjs.tz(`${input.date} ${input.endTime}`, 'YYYY-MM-DD HH:mm', zone);
+  if (!startDate.isValid() || !endDate.isValid() || !endDate.isAfter(startDate)) {
+    throw new HttpError(400, 'Please provide a valid meeting date, start time, and end time.');
+  }
   return {
-    start: dayjs.tz(`${input.date} ${input.startTime}`, 'YYYY-MM-DD HH:mm', zone).toISOString(),
-    end: dayjs.tz(`${input.date} ${input.endTime}`, 'YYYY-MM-DD HH:mm', zone).toISOString(),
+    start: startDate.toISOString(),
+    end: endDate.toISOString(),
     timezone: zone
   };
 }

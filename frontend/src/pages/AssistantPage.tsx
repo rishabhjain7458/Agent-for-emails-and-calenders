@@ -68,6 +68,7 @@ export function AssistantPage() {
   const [speechMessage, setSpeechMessage] = useState('');
   const recognitionRef = useRef<any>(null);
   const dictationBaseRef = useRef('');
+  const sendingRef = useRef(false);
 
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -118,7 +119,8 @@ export function AssistantPage() {
   }, []);
 
   async function send() {
-    if (!input.trim()) return;
+    if (!input.trim() || sendingRef.current) return;
+    sendingRef.current = true;
     const prompt = input;
     setInput('');
     setError('');
@@ -130,9 +132,11 @@ export function AssistantPage() {
       setMessages((current) => [...current, { role: 'assistant', content: typeof response.result === 'string' ? response.result : JSON.stringify(response.result, null, 2) }]);
     } catch (caught) {
       const axiosError = caught as AxiosError<{ error?: { message?: string } }>;
-      setError(axiosError.response?.data?.error?.message ?? axiosError.message ?? 'Assistant request failed.');
+      const message = axiosError.response?.data?.error?.message ?? axiosError.message ?? 'Assistant request failed.';
+      setMessages((current) => [...current, { role: 'assistant', content: `I could not complete that request yet.\n\n${message}` }]);
     } finally {
       setLoading(false);
+      sendingRef.current = false;
     }
   }
 
@@ -194,7 +198,7 @@ export function AssistantPage() {
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 placeholder="Summarize unread work emails or create a meeting tomorrow at 2 PM"
-                onKeyDown={(event) => { if (event.key === 'Enter') send(); }}
+                onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); } }}
                 helperText={speechMessage}
               />
               <Stack direction="row" spacing={1} justifyContent={{ xs: 'space-between', sm: 'flex-start' }}>
@@ -210,7 +214,7 @@ export function AssistantPage() {
                     </IconButton>
                   </span>
                 </Tooltip>
-                <Button variant="contained" endIcon={<SendIcon />} onClick={send} sx={{ flex: { xs: 1, sm: 'initial' } }}>Send</Button>
+                <Button disabled={loading} variant="contained" endIcon={<SendIcon />} onClick={send} sx={{ flex: { xs: 1, sm: 'initial' } }}>Send</Button>
               </Stack>
             </Stack>
           </Stack>
