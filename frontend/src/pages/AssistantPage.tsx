@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Alert, Avatar, Box, Button, Card, CardContent, Chip, Divider, Grid, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import type { AxiosError } from 'axios';
 import MicIcon from '@mui/icons-material/Mic';
@@ -12,12 +12,58 @@ import type { AssistantConversation } from '../types';
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 function cleanAssistantText(content: string) {
-  return content
+  return readableAssistantText(content)
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/__(.*?)__/g, '$1')
     .replace(/^\s*#{1,6}\s+/gm, '')
     .replace(/^\s*[-*]\s+/gm, '- ')
     .trim();
+}
+
+function readableAssistantText(content: string) {
+  const trimmed = content.trim();
+  if (!trimmed || !/^[\[{]/.test(trimmed)) return content;
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    const event = parsed?.event ?? parsed;
+    if (event?.kind === 'calendar#event' || event?.htmlLink || event?.summary) {
+      return [
+        event.status === 'confirmed' ? 'Meeting created.' : 'Calendar result.',
+        '',
+        event.summary ? `Title: ${event.summary}` : '',
+        event.start?.dateTime || event.start?.date ? `Starts: ${formatDisplayDate(event.start.dateTime ?? event.start.date)}` : '',
+        event.end?.dateTime || event.end?.date ? `Ends: ${formatDisplayDate(event.end.dateTime ?? event.end.date)}` : '',
+        event.description ? `Notes: ${event.description}` : '',
+        event.htmlLink ? `Calendar link: ${event.htmlLink}` : ''
+      ].filter(Boolean).join('\n');
+    }
+
+    if (Array.isArray(parsed)) {
+      return parsed.map((item, index) => `${index + 1}. ${item.title ?? item.subject ?? item.summary ?? JSON.stringify(item)}`).join('\n');
+    }
+  } catch {
+    return content;
+  }
+
+  return content;
+}
+
+function formatDisplayDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function renderInlineText(text: string) {
+  const parts = text.split(/(https?:\/\/\S+)/g);
+  return parts.map((part, index) => {
+    if (!/^https?:\/\//.test(part)) return <Fragment key={index}>{part}</Fragment>;
+    return (
+      <Box key={index} component="a" href={part} target="_blank" rel="noreferrer" sx={{ color: 'primary.main', fontWeight: 700, wordBreak: 'break-all' }}>
+        Open link
+      </Box>
+    );
+  });
 }
 
 function AssistantMessageContent({ content }: { content: string }) {
@@ -28,14 +74,15 @@ function AssistantMessageContent({ content }: { content: string }) {
     <Stack spacing={1}>
       {blocks.map((block, blockIndex) => {
         const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
-        const isList = lines.every((line) => line.startsWith('- '));
+        const isBulletList = lines.every((line) => line.startsWith('- '));
+        const isNumberedList = lines.every((line) => /^\d+\.\s+/.test(line));
 
-        if (isList) {
+        if (isBulletList || isNumberedList) {
           return (
-            <Stack key={blockIndex} component="ul" spacing={0.5} sx={{ pl: 2.25, my: 0 }}>
+            <Stack key={blockIndex} component={isNumberedList ? 'ol' : 'ul'} spacing={0.75} sx={{ pl: 2.5, my: 0 }}>
               {lines.map((line, lineIndex) => (
-                <Typography key={lineIndex} component="li" variant="body2" sx={{ lineHeight: 1.6 }}>
-                  {line.replace(/^- /, '')}
+                <Typography key={lineIndex} component="li" variant="body2" sx={{ lineHeight: 1.65, pl: 0.25 }}>
+                  {renderInlineText(line.replace(/^(-|\d+\.)\s+/, ''))}
                 </Typography>
               ))}
             </Stack>
@@ -43,13 +90,27 @@ function AssistantMessageContent({ content }: { content: string }) {
         }
 
         return (
-          <Stack key={blockIndex} spacing={0.5}>
+          <Stack key={blockIndex} spacing={0.65}>
             {lines.map((line, lineIndex) => {
-              const isSection = /^[A-Z][A-Za-z ]+:$/.test(line) || /^[A-Z][A-Za-z ]+:\s/.test(line);
+              const isSection = /^[A-Z][A-Za-z0-9 ]+:$/.test(line);
+              const labelMatch = line.match(/^([A-Z][A-Za-z0-9 ]+):\s+(.+)$/);
               return (
-                <Typography key={lineIndex} variant="body2" sx={{ lineHeight: 1.65, fontWeight: isSection && lineIndex === 0 ? 750 : 400 }}>
-                  {line}
-                </Typography>
+                <Box key={lineIndex}>
+                  {isSection ? (
+                    <Typography variant="subtitle2" sx={{ color: 'text.primary', fontWeight: 850, mt: lineIndex === 0 ? 0 : 0.5 }}>
+                      {line.replace(/:$/, '')}
+                    </Typography>
+                  ) : labelMatch ? (
+                    <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
+                      <Box component="span" sx={{ fontWeight: 800, color: 'text.primary' }}>{labelMatch[1]}: </Box>
+                      {renderInlineText(labelMatch[2])}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
+                      {renderInlineText(line)}
+                    </Typography>
+                  )}
+                </Box>
               );
             })}
           </Stack>

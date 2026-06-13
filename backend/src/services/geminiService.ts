@@ -105,9 +105,10 @@ export async function generateEmailSummary(tenantId: string, userId: string, ema
       'Use this readable format:',
       'Overview: one short sentence.',
       'Priority items:',
-      '- Sender - subject: action or risk.',
+      '- Date - Sender - subject: action or risk.',
       'Other notes:',
-      '- Sender - subject: useful context.',
+      '- Date - Sender - subject: useful context.',
+      'Include email dates when available.',
       'Keep spacing between sections. Prioritize security alerts, financial notifications, work emails, and meeting invitations. Ignore promotions and marketing.'
     ].join(' '),
     JSON.stringify(emails.slice(0, 20))

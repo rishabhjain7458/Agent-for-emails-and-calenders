@@ -5,7 +5,7 @@ import { send } from '../utils/http.js';
 
 export async function chat(req: Request, res: Response, next: NextFunction) {
   try {
-    const handled = await handleAssistantMessage(req.user!.tenantId, req.user!.id, req.body.message);
+    const handled = await handleAssistantMessage(req.user!, req.body.message);
     const assistantContent = typeof handled.result === 'string' ? handled.result : JSON.stringify(handled.result, null, 2);
     const conversation = await appendConversationMessages({
       tenantId: req.user!.tenantId,

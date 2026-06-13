@@ -4,9 +4,12 @@ import timezonePlugin from 'dayjs/plugin/timezone.js';
 import { classifyIntent, answerGeneralQuestion, generateEmailSummary, extractAssistantParameters } from './geminiService.js';
 import { createEvent, deleteEvent, listEvents } from './calendarService.js';
 import { listEmails } from './emailService.js';
+import { listMicrosoftEmails } from './microsoftEmailService.js';
 import { createTask, listTasks } from '../repositories/taskRepository.js';
 import { createGoogleTask } from './googleTasksService.js';
+import { createMicrosoftTask } from './microsoftTasksService.js';
 import { getSettings } from '../repositories/settingsRepository.js';
+import type { AuthUser, EmailMessage } from '../types.js';
 
 dayjs.extend(utc);
 dayjs.extend(timezonePlugin);
@@ -71,7 +74,71 @@ function formatConflict(params: any, result: any) {
   ].join('\n');
 }
 
-export async function handleAssistantMessage(tenantId: string, userId: string, message: string) {
+function formatDate(value?: string | null) {
+  if (!value) return 'Date unavailable';
+  const date = dayjs(value);
+  return date.isValid() ? date.format('ddd, D MMM YYYY, h:mm A') : value;
+}
+
+function compactText(value?: string | null, limit = 180) {
+  const normalized = (value ?? '').replace(/\s+/g, ' ').trim();
+  return normalized.length > limit ? `${normalized.slice(0, limit - 1).trim()}...` : normalized;
+}
+
+function formatEmailSearch(emails: EmailMessage[], query: string) {
+  if (!emails.length) {
+    return [
+      'No emails found.',
+      '',
+      `Search used: ${query}`
+    ].join('\n');
+  }
+
+  const items = emails.slice(0, 10).flatMap((email, index) => [
+    `Email ${index + 1}:`,
+    `Subject: ${email.subject || '(No subject)'}`,
+    `From: ${email.sender || 'Unknown sender'}`,
+    `Date: ${formatDate(email.date)}`,
+    `Status: ${email.unread ? 'Unread' : 'Read'}`,
+    email.snippet ? `Preview: ${compactText(email.snippet)}` : '',
+    ''
+  ]).filter((line, index, all) => line || all[index - 1]);
+
+  return [
+    `Found ${emails.length} email${emails.length === 1 ? '' : 's'}.`,
+    '',
+    `Search used: ${query}`,
+    '',
+    'Emails:',
+    ...items
+  ].join('\n').trim();
+}
+
+function formatTaskList(tasks: any[]) {
+  const pending = tasks.filter((task) => task.status !== 'completed');
+  if (!tasks.length) return 'No tasks found.';
+  return [
+    `You have ${pending.length} pending task${pending.length === 1 ? '' : 's'} out of ${tasks.length} total.`,
+    '',
+    'Pending tasks:',
+    ...(pending.length ? pending.map((task, index) => `${index + 1}. ${task.title}${task.due_date ? `\nDue: ${formatDate(task.due_date)}` : ''}`) : ['- None']),
+    '',
+    'Completed tasks:',
+    ...(tasks.filter((task) => task.status === 'completed').length
+      ? tasks.filter((task) => task.status === 'completed').slice(0, 5).map((task, index) => `${index + 1}. ${task.title}`)
+      : ['- None'])
+  ].filter(Boolean).join('\n');
+}
+
+async function searchEmails(user: AuthUser, query: string) {
+  return user.provider === 'microsoft'
+    ? listMicrosoftEmails(user.id, query)
+    : listEmails(user.id, query);
+}
+
+export async function handleAssistantMessage(user: AuthUser, message: string) {
+  const tenantId = user.tenantId;
+  const userId = user.id;
   const intent = await classifyIntent(tenantId, userId, message);
   const settings = await getSettings(tenantId, userId);
   const userTimezone = preferredTimezone(settings.timezone);
@@ -99,19 +166,35 @@ export async function handleAssistantMessage(tenantId: string, userId: string, m
       return { intent, result: await listEvents(userId, params.timeMin, params.timeMax) };
     case 'calendar_delete':
       await deleteEvent(userId, params.eventId);
-      return { intent, result: { deleted: true } };
-    case 'email_search':
-      return { intent, result: await listEmails(userId, params.query ?? message) };
-    case 'email_summary':
-      const emails = await listEmails(userId, params.query ?? 'in:inbox newer_than:14d');
+      return { intent, result: 'Calendar event deleted.' };
+    case 'email_search': {
+      const query = params.query ?? message;
+      const emails = await searchEmails(user, query);
+      return { intent, result: formatEmailSearch(emails.messages, query) };
+    }
+    case 'email_summary': {
+      const query = params.query ?? 'in:inbox newer_than:14d';
+      const emails = await searchEmails(user, query);
       return { intent, result: await generateEmailSummary(tenantId, userId, emails.messages) };
+    }
     case 'task_create': {
       const title = params.title || message;
-      const googleTask = await createGoogleTask(userId, title, params.dueDate);
-      return { intent, result: await createTask(tenantId, userId, title, params.dueDate, googleTask.id) };
+      const providerTask = user.provider === 'microsoft'
+        ? await createMicrosoftTask(userId, title, params.dueDate)
+        : await createGoogleTask(userId, title, params.dueDate);
+      await createTask(tenantId, userId, title, params.dueDate, providerTask.id);
+      return {
+        intent,
+        result: [
+          'Task created.',
+          '',
+          `Title: ${title}`,
+          params.dueDate ? `Due: ${formatDate(params.dueDate)}` : ''
+        ].filter(Boolean).join('\n')
+      };
     }
     case 'task_list':
-      return { intent, result: await listTasks(tenantId) };
+      return { intent, result: formatTaskList(await listTasks(tenantId)) };
     default:
       return { intent, result: await answerGeneralQuestion(tenantId, userId, message) };
   }
