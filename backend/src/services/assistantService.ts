@@ -34,10 +34,47 @@ function clarifyCalendarRequest(params: any) {
   ].join('\n');
 }
 
+function preferredTimezone(value?: string | null) {
+  return !value || value === 'UTC' ? 'Asia/Kolkata' : value;
+}
+
+function formatMeetingTime(params: any) {
+  const zone = params.timezone || 'Asia/Kolkata';
+  const start = dayjs.tz(`${params.date} ${params.startTime}`, 'YYYY-MM-DD HH:mm', zone);
+  const end = dayjs.tz(`${params.date} ${params.endTime}`, 'YYYY-MM-DD HH:mm', zone);
+  return `${start.format('ddd, D MMM YYYY')} from ${start.format('h:mm A')} to ${end.format('h:mm A')} (${zone})`;
+}
+
+function formatCreatedMeeting(params: any, result: any) {
+  const link = result?.event?.htmlLink;
+  return [
+    'Meeting created.',
+    '',
+    `Title: ${params.title}`,
+    `When: ${formatMeetingTime(params)}`,
+    params.description ? `Notes: ${params.description}` : '',
+    link ? `Calendar link: ${link}` : ''
+  ].filter(Boolean).join('\n');
+}
+
+function formatConflict(params: any, result: any) {
+  const suggestions = Array.isArray(result?.suggestions) && result.suggestions.length
+    ? result.suggestions.map((slot: any) => `- ${dayjs(slot.start).format('D MMM, h:mm A')} to ${dayjs(slot.end).format('h:mm A')}`).join('\n')
+    : '- No clear free slots were returned.';
+  return [
+    'I found a calendar conflict, so I did not create the meeting yet.',
+    '',
+    `Requested: ${formatMeetingTime(params)}`,
+    '',
+    'Suggested alternatives:',
+    suggestions
+  ].join('\n');
+}
+
 export async function handleAssistantMessage(tenantId: string, userId: string, message: string) {
   const intent = await classifyIntent(tenantId, userId, message);
   const settings = await getSettings(tenantId, userId);
-  const userTimezone = settings.timezone || 'Asia/Kolkata';
+  const userTimezone = preferredTimezone(settings.timezone);
   const extracted = await extractAssistantParameters(tenantId, userId, intent, message, userTimezone);
   const params = { ...(intent.parameters as any), ...extracted };
 
@@ -52,7 +89,11 @@ export async function handleAssistantMessage(tenantId: string, userId: string, m
         return { intent, result: clarifyCalendarRequest(calendarParams) };
       }
       calendarParams.description = calendarParams.description || message;
-      return { intent, result: await createEvent(userId, calendarParams, false) };
+      const created = await createEvent(userId, calendarParams, false);
+      return {
+        intent,
+        result: created.requiresConfirmation ? formatConflict(calendarParams, created) : formatCreatedMeeting(calendarParams, created)
+      };
     }
     case 'calendar_check':
       return { intent, result: await listEvents(userId, params.timeMin, params.timeMax) };

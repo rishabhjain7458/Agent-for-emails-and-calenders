@@ -16,8 +16,8 @@ function eventTimes(input: any) {
     throw new HttpError(400, 'Please provide a valid meeting date, start time, and end time.');
   }
   return {
-    start: startDate.toISOString(),
-    end: endDate.toISOString(),
+    start: startDate.format(),
+    end: endDate.format(),
     timezone: zone
   };
 }
