@@ -15,7 +15,7 @@ export async function listMicrosoftTasks(userId: string) {
       headers: { Authorization: `Bearer ${token}` },
       params: { '$top': 100 }
     });
-    items.push(...(data.value ?? []));
+    items.push(...(data.value ?? []).map((item: any) => ({ ...item, taskListId: list.id })));
   }
 
   return items;
@@ -35,4 +35,21 @@ export async function createMicrosoftTask(userId: string, title: string, dueDate
     headers: { Authorization: `Bearer ${token}` }
   });
   return data;
+}
+
+export async function completeMicrosoftTask(userId: string, taskId: string, taskListId: string) {
+  const token = await getMicrosoftAccessToken(userId);
+  const { data } = await axios.patch(`${graph}/me/todo/lists/${taskListId}/tasks/${taskId}`, {
+    status: 'completed'
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return data;
+}
+
+export async function deleteMicrosoftTask(userId: string, taskId: string, taskListId: string) {
+  const token = await getMicrosoftAccessToken(userId);
+  await axios.delete(`${graph}/me/todo/lists/${taskListId}/tasks/${taskId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
 }

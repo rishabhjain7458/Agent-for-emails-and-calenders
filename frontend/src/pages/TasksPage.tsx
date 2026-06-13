@@ -13,6 +13,7 @@ export function TasksPage() {
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
   const pendingTasks = tasks.filter((task) => task.status !== 'completed');
   const completedTasks = tasks.filter((task) => task.status === 'completed');
 
@@ -38,6 +39,38 @@ export function TasksPage() {
     setTitle('');
     setDueDate('');
     load();
+  }
+
+  async function markComplete(task: Task) {
+    setBusyTaskId(task.id);
+    setError('');
+    const previous = tasks;
+    setTasks((current) => current.map((item) => item.id === task.id ? { ...item, status: 'completed' } : item));
+    try {
+      await completeTask(task.id);
+      await load();
+    } catch (caught) {
+      setTasks(previous);
+      setError(caught instanceof Error ? caught.message : 'Task could not be marked completed.');
+    } finally {
+      setBusyTaskId(null);
+    }
+  }
+
+  async function deleteOne(task: Task) {
+    setBusyTaskId(task.id);
+    setError('');
+    const previous = tasks;
+    setTasks((current) => current.filter((item) => item.id !== task.id));
+    try {
+      await removeTask(task.id);
+      await load();
+    } catch (caught) {
+      setTasks(previous);
+      setError(caught instanceof Error ? caught.message : 'Task could not be deleted.');
+    } finally {
+      setBusyTaskId(null);
+    }
   }
 
   return (
@@ -73,7 +106,7 @@ export function TasksPage() {
                   <Stack divider={<Divider flexItem />} spacing={0}>
                     {pendingTasks.map((task) => (
                       <Box key={task.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 0.75, sm: 1.5 }, py: 1.25, px: 0.75, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(3px)' } } }}>
-                  <Checkbox checked={task.status === 'completed'} onChange={async () => { await completeTask(task.id); load(); }} sx={{ mt: -0.5 }} />
+                  <Checkbox disabled={busyTaskId === task.id} checked={task.status === 'completed'} onChange={() => markComplete(task)} sx={{ mt: -0.5 }} />
                   <Stack sx={{ flex: 1, minWidth: 0 }}>
                     <Typography sx={{ textDecoration: task.status === 'completed' ? 'line-through' : 'none', fontWeight: 700, overflowWrap: 'anywhere' }}>{task.title}</Typography>
                     <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
@@ -81,7 +114,7 @@ export function TasksPage() {
                       <Chip size="small" label="pending" color="warning" variant="outlined" />
                     </Stack>
                   </Stack>
-                  <IconButton aria-label="Delete task" onClick={async () => { await removeTask(task.id); load(); }}>
+                  <IconButton disabled={busyTaskId === task.id} aria-label="Delete task" onClick={() => deleteOne(task)}>
                     <DeleteIcon />
                   </IconButton>
                       </Box>
@@ -96,7 +129,7 @@ export function TasksPage() {
                     <Stack divider={<Divider flexItem />} spacing={0}>
                       {completedTasks.map((task) => (
                         <Box key={task.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 0.75, sm: 1.5 }, py: 1.25, px: 0.75, borderRadius: 2, opacity: 0.72, transition: 'background 160ms ease', '&:hover': { bgcolor: 'action.hover' } }}>
-                          <Checkbox checked onChange={async () => { await completeTask(task.id); load(); }} sx={{ mt: -0.5 }} />
+                          <Checkbox disabled checked sx={{ mt: -0.5 }} />
                           <Stack sx={{ flex: 1, minWidth: 0 }}>
                             <Typography sx={{ textDecoration: 'line-through', fontWeight: 700, overflowWrap: 'anywhere' }}>{task.title}</Typography>
                             <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
@@ -104,7 +137,7 @@ export function TasksPage() {
                               <Chip size="small" label="completed" color="success" variant="outlined" />
                             </Stack>
                           </Stack>
-                          <IconButton aria-label="Delete task" onClick={async () => { await removeTask(task.id); load(); }}>
+                          <IconButton disabled={busyTaskId === task.id} aria-label="Delete task" onClick={() => deleteOne(task)}>
                             <DeleteIcon />
                           </IconButton>
                         </Box>

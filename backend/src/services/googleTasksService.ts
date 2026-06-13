@@ -21,7 +21,7 @@ export async function listGoogleTasks(userId: string) {
         showDeleted: false,
         showHidden: true
       });
-      items.push(...(response.data.items ?? []));
+      items.push(...(response.data.items ?? []).map((item) => ({ ...item, taskListId: taskList.id })));
       pageToken = response.data.nextPageToken ?? undefined;
     } while (pageToken);
   }
@@ -40,4 +40,26 @@ export async function createGoogleTask(userId: string, title: string, dueDate?: 
     }
   });
   return response.data;
+}
+
+export async function completeGoogleTask(userId: string, taskId: string, taskListId = '@default') {
+  const auth = await getAuthorizedGoogleClient(userId);
+  const tasks = google.tasks({ version: 'v1', auth });
+  const existing = await tasks.tasks.get({ tasklist: taskListId, task: taskId });
+  const response = await tasks.tasks.update({
+    tasklist: taskListId,
+    task: taskId,
+    requestBody: {
+      ...existing.data,
+      status: 'completed',
+      completed: new Date().toISOString()
+    }
+  });
+  return response.data;
+}
+
+export async function deleteGoogleTask(userId: string, taskId: string, taskListId = '@default') {
+  const auth = await getAuthorizedGoogleClient(userId);
+  const tasks = google.tasks({ version: 'v1', auth });
+  await tasks.tasks.delete({ tasklist: taskListId, task: taskId });
 }

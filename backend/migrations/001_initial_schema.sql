@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   google_task_id TEXT,
+  google_task_list_id TEXT,
   title TEXT NOT NULL,
   due_date DATE,
   status TEXT NOT NULL DEFAULT 'pending',
