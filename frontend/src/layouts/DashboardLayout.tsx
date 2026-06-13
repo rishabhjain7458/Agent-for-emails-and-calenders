@@ -169,7 +169,7 @@ export function DashboardLayout() {
       </Drawer>
 
       <Box component="main" sx={{ flex: 1, ml: { md: `${drawerWidth}px` }, pt: { xs: 9, sm: 10, md: 11 }, px: { xs: 1.5, sm: 2.5, md: 4 }, pb: { xs: 3, md: 5 }, minWidth: 0 }}>
-        <Box sx={{ maxWidth: 1320, mx: 'auto' }}>
+        <Box className="page-shell" sx={{ maxWidth: 1320, mx: 'auto' }}>
           <Outlet />
         </Box>
       </Box>

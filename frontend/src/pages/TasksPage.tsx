@@ -72,7 +72,7 @@ export function TasksPage() {
                   <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.75, fontWeight: 800 }}>Pending</Typography>
                   <Stack divider={<Divider flexItem />} spacing={0}>
                     {pendingTasks.map((task) => (
-                      <Box key={task.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 0.75, sm: 1.5 }, py: 1.25 }}>
+                      <Box key={task.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 0.75, sm: 1.5 }, py: 1.25, px: 0.75, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(3px)' } } }}>
                   <Checkbox checked={task.status === 'completed'} onChange={async () => { await completeTask(task.id); load(); }} sx={{ mt: -0.5 }} />
                   <Stack sx={{ flex: 1, minWidth: 0 }}>
                     <Typography sx={{ textDecoration: task.status === 'completed' ? 'line-through' : 'none', fontWeight: 700, overflowWrap: 'anywhere' }}>{task.title}</Typography>
@@ -95,7 +95,7 @@ export function TasksPage() {
                     <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.75, fontWeight: 800 }}>Completed</Typography>
                     <Stack divider={<Divider flexItem />} spacing={0}>
                       {completedTasks.map((task) => (
-                        <Box key={task.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 0.75, sm: 1.5 }, py: 1.25, opacity: 0.72 }}>
+                        <Box key={task.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 0.75, sm: 1.5 }, py: 1.25, px: 0.75, borderRadius: 2, opacity: 0.72, transition: 'background 160ms ease', '&:hover': { bgcolor: 'action.hover' } }}>
                           <Checkbox checked onChange={async () => { await completeTask(task.id); load(); }} sx={{ mt: -0.5 }} />
                           <Stack sx={{ flex: 1, minWidth: 0 }}>
                             <Typography sx={{ textDecoration: 'line-through', fontWeight: 700, overflowWrap: 'anywhere' }}>{task.title}</Typography>

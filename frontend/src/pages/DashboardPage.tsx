@@ -69,8 +69,8 @@ export function DashboardPage() {
                   ...emails.slice(0, 3).map((email) => ({ id: email.id, label: email.subject })),
                   ...tasks.slice(0, 3).map((task) => ({ id: task.id, label: task.title }))
                 ] satisfies ActivityItem[]).map((item) => (
-                  <Box key={item.id} sx={{ py: 1.3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.main', flex: '0 0 auto' }} />
+                  <Box key={item.id} sx={{ py: 1.3, px: 0.75, display: 'flex', alignItems: 'center', gap: 1.5, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(3px)' } } }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.main', flex: '0 0 auto', boxShadow: '0 0 0 4px rgba(36, 84, 198, 0.12)' }} />
                     <Typography color="text.secondary" noWrap>{item.label}</Typography>
                   </Box>
                 ))}
@@ -88,9 +88,9 @@ export function DashboardPage() {
             <CardContent>
               <Typography variant="h6" gutterBottom>Quick Actions</Typography>
               <Stack spacing={1.5}>
-                <Button href="/calendar" variant="contained" startIcon={<AddIcon />} endIcon={<ArrowForwardIcon />}>Create Meeting</Button>
-                <Button href="/tasks" variant="outlined" startIcon={<AddIcon />} endIcon={<ArrowForwardIcon />}>Create Task</Button>
-                <Button href="/emails" variant="outlined" startIcon={<MailIcon />} endIcon={<ArrowForwardIcon />}>Draft Reply</Button>
+                <Button href="/calendar" variant="contained" startIcon={<AddIcon />} endIcon={<ArrowForwardIcon />} sx={{ justifyContent: 'space-between' }}>Create Meeting</Button>
+                <Button href="/tasks" variant="outlined" startIcon={<AddIcon />} endIcon={<ArrowForwardIcon />} sx={{ justifyContent: 'space-between' }}>Create Task</Button>
+                <Button href="/emails" variant="outlined" startIcon={<MailIcon />} endIcon={<ArrowForwardIcon />} sx={{ justifyContent: 'space-between' }}>Draft Reply</Button>
               </Stack>
             </CardContent>
           </Card>

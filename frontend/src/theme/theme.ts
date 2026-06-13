@@ -42,7 +42,13 @@ export const theme = createTheme({
     MuiButton: {
       defaultProps: { disableElevation: true },
       styleOverrides: {
-        root: { borderRadius: 8, minHeight: 40 },
+        root: {
+          borderRadius: 8,
+          minHeight: 40,
+          transition: 'transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease',
+          '&:hover': { transform: 'translateY(-1px)' },
+          '&:active': { transform: 'translateY(0)' }
+        },
         contained: { boxShadow: '0 8px 18px rgba(36, 84, 198, 0.18)' }
       }
     },
@@ -51,7 +57,12 @@ export const theme = createTheme({
         root: {
           borderRadius: 8,
           border: '1px solid #e4e9f2',
-          boxShadow: '0 16px 36px rgba(18, 26, 43, 0.07)'
+          boxShadow: '0 16px 36px rgba(18, 26, 43, 0.07)',
+          transition: 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
+          '&:hover': {
+            borderColor: '#d4ddec',
+            boxShadow: '0 20px 44px rgba(18, 26, 43, 0.1)'
+          }
         }
       }
     },
@@ -68,7 +79,11 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            transition: 'box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease',
+            '&.Mui-focused': {
+              boxShadow: '0 0 0 4px rgba(36, 84, 198, 0.1)'
+            }
           }
         }
       }
@@ -81,6 +96,8 @@ export const theme = createTheme({
     MuiListItemButton: {
       styleOverrides: {
         root: {
+          transition: 'background-color 160ms ease, color 160ms ease, transform 160ms ease',
+          '&:hover': { transform: 'translateX(2px)' },
           '&.Mui-selected': {
             color: '#173b91',
             '& .MuiListItemIcon-root': { color: '#2454c6' }

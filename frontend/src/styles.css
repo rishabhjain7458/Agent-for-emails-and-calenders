@@ -14,6 +14,89 @@ body {
   overflow-x: hidden;
 }
 
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 0.48;
+    transform: scale(0.86);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes sheen {
+  from {
+    transform: translateX(-120%);
+  }
+
+  to {
+    transform: translateX(120%);
+  }
+}
+
+.page-shell {
+  animation: page-enter 340ms ease both;
+}
+
+.metric-card {
+  overflow: hidden;
+  position: relative;
+}
+
+.metric-card::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  content: "";
+  height: 100%;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  transform: translateX(-120%);
+  width: 42%;
+}
+
+.metric-card:hover::after {
+  animation: sheen 900ms ease;
+}
+
+.thinking-dots {
+  align-items: center;
+  display: inline-flex;
+  gap: 5px;
+}
+
+.thinking-dots span {
+  animation: soft-pulse 900ms ease-in-out infinite;
+  background: #2454c6;
+  border-radius: 50%;
+  display: inline-block;
+  height: 7px;
+  width: 7px;
+}
+
+.thinking-dots span:nth-child(2) {
+  animation-delay: 140ms;
+}
+
+.thinking-dots span:nth-child(3) {
+  animation-delay: 280ms;
+}
+
 .fc {
   font-family: Inter, system-ui, sans-serif;
 }
@@ -62,6 +145,13 @@ body {
   box-shadow: 0 6px 14px rgba(36, 84, 198, 0.2);
   cursor: pointer;
   min-height: 34px;
+  transition: box-shadow 160ms ease, filter 160ms ease, transform 160ms ease;
+}
+
+.fc .fc-event:hover {
+  box-shadow: 0 10px 20px rgba(36, 84, 198, 0.26);
+  filter: saturate(1.08);
+  transform: translateY(-1px);
 }
 
 .fc .fc-event-main {
@@ -113,5 +203,16 @@ body {
 
   .fc .fc-timegrid-slot {
     height: 2.4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

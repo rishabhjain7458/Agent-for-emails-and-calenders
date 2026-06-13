@@ -186,11 +186,19 @@ export function AssistantPage() {
                 </Box>
               )}
               {messages.map((message, index) => (
-                <Box key={index} sx={{ alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: { xs: '96%', md: '78%' }, bgcolor: message.role === 'user' ? 'primary.main' : '#ffffff', color: message.role === 'user' ? 'white' : 'text.primary', p: 1.5, borderRadius: 2, border: message.role === 'assistant' ? '1px solid' : 0, borderColor: 'divider', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', boxShadow: message.role === 'assistant' ? '0 10px 24px rgba(18, 26, 43, 0.06)' : 'none' }}>
+                <Box key={index} sx={{ alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: { xs: '96%', md: '78%' }, bgcolor: message.role === 'user' ? 'primary.main' : '#ffffff', color: message.role === 'user' ? 'white' : 'text.primary', p: 1.5, borderRadius: 2, border: message.role === 'assistant' ? '1px solid' : 0, borderColor: 'divider', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', boxShadow: message.role === 'assistant' ? '0 10px 24px rgba(18, 26, 43, 0.06)' : 'none', animation: 'page-enter 220ms ease both' }}>
                   {message.role === 'assistant' ? <AssistantMessageContent content={message.content} /> : <Typography variant="body2">{message.content}</Typography>}
                 </Box>
               ))}
-              {loading && <Typography color="text.secondary">Thinking...</Typography>}
+              {loading && (
+                <Box sx={{ alignSelf: 'flex-start', bgcolor: '#ffffff', border: '1px solid', borderColor: 'divider', borderRadius: 2, px: 1.5, py: 1.25, boxShadow: '0 10px 24px rgba(18, 26, 43, 0.06)' }}>
+                  <span className="thinking-dots" aria-label="Assistant is thinking">
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                </Box>
+              )}
             </Box>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="stretch">
               <TextField

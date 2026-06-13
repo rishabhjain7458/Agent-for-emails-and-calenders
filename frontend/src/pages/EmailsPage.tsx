@@ -97,7 +97,7 @@ export function EmailsPage() {
               </Stack>
               <Stack divider={<Divider flexItem />} spacing={0}>
             {emails.map((email) => (
-              <Box key={email.id} component={RouterLink} to={`/emails/${email.id}`} sx={{ display: 'block', textDecoration: 'none', color: 'inherit', py: 1.6, px: 1, borderRadius: 2, transition: 'background 160ms ease', '&:hover': { bgcolor: 'action.hover' } }}>
+              <Box key={email.id} component={RouterLink} to={`/emails/${email.id}`} sx={{ display: 'block', textDecoration: 'none', color: 'inherit', py: 1.6, px: 1, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease, box-shadow 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(4px)' }, boxShadow: 'inset 3px 0 0 #2454c6' } }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: { xs: 0.75, sm: 2 }, alignItems: 'flex-start', flexDirection: { xs: 'column', sm: 'row' } }}>
                     <Box sx={{ minWidth: 0 }}>
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
