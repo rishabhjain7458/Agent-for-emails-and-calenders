@@ -2,6 +2,7 @@ import axios from 'axios';
 import { env } from '../config/env.js';
 import { decrypt } from '../utils/crypto.js';
 import { getUserById, updateUserTokens } from '../repositories/userRepository.js';
+import { getConnectedAccount, updateConnectedAccountTokens } from '../repositories/connectedAccountRepository.js';
 import { HttpError } from '../utils/http.js';
 
 const tenant = 'common';
@@ -33,7 +34,7 @@ type MicrosoftProfile = {
   userPrincipalName?: string;
 };
 
-export function getMicrosoftAuthUrl() {
+export function getMicrosoftAuthUrl(state?: string) {
   const params = new URLSearchParams({
     client_id: env.MICROSOFT_CLIENT_ID,
     response_type: 'code',
@@ -41,6 +42,7 @@ export function getMicrosoftAuthUrl() {
     response_mode: 'query',
     scope: microsoftScopes.join(' ')
   });
+  if (state) params.set('state', state);
   return `${authorizeUrl}?${params.toString()}`;
 }
 
@@ -100,6 +102,27 @@ export async function getMicrosoftAccessToken(userId: string) {
   });
   const expiry = refreshed.expires_in ? new Date(Date.now() + refreshed.expires_in * 1000) : null;
   await updateUserTokens(userId, refreshed.access_token, refreshed.refresh_token ?? refreshToken, expiry);
+  return refreshed.access_token;
+}
+
+export async function getMicrosoftAccessTokenForConnectedAccount(tenantId: string, userId: string, accountId: string) {
+  const account = await getConnectedAccount(tenantId, userId, accountId);
+  if (!account || account.provider !== 'microsoft') throw new HttpError(404, 'Connected Outlook account not found');
+
+  const accessToken = decrypt(account.access_token);
+  const refreshToken = decrypt(account.refresh_token);
+  const expiresAt = account.token_expiry ? new Date(account.token_expiry).getTime() : 0;
+
+  if (accessToken && expiresAt > Date.now() + 60_000) return accessToken;
+  if (!refreshToken) throw new HttpError(401, 'Microsoft refresh token is missing. Reconnect this account.');
+
+  const refreshed = await requestToken({
+    refresh_token: refreshToken,
+    grant_type: 'refresh_token',
+    scope: microsoftScopes.join(' ')
+  });
+  const expiry = refreshed.expires_in ? new Date(Date.now() + refreshed.expires_in * 1000) : null;
+  await updateConnectedAccountTokens(account.id, refreshed.access_token, refreshed.refresh_token ?? refreshToken, expiry);
   return refreshed.access_token;
 }
 

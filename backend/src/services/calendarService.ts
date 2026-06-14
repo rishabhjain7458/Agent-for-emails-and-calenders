@@ -2,7 +2,7 @@ import { google } from 'googleapis';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 import timezone from 'dayjs/plugin/timezone.js';
-import { getAuthorizedGoogleClient } from './googleAuthService.js';
+import { getAuthorizedGoogleClient, getAuthorizedGoogleClientForConnectedAccount } from './googleAuthService.js';
 import { HttpError } from '../utils/http.js';
 
 dayjs.extend(utc);
@@ -22,8 +22,7 @@ function eventTimes(input: any) {
   };
 }
 
-export async function listEvents(userId: string, timeMin?: string, timeMax?: string) {
-  const auth = await getAuthorizedGoogleClient(userId);
+async function listEventsWithAuth(auth: any, timeMin?: string, timeMax?: string, meta: Record<string, unknown> = {}) {
   const calendar = google.calendar({ version: 'v3', auth });
   const result = await calendar.events.list({
     calendarId: 'primary',
@@ -32,7 +31,27 @@ export async function listEvents(userId: string, timeMin?: string, timeMax?: str
     singleEvents: true,
     orderBy: 'startTime'
   });
-  return result.data.items ?? [];
+  return (result.data.items ?? []).map((event) => ({
+    ...event,
+    id: meta.accountId ? `${meta.accountId}:${event.id}` : event.id,
+    extendedProperties: {
+      ...(event.extendedProperties ?? {}),
+      private: {
+        ...(event.extendedProperties?.private ?? {}),
+        ...meta
+      }
+    }
+  }));
+}
+
+export async function listEvents(userId: string, timeMin?: string, timeMax?: string) {
+  const auth = await getAuthorizedGoogleClient(userId);
+  return listEventsWithAuth(auth, timeMin, timeMax, { accountId: 'primary', provider: 'google' });
+}
+
+export async function listEventsForConnectedAccount(tenantId: string, userId: string, accountId: string, accountEmail: string, timeMin?: string, timeMax?: string) {
+  const auth = await getAuthorizedGoogleClientForConnectedAccount(tenantId, userId, accountId);
+  return listEventsWithAuth(auth, timeMin, timeMax, { accountId, accountEmail, provider: 'google' });
 }
 
 export async function detectConflicts(userId: string, start: string, end: string) {
@@ -54,19 +73,8 @@ export async function suggestAlternativeSlots(userId: string, start: string, end
   return availability.filter((slot) => slot.conflicts.length === 0).slice(0, 3);
 }
 
-export async function createEvent(userId: string, input: any, force = false) {
+async function createEventWithAuth(auth: any, input: any) {
   const { start, end, timezone } = eventTimes(input);
-  const conflicts = await detectConflicts(userId, start, end);
-
-  if (conflicts.length && !force) {
-    return {
-      requiresConfirmation: true,
-      conflicts,
-      suggestions: await suggestAlternativeSlots(userId, start, end)
-    };
-  }
-
-  const auth = await getAuthorizedGoogleClient(userId);
   const calendar = google.calendar({ version: 'v3', auth });
   const result = await calendar.events.insert({
     calendarId: 'primary',
@@ -79,6 +87,27 @@ export async function createEvent(userId: string, input: any, force = false) {
     }
   });
   return { event: result.data };
+}
+
+export async function createEvent(userId: string, input: any, force = false) {
+  const { start, end } = eventTimes(input);
+  const conflicts = await detectConflicts(userId, start, end);
+
+  if (conflicts.length && !force) {
+    return {
+      requiresConfirmation: true,
+      conflicts,
+      suggestions: await suggestAlternativeSlots(userId, start, end)
+    };
+  }
+
+  const auth = await getAuthorizedGoogleClient(userId);
+  return createEventWithAuth(auth, input);
+}
+
+export async function createEventForConnectedAccount(tenantId: string, userId: string, accountId: string, input: any) {
+  const auth = await getAuthorizedGoogleClientForConnectedAccount(tenantId, userId, accountId);
+  return createEventWithAuth(auth, input);
 }
 
 export async function updateEvent(userId: string, eventId: string, input: any, force = false) {
@@ -124,6 +153,15 @@ export async function checkFreeBusy(userId: string, start: string, end: string, 
 
 export async function deleteEvent(userId: string, eventId: string) {
   const auth = await getAuthorizedGoogleClient(userId);
+  await deleteEventWithAuth(auth, eventId);
+}
+
+async function deleteEventWithAuth(auth: any, eventId: string) {
   const calendar = google.calendar({ version: 'v3', auth });
   await calendar.events.delete({ calendarId: 'primary', eventId });
+}
+
+export async function deleteEventForConnectedAccount(tenantId: string, userId: string, accountId: string, eventId: string) {
+  const auth = await getAuthorizedGoogleClientForConnectedAccount(tenantId, userId, accountId);
+  await deleteEventWithAuth(auth, eventId);
 }

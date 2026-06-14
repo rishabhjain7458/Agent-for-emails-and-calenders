@@ -8,7 +8,8 @@ export const taskRoutes = Router();
 taskRoutes.get('/', index);
 taskRoutes.post('/', validateBody(Joi.object({
   title: Joi.string().required(),
-  dueDate: Joi.string().allow(null, '').optional()
+  dueDate: Joi.string().allow(null, '').optional(),
+  accountId: Joi.string().default('primary')
 })), create);
 taskRoutes.patch('/:id/complete', complete);
 taskRoutes.delete('/:id', remove);

@@ -1,6 +1,7 @@
 import axios from 'axios';
-import { getMicrosoftAccessToken } from './microsoftAuthService.js';
+import { getMicrosoftAccessToken, getMicrosoftAccessTokenForConnectedAccount } from './microsoftAuthService.js';
 import type { EmailMessage } from '../types.js';
+import { htmlToText, looksLikeHtml } from '../utils/htmlToText.js';
 
 const graph = 'https://graph.microsoft.com/v1.0';
 
@@ -20,21 +21,23 @@ function mapQuery(query: string) {
   };
 }
 
-function mapMessage(message: any): EmailMessage {
+function mapMessage(message: any, meta: Partial<EmailMessage> = {}): EmailMessage {
+  const body = message.body?.content ?? '';
   return {
-    id: message.id,
+    id: meta.accountId ? `${meta.accountId}:${message.id}` : message.id,
     threadId: message.id,
+    provider: 'microsoft',
+    ...meta,
     subject: message.subject || '(No subject)',
     sender: message.from?.emailAddress?.address ?? message.sender?.emailAddress?.address ?? '',
     date: message.receivedDateTime ?? message.sentDateTime ?? '',
     unread: message.isRead === false,
     snippet: message.bodyPreview ?? '',
-    body: message.body?.content ?? ''
+    body: looksLikeHtml(body) ? htmlToText(body) : body
   };
 }
 
-export async function listMicrosoftEmails(userId: string, query = 'in:inbox', maxResults = 20) {
-  const token = await getMicrosoftAccessToken(userId);
+async function listMicrosoftEmailsWithToken(token: string, query = 'in:inbox', maxResults = 20, meta: Partial<EmailMessage> = {}) {
   const mapped = mapQuery(query);
   const params: Record<string, string | number> = {
     '$top': maxResults,
@@ -47,17 +50,36 @@ export async function listMicrosoftEmails(userId: string, query = 'in:inbox', ma
     headers: { Authorization: `Bearer ${token}` },
     params
   });
-  const messages = (data.value ?? []).map(mapMessage);
+  const messages = (data.value ?? []).map((message: any) => mapMessage(message, meta));
   return { messages, nextPageToken: data['@odata.nextLink'], resultSizeEstimate: messages.length };
+}
+
+export async function listMicrosoftEmails(userId: string, query = 'in:inbox', maxResults = 20) {
+  const token = await getMicrosoftAccessToken(userId);
+  return listMicrosoftEmailsWithToken(token, query, maxResults, { provider: 'microsoft' });
+}
+
+export async function listMicrosoftEmailsForConnectedAccount(tenantId: string, userId: string, accountId: string, accountEmail: string, query = 'in:inbox', maxResults = 20) {
+  const token = await getMicrosoftAccessTokenForConnectedAccount(tenantId, userId, accountId);
+  return listMicrosoftEmailsWithToken(token, query, maxResults, { accountId, accountEmail, provider: 'microsoft' });
 }
 
 export async function getMicrosoftEmail(userId: string, messageId: string): Promise<EmailMessage> {
   const token = await getMicrosoftAccessToken(userId);
+  return getMicrosoftEmailWithToken(token, messageId, { provider: 'microsoft' });
+}
+
+async function getMicrosoftEmailWithToken(token: string, messageId: string, meta: Partial<EmailMessage> = {}): Promise<EmailMessage> {
   const { data } = await axios.get(`${graph}/me/messages/${messageId}`, {
     headers: { Authorization: `Bearer ${token}` },
     params: { '$select': 'id,subject,from,sender,receivedDateTime,isRead,bodyPreview,body,hasAttachments' }
   });
-  return mapMessage(data);
+  return mapMessage(data, meta);
+}
+
+export async function getMicrosoftEmailForConnectedAccount(tenantId: string, userId: string, accountId: string, accountEmail: string, messageId: string): Promise<EmailMessage> {
+  const token = await getMicrosoftAccessTokenForConnectedAccount(tenantId, userId, accountId);
+  return getMicrosoftEmailWithToken(token, messageId, { accountId, accountEmail, provider: 'microsoft' });
 }
 
 export async function sendMicrosoftReply(userId: string, input: { threadId: string; body: string }) {
@@ -72,6 +94,10 @@ export async function sendMicrosoftReply(userId: string, input: { threadId: stri
 
 export async function archiveMicrosoftEmail(userId: string, messageId: string) {
   const token = await getMicrosoftAccessToken(userId);
+  await archiveMicrosoftEmailWithToken(token, messageId);
+}
+
+async function archiveMicrosoftEmailWithToken(token: string, messageId: string) {
   const { data: archiveFolder } = await axios.get(`${graph}/me/mailFolders/archive`, {
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -82,9 +108,23 @@ export async function archiveMicrosoftEmail(userId: string, messageId: string) {
   });
 }
 
+export async function archiveMicrosoftEmailForConnectedAccount(tenantId: string, userId: string, accountId: string, messageId: string) {
+  const token = await getMicrosoftAccessTokenForConnectedAccount(tenantId, userId, accountId);
+  await archiveMicrosoftEmailWithToken(token, messageId);
+}
+
 export async function deleteMicrosoftEmail(userId: string, messageId: string) {
   const token = await getMicrosoftAccessToken(userId);
+  await deleteMicrosoftEmailWithToken(token, messageId);
+}
+
+async function deleteMicrosoftEmailWithToken(token: string, messageId: string) {
   await axios.delete(`${graph}/me/messages/${messageId}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
+}
+
+export async function deleteMicrosoftEmailForConnectedAccount(tenantId: string, userId: string, accountId: string, messageId: string) {
+  const token = await getMicrosoftAccessTokenForConnectedAccount(tenantId, userId, accountId);
+  await deleteMicrosoftEmailWithToken(token, messageId);
 }

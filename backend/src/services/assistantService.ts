@@ -2,14 +2,17 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 import timezonePlugin from 'dayjs/plugin/timezone.js';
 import { classifyIntent, answerGeneralQuestion, generateEmailSummary, extractAssistantParameters } from './geminiService.js';
-import { createEvent, deleteEvent, listEvents } from './calendarService.js';
-import { listEmails } from './emailService.js';
-import { listMicrosoftEmails } from './microsoftEmailService.js';
+import { createEvent, createEventForConnectedAccount, deleteEvent, listEvents } from './calendarService.js';
+import { createMicrosoftEvent, createMicrosoftEventForConnectedAccount } from './microsoftCalendarService.js';
+import { listEmails, listEmailsForConnectedAccount } from './emailService.js';
+import { listMicrosoftEmails, listMicrosoftEmailsForConnectedAccount } from './microsoftEmailService.js';
 import { createTask, listTasks } from '../repositories/taskRepository.js';
-import { createGoogleTask } from './googleTasksService.js';
-import { createMicrosoftTask } from './microsoftTasksService.js';
+import { createGoogleTask, createGoogleTaskForConnectedAccount } from './googleTasksService.js';
+import { createMicrosoftTask, createMicrosoftTaskForConnectedAccount } from './microsoftTasksService.js';
 import { getSettings } from '../repositories/settingsRepository.js';
 import type { AuthUser, EmailMessage } from '../types.js';
+import { formatAccountChoicePrompt, listAccountContexts, resolveMentionedAccount, type AccountContext } from './accountContextService.js';
+import { normalizeInboxQuery } from '../utils/emailQuery.js';
 
 dayjs.extend(utc);
 dayjs.extend(timezonePlugin);
@@ -97,6 +100,7 @@ function formatEmailSearch(emails: EmailMessage[], query: string) {
   const items = emails.slice(0, 10).flatMap((email, index) => [
     `Email ${index + 1}:`,
     `Subject: ${email.subject || '(No subject)'}`,
+    email.accountEmail ? `Inbox: ${email.accountEmail}` : '',
     `From: ${email.sender || 'Unknown sender'}`,
     `Date: ${formatDate(email.date)}`,
     `Status: ${email.unread ? 'Unread' : 'Read'}`,
@@ -130,10 +134,22 @@ function formatTaskList(tasks: any[]) {
   ].filter(Boolean).join('\n');
 }
 
-async function searchEmails(user: AuthUser, query: string) {
-  return user.provider === 'microsoft'
+async function searchEmails(user: AuthUser, query: string, account: AccountContext) {
+  if (!account.isPrimary) {
+    return account.provider === 'microsoft'
+      ? listMicrosoftEmailsForConnectedAccount(user.tenantId, user.id, account.accountId, account.email, query)
+      : listEmailsForConnectedAccount(user.tenantId, user.id, account.accountId, account.email, query);
+  }
+
+  const primary = await (user.provider === 'microsoft'
     ? listMicrosoftEmails(user.id, query)
-    : listEmails(user.id, query);
+    : listEmails(user.id, query));
+  const primaryMessages = primary.messages.map((message: EmailMessage) => ({
+    ...message,
+    accountEmail: user.email,
+    provider: user.provider
+  }));
+  return { ...primary, messages: primaryMessages };
 }
 
 export async function handleAssistantMessage(user: AuthUser, message: string) {
@@ -144,6 +160,19 @@ export async function handleAssistantMessage(user: AuthUser, message: string) {
   const userTimezone = preferredTimezone(settings.timezone);
   const extracted = await extractAssistantParameters(tenantId, userId, intent, message, userTimezone);
   const params = { ...(intent.parameters as any), ...extracted };
+  const accountIntents = ['calendar_create', 'calendar_check', 'calendar_delete', 'email_summary', 'email_search', 'task_create', 'task_list'];
+  const accounts = accountIntents.includes(intent.intent) ? await listAccountContexts(user) : [];
+  const selectedAccount = accounts.length ? await resolveMentionedAccount(user, message) : undefined;
+
+  if (accounts.length > 1 && !selectedAccount) {
+    const action = intent.intent.startsWith('calendar')
+      ? 'calendar'
+      : intent.intent.startsWith('task')
+        ? 'tasks'
+        : 'email';
+    return { intent, result: formatAccountChoicePrompt(accounts, action) };
+  }
+  const account = selectedAccount ?? accounts[0];
 
   switch (intent.intent) {
     case 'calendar_create': {
@@ -156,7 +185,13 @@ export async function handleAssistantMessage(user: AuthUser, message: string) {
         return { intent, result: clarifyCalendarRequest(calendarParams) };
       }
       calendarParams.description = calendarParams.description || message;
-      const created = await createEvent(userId, calendarParams, false);
+      const created: any = account?.provider === 'microsoft'
+        ? account.isPrimary
+          ? await createMicrosoftEvent(userId, calendarParams)
+          : await createMicrosoftEventForConnectedAccount(tenantId, userId, account.accountId, calendarParams)
+        : account?.isPrimary === false
+          ? await createEventForConnectedAccount(tenantId, userId, account.accountId, calendarParams)
+          : await createEvent(userId, calendarParams, false);
       return {
         intent,
         result: created.requiresConfirmation ? formatConflict(calendarParams, created) : formatCreatedMeeting(calendarParams, created)
@@ -168,21 +203,30 @@ export async function handleAssistantMessage(user: AuthUser, message: string) {
       await deleteEvent(userId, params.eventId);
       return { intent, result: 'Calendar event deleted.' };
     case 'email_search': {
-      const query = params.query ?? message;
-      const emails = await searchEmails(user, query);
+      const query = normalizeInboxQuery(String(params.query ?? ''), message);
+      const emails = await searchEmails(user, query, account!);
       return { intent, result: formatEmailSearch(emails.messages, query) };
     }
     case 'email_summary': {
-      const query = params.query ?? 'in:inbox newer_than:14d';
-      const emails = await searchEmails(user, query);
+      const query = normalizeInboxQuery(String(params.query ?? 'newer_than:14d'), message);
+      const emails = await searchEmails(user, query, account!);
       return { intent, result: await generateEmailSummary(tenantId, userId, emails.messages) };
     }
     case 'task_create': {
       const title = params.title || message;
-      const providerTask = user.provider === 'microsoft'
-        ? await createMicrosoftTask(userId, title, params.dueDate)
-        : await createGoogleTask(userId, title, params.dueDate);
-      await createTask(tenantId, userId, title, params.dueDate, providerTask.id);
+      const providerTask = account?.provider === 'microsoft'
+        ? account.isPrimary
+          ? await createMicrosoftTask(userId, title, params.dueDate)
+          : await createMicrosoftTaskForConnectedAccount(tenantId, userId, account.accountId, title, params.dueDate)
+        : account?.isPrimary === false
+          ? await createGoogleTaskForConnectedAccount(tenantId, userId, account.accountId, title, params.dueDate)
+          : await createGoogleTask(userId, title, params.dueDate);
+      await createTask(tenantId, userId, title, params.dueDate, providerTask.id, {
+        provider: account?.provider,
+        accountId: account?.accountId,
+        accountEmail: account?.email,
+        taskListId: providerTask.taskListId ?? null
+      });
       return {
         intent,
         result: [
@@ -194,7 +238,7 @@ export async function handleAssistantMessage(user: AuthUser, message: string) {
       };
     }
     case 'task_list':
-      return { intent, result: formatTaskList(await listTasks(tenantId)) };
+      return { intent, result: formatTaskList(await listTasks(tenantId, account?.accountId)) };
     default:
       return { intent, result: await answerGeneralQuestion(tenantId, userId, message) };
   }

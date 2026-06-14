@@ -11,6 +11,16 @@ import { PageHeader } from '../components/PageHeader';
 import { archiveEmail, deleteEmail, generateReply, getEmail, saveDraft, sendReply } from '../api/endpoints';
 import type { EmailMessage } from '../types';
 
+function stripHtmlFallback(value?: string) {
+  if (!value) return '';
+  if (!/<\/?[a-z][\s\S]*>/i.test(value)) return value;
+  const element = document.createElement('div');
+  element.innerHTML = value
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\s*\/\s*(p|div|tr|table|li|h[1-6])\s*>/gi, '\n');
+  return (element.textContent ?? '').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 export function EmailDetailPage() {
   const { id } = useParams();
   const [email, setEmail] = useState<EmailMessage | null>(null);
@@ -50,8 +60,9 @@ export function EmailDetailPage() {
                 <Typography variant="body2" sx={{ fontWeight: 750 }}>{email.sender}</Typography>
               </Box>
               {email.unread && <Chip size="small" label="Unread" color="primary" />}
+              {email.accountEmail && <Chip size="small" label={email.accountEmail} variant="outlined" />}
             </Stack>
-            <Typography sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{email.body}</Typography>
+            <Typography sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{stripHtmlFallback(email.body)}</Typography>
             {!!email.attachments?.length && (
               <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2 }}>
                 {email.attachments.map((attachment) => (

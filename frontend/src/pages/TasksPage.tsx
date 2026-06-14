@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, Grid, IconButton, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, Grid, IconButton, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { PageHeader } from '../components/PageHeader';
-import { completeTask, createTask, getTasks, removeTask } from '../api/endpoints';
-import type { Task } from '../types';
+import { completeTask, createTask, getConnectedAccounts, getTasks, removeTask } from '../api/endpoints';
+import { useAuth } from '../contexts/AuthContext';
+import type { ConnectedAccount, Task } from '../types';
 
 export function TasksPage() {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState('all');
+  const [createAccountId, setCreateAccountId] = useState('primary');
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
@@ -21,7 +26,7 @@ export function TasksPage() {
     setLoading(true);
     setError('');
     try {
-      setTasks(await getTasks());
+      setTasks(await getTasks(selectedAccountId));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Tasks could not be loaded.');
     } finally {
@@ -30,12 +35,21 @@ export function TasksPage() {
   }
 
   useEffect(() => {
-    load();
+    getConnectedAccounts().then(setAccounts);
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [selectedAccountId]);
+
+  const accountOptions = [
+    { id: 'primary', email: user?.email ?? 'Primary account', provider: user?.provider ?? 'google', label: `${user?.email ?? 'Primary account'} (primary)` },
+    ...accounts.map((account) => ({ id: account.id, email: account.email, provider: account.provider, label: account.email }))
+  ];
 
   async function submit() {
     if (!title.trim()) return;
-    await createTask({ title, dueDate });
+    await createTask({ title, dueDate, accountId: createAccountId });
     setTitle('');
     setDueDate('');
     load();
@@ -83,6 +97,13 @@ export function TasksPage() {
             <CardContent>
               <Stack spacing={2}>
                 <Typography variant="h6">Create Task</Typography>
+                <TextField select label="Create in account" value={createAccountId} onChange={(event) => setCreateAccountId(event.target.value)}>
+                  {accountOptions.map((account) => (
+                    <MenuItem key={account.id} value={account.id}>
+                      {account.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
                 <TextField label="Title" value={title} onChange={(event) => setTitle(event.target.value)} />
                 <TextField label="Due Date" type="date" value={dueDate} InputLabelProps={{ shrink: true }} onChange={(event) => setDueDate(event.target.value)} />
                 <Button variant="contained" startIcon={<AddIcon />} onClick={submit}>Create Task</Button>
@@ -98,7 +119,17 @@ export function TasksPage() {
                   <Typography variant="h6">Task List</Typography>
                   <Typography color="text.secondary" variant="body2">{loading ? 'Loading tasks...' : `${pendingTasks.length} pending, ${completedTasks.length} completed`}</Typography>
                 </Box>
-                <CheckCircleIcon color="primary" />
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <TextField select size="small" label="View account" value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)} sx={{ minWidth: 220 }}>
+                    <MenuItem value="all">All accounts</MenuItem>
+                    {accountOptions.map((account) => (
+                      <MenuItem key={account.id} value={account.id}>
+                        {account.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <CheckCircleIcon color="primary" />
+                </Stack>
               </Stack>
               <Stack spacing={2}>
                 <Box>
@@ -111,6 +142,7 @@ export function TasksPage() {
                     <Typography sx={{ textDecoration: task.status === 'completed' ? 'line-through' : 'none', fontWeight: 700, overflowWrap: 'anywhere' }}>{task.title}</Typography>
                     <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                       <Typography variant="body2" color="text.secondary">{task.due_date ?? 'No due date'}</Typography>
+                      {task.account_email && <Chip size="small" label={task.account_email} variant="outlined" />}
                       <Chip size="small" label="pending" color="warning" variant="outlined" />
                     </Stack>
                   </Stack>
@@ -134,6 +166,7 @@ export function TasksPage() {
                             <Typography sx={{ textDecoration: 'line-through', fontWeight: 700, overflowWrap: 'anywhere' }}>{task.title}</Typography>
                             <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                               <Typography variant="body2" color="text.secondary">{task.due_date ?? 'No due date'}</Typography>
+                              {task.account_email && <Chip size="small" label={task.account_email} variant="outlined" />}
                               <Chip size="small" label="completed" color="success" variant="outlined" />
                             </Stack>
                           </Stack>

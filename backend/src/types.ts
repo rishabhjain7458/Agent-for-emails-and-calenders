@@ -10,6 +10,9 @@ export type AuthUser = {
 export type EmailMessage = {
   id: string;
   threadId: string;
+  accountId?: string;
+  accountEmail?: string;
+  provider?: 'google' | 'microsoft';
   subject: string;
   sender: string;
   date: string;

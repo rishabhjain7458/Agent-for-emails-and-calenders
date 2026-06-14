@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
-import { getAuthorizedGoogleClient } from './googleAuthService.js';
+import { getAuthorizedGoogleClient, getAuthorizedGoogleClientForConnectedAccount } from './googleAuthService.js';
 import type { EmailMessage } from '../types.js';
+import { htmlToText, looksLikeHtml } from '../utils/htmlToText.js';
 
 function decodeBody(data?: string | null) {
   if (!data) return '';
@@ -12,10 +13,20 @@ function header(headers: { name?: string | null; value?: string | null }[] = [],
 }
 
 function bodyFromPayload(payload: any): string {
-  if (payload?.body?.data) return decodeBody(payload.body.data);
-  const parts = payload?.parts ?? [];
-  const text = parts.find((part: any) => part.mimeType === 'text/plain') ?? parts.find((part: any) => part.mimeType === 'text/html');
-  return decodeBody(text?.body?.data);
+  const parts: any[] = [];
+  const collectParts = (part: any) => {
+    if (!part) return;
+    parts.push(part);
+    for (const child of part.parts ?? []) collectParts(child);
+  };
+  collectParts(payload);
+
+  const plain = parts.find((part) => part.mimeType === 'text/plain' && part.body?.data);
+  if (plain) return decodeBody(plain.body.data);
+
+  const html = parts.find((part) => part.mimeType === 'text/html' && part.body?.data);
+  const decoded = html ? decodeBody(html.body.data) : decodeBody(payload?.body?.data);
+  return looksLikeHtml(decoded) ? htmlToText(decoded) : decoded;
 }
 
 function attachmentsFromPayload(payload: any) {
@@ -28,8 +39,7 @@ function attachmentsFromPayload(payload: any) {
     }));
 }
 
-export async function listEmails(userId: string, query = 'in:inbox', maxResults = 20, pageToken?: string) {
-  const auth = await getAuthorizedGoogleClient(userId);
+async function listEmailsWithAuth(auth: any, query = 'in:inbox', maxResults = 20, pageToken?: string, meta: Partial<EmailMessage> = {}) {
   const gmail = google.gmail({ version: 'v1', auth });
   const response = await gmail.users.messages.list({ userId: 'me', q: query, maxResults, pageToken });
   const messages = response.data.messages ?? [];
@@ -42,9 +52,12 @@ export async function listEmails(userId: string, query = 'in:inbox', maxResults 
       metadataHeaders: ['From', 'Subject', 'Date']
     });
     const headers = detail.data.payload?.headers ?? [];
+    const rawId = detail.data.id!;
     return {
-      id: detail.data.id!,
+      id: meta.accountId ? `${meta.accountId}:${rawId}` : rawId,
       threadId: detail.data.threadId!,
+      provider: 'google' as const,
+      ...meta,
       subject: header(headers, 'Subject') || '(No subject)',
       sender: header(headers, 'From'),
       date: header(headers, 'Date'),
@@ -60,14 +73,25 @@ export async function listEmails(userId: string, query = 'in:inbox', maxResults 
   };
 }
 
-export async function getEmail(userId: string, messageId: string): Promise<EmailMessage> {
+export async function listEmails(userId: string, query = 'in:inbox', maxResults = 20, pageToken?: string) {
   const auth = await getAuthorizedGoogleClient(userId);
+  return listEmailsWithAuth(auth, query, maxResults, pageToken, { provider: 'google' });
+}
+
+export async function listEmailsForConnectedAccount(tenantId: string, userId: string, accountId: string, accountEmail: string, query = 'in:inbox', maxResults = 20) {
+  const auth = await getAuthorizedGoogleClientForConnectedAccount(tenantId, userId, accountId);
+  return listEmailsWithAuth(auth, query, maxResults, undefined, { accountId, accountEmail, provider: 'google' });
+}
+
+async function getEmailWithAuth(auth: any, messageId: string, meta: Partial<EmailMessage> = {}): Promise<EmailMessage> {
   const gmail = google.gmail({ version: 'v1', auth });
   const detail = await gmail.users.messages.get({ userId: 'me', id: messageId, format: 'full' });
   const headers = detail.data.payload?.headers ?? [];
   return {
-    id: detail.data.id!,
+    id: meta.accountId ? `${meta.accountId}:${detail.data.id!}` : detail.data.id!,
     threadId: detail.data.threadId!,
+    provider: 'google',
+    ...meta,
     subject: header(headers, 'Subject') || '(No subject)',
     sender: header(headers, 'From'),
     date: header(headers, 'Date'),
@@ -76,6 +100,16 @@ export async function getEmail(userId: string, messageId: string): Promise<Email
     body: bodyFromPayload(detail.data.payload),
     attachments: attachmentsFromPayload(detail.data.payload)
   };
+}
+
+export async function getEmail(userId: string, messageId: string): Promise<EmailMessage> {
+  const auth = await getAuthorizedGoogleClient(userId);
+  return getEmailWithAuth(auth, messageId, { provider: 'google' });
+}
+
+export async function getEmailForConnectedAccount(tenantId: string, userId: string, accountId: string, accountEmail: string, messageId: string): Promise<EmailMessage> {
+  const auth = await getAuthorizedGoogleClientForConnectedAccount(tenantId, userId, accountId);
+  return getEmailWithAuth(auth, messageId, { accountId, accountEmail, provider: 'google' });
 }
 
 export async function getThread(userId: string, threadId: string): Promise<EmailMessage[]> {
@@ -100,14 +134,32 @@ export async function getThread(userId: string, threadId: string): Promise<Email
 
 export async function archiveEmail(userId: string, messageId: string) {
   const auth = await getAuthorizedGoogleClient(userId);
+  await archiveEmailWithAuth(auth, messageId);
+}
+
+async function archiveEmailWithAuth(auth: any, messageId: string) {
   const gmail = google.gmail({ version: 'v1', auth });
   await gmail.users.messages.modify({ userId: 'me', id: messageId, requestBody: { removeLabelIds: ['INBOX'] } });
 }
 
+export async function archiveEmailForConnectedAccount(tenantId: string, userId: string, accountId: string, messageId: string) {
+  const auth = await getAuthorizedGoogleClientForConnectedAccount(tenantId, userId, accountId);
+  await archiveEmailWithAuth(auth, messageId);
+}
+
 export async function deleteEmail(userId: string, messageId: string) {
   const auth = await getAuthorizedGoogleClient(userId);
+  await deleteEmailWithAuth(auth, messageId);
+}
+
+async function deleteEmailWithAuth(auth: any, messageId: string) {
   const gmail = google.gmail({ version: 'v1', auth });
   await gmail.users.messages.trash({ userId: 'me', id: messageId });
+}
+
+export async function deleteEmailForConnectedAccount(tenantId: string, userId: string, accountId: string, messageId: string) {
+  const auth = await getAuthorizedGoogleClientForConnectedAccount(tenantId, userId, accountId);
+  await deleteEmailWithAuth(auth, messageId);
 }
 
 export async function sendReply(userId: string, input: { threadId: string; to: string; subject: string; body: string }) {

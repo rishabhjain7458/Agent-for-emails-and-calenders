@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { Alert, Box, Button, Card, CardContent, Chip, Divider, Grid, LinearProgress, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Chip, Divider, Grid, LinearProgress, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SearchIcon from '@mui/icons-material/Search';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import { PageHeader } from '../components/PageHeader';
-import { getEmails, getEmailSummary } from '../api/endpoints';
-import type { EmailMessage } from '../types';
+import { getConnectedAccounts, getEmails, getEmailSummary } from '../api/endpoints';
+import { useAuth } from '../contexts/AuthContext';
+import type { ConnectedAccount, EmailMessage } from '../types';
 
 const emailFilters = [
   { label: 'Inbox', query: 'in:inbox' },
@@ -18,7 +19,10 @@ const emailFilters = [
 ];
 
 export function EmailsPage() {
+  const { user } = useAuth();
   const [query, setQuery] = useState('in:inbox');
+  const [accountId, setAccountId] = useState('all');
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [summary, setSummary] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,15 +30,25 @@ export function EmailsPage() {
   async function load(q = query) {
     setLoading(true);
     try {
-      setEmails(await getEmails(q));
+      setEmails(await getEmails(q, accountId));
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
+    getConnectedAccounts().then(setAccounts);
     load('in:inbox');
   }, []);
+
+  useEffect(() => {
+    load(query);
+  }, [accountId]);
+
+  const accountOptions = [
+    { id: 'primary', email: user?.email ?? 'Primary account', label: `${user?.email ?? 'Primary account'} (primary)` },
+    ...accounts.map((account) => ({ id: account.id, email: account.email, label: account.email }))
+  ];
 
   function applyFilter(nextQuery: string) {
     setQuery(nextQuery);
@@ -69,6 +83,14 @@ export function EmailsPage() {
                     ))}
                   </Stack>
                 </Box>
+                <TextField select label="Search account" value={accountId} onChange={(event) => setAccountId(event.target.value)}>
+                  <MenuItem value="all">All accounts</MenuItem>
+                  {accountOptions.map((account) => (
+                    <MenuItem key={account.id} value={account.id}>
+                      {account.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
                 <TextField label="Mail query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="from:john@example.com is:unread" />
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Query operators</Typography>
@@ -91,17 +113,18 @@ export function EmailsPage() {
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
                 <Box>
                   <Typography variant="h6">Inbox Results</Typography>
-                  <Typography color="text.secondary" variant="body2">{emails.length} messages returned</Typography>
+              <Typography color="text.secondary" variant="body2">{emails.length} messages returned across connected inboxes</Typography>
                 </Box>
                 <MailOutlineIcon color="primary" />
               </Stack>
               <Stack divider={<Divider flexItem />} spacing={0}>
             {emails.map((email) => (
-              <Box key={email.id} component={RouterLink} to={`/emails/${email.id}`} sx={{ display: 'block', textDecoration: 'none', color: 'inherit', py: 1.6, px: 1, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease, box-shadow 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(4px)' }, boxShadow: 'inset 3px 0 0 #2454c6' } }}>
+              <Box key={email.id} component={RouterLink} to={`/emails/${encodeURIComponent(email.id)}`} sx={{ display: 'block', textDecoration: 'none', color: 'inherit', py: 1.6, px: 1, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease, box-shadow 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(4px)' }, boxShadow: 'inset 3px 0 0 #2454c6' } }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: { xs: 0.75, sm: 2 }, alignItems: 'flex-start', flexDirection: { xs: 'column', sm: 'row' } }}>
                     <Box sx={{ minWidth: 0 }}>
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
                         {email.unread && <Chip size="small" label="Unread" color="primary" />}
+                        {email.accountEmail && <Chip size="small" label={email.accountEmail} variant="outlined" />}
                         <Typography variant="subtitle1" sx={{ fontWeight: 800, overflowWrap: 'anywhere' }}>{email.subject}</Typography>
                       </Stack>
                       <Typography color="text.secondary" variant="body2" sx={{ overflowWrap: 'anywhere' }}>{email.sender}</Typography>

@@ -1,10 +1,9 @@
 import axios from 'axios';
-import { getMicrosoftAccessToken } from './microsoftAuthService.js';
+import { getMicrosoftAccessToken, getMicrosoftAccessTokenForConnectedAccount } from './microsoftAuthService.js';
 
 const graph = 'https://graph.microsoft.com/v1.0';
 
-export async function listMicrosoftTasks(userId: string) {
-  const token = await getMicrosoftAccessToken(userId);
+async function listMicrosoftTasksWithToken(token: string) {
   const { data: lists } = await axios.get(`${graph}/me/todo/lists`, {
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -21,8 +20,17 @@ export async function listMicrosoftTasks(userId: string) {
   return items;
 }
 
-export async function createMicrosoftTask(userId: string, title: string, dueDate?: string | null) {
+export async function listMicrosoftTasks(userId: string) {
   const token = await getMicrosoftAccessToken(userId);
+  return listMicrosoftTasksWithToken(token);
+}
+
+export async function listMicrosoftTasksForConnectedAccount(tenantId: string, userId: string, accountId: string) {
+  const token = await getMicrosoftAccessTokenForConnectedAccount(tenantId, userId, accountId);
+  return listMicrosoftTasksWithToken(token);
+}
+
+async function createMicrosoftTaskWithToken(token: string, title: string, dueDate?: string | null) {
   const { data: lists } = await axios.get(`${graph}/me/todo/lists`, {
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -37,8 +45,17 @@ export async function createMicrosoftTask(userId: string, title: string, dueDate
   return data;
 }
 
-export async function completeMicrosoftTask(userId: string, taskId: string, taskListId: string) {
+export async function createMicrosoftTask(userId: string, title: string, dueDate?: string | null) {
   const token = await getMicrosoftAccessToken(userId);
+  return createMicrosoftTaskWithToken(token, title, dueDate);
+}
+
+export async function createMicrosoftTaskForConnectedAccount(tenantId: string, userId: string, accountId: string, title: string, dueDate?: string | null) {
+  const token = await getMicrosoftAccessTokenForConnectedAccount(tenantId, userId, accountId);
+  return createMicrosoftTaskWithToken(token, title, dueDate);
+}
+
+async function completeMicrosoftTaskWithToken(token: string, taskId: string, taskListId: string) {
   const { data } = await axios.patch(`${graph}/me/todo/lists/${taskListId}/tasks/${taskId}`, {
     status: 'completed'
   }, {
@@ -47,9 +64,28 @@ export async function completeMicrosoftTask(userId: string, taskId: string, task
   return data;
 }
 
-export async function deleteMicrosoftTask(userId: string, taskId: string, taskListId: string) {
+export async function completeMicrosoftTask(userId: string, taskId: string, taskListId: string) {
   const token = await getMicrosoftAccessToken(userId);
+  return completeMicrosoftTaskWithToken(token, taskId, taskListId);
+}
+
+export async function completeMicrosoftTaskForConnectedAccount(tenantId: string, userId: string, accountId: string, taskId: string, taskListId: string) {
+  const token = await getMicrosoftAccessTokenForConnectedAccount(tenantId, userId, accountId);
+  return completeMicrosoftTaskWithToken(token, taskId, taskListId);
+}
+
+async function deleteMicrosoftTaskWithToken(token: string, taskId: string, taskListId: string) {
   await axios.delete(`${graph}/me/todo/lists/${taskListId}/tasks/${taskId}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
+}
+
+export async function deleteMicrosoftTask(userId: string, taskId: string, taskListId: string) {
+  const token = await getMicrosoftAccessToken(userId);
+  await deleteMicrosoftTaskWithToken(token, taskId, taskListId);
+}
+
+export async function deleteMicrosoftTaskForConnectedAccount(tenantId: string, userId: string, accountId: string, taskId: string, taskListId: string) {
+  const token = await getMicrosoftAccessTokenForConnectedAccount(tenantId, userId, accountId);
+  await deleteMicrosoftTaskWithToken(token, taskId, taskListId);
 }

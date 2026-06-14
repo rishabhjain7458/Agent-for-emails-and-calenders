@@ -14,7 +14,8 @@ calendarRoutes.post('/events', validateBody(Joi.object({
   timezone: Joi.string().required(),
   description: Joi.string().allow('').optional(),
   attendees: Joi.array().items(Joi.string().email()).default([]),
-  force: Joi.boolean().default(false)
+  force: Joi.boolean().default(false),
+  accountId: Joi.string().default('primary')
 })), create);
 calendarRoutes.put('/events/:id', validateBody(Joi.object({
   title: Joi.string().required(),

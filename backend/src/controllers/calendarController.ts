@@ -1,15 +1,65 @@
 import type { NextFunction, Request, Response } from 'express';
-import { checkFreeBusy, createEvent, deleteEvent, listEvents, detectConflicts, suggestAlternativeSlots, updateEvent } from '../services/calendarService.js';
-import { createMicrosoftEvent, deleteMicrosoftEvent, listMicrosoftEvents, updateMicrosoftEvent } from '../services/microsoftCalendarService.js';
+import {
+  checkFreeBusy,
+  createEvent,
+  createEventForConnectedAccount,
+  deleteEvent,
+  deleteEventForConnectedAccount,
+  listEvents,
+  listEventsForConnectedAccount,
+  detectConflicts,
+  suggestAlternativeSlots,
+  updateEvent
+} from '../services/calendarService.js';
+import {
+  createMicrosoftEvent,
+  createMicrosoftEventForConnectedAccount,
+  deleteMicrosoftEvent,
+  deleteMicrosoftEventForConnectedAccount,
+  listMicrosoftEvents,
+  listMicrosoftEventsForConnectedAccount,
+  updateMicrosoftEvent
+} from '../services/microsoftCalendarService.js';
+import { listAccountContexts, resolveAccountContext } from '../services/accountContextService.js';
 import { send } from '../utils/http.js';
+
+function sortEvents(events: any[]) {
+  return events.sort((a, b) => {
+    const aValue = a.start?.dateTime ?? a.start?.date ?? a.start?.dateTime;
+    const bValue = b.start?.dateTime ?? b.start?.date ?? b.start?.dateTime;
+    return new Date(aValue).getTime() - new Date(bValue).getTime();
+  });
+}
+
+function splitConnectedEventId(id: string) {
+  const [accountId, ...rest] = id.split(':');
+  return rest.length ? { accountId, eventId: rest.join(':') } : null;
+}
 
 export async function events(req: Request, res: Response, next: NextFunction) {
   try {
-    if (req.user!.provider === 'microsoft') {
-      send(res, await listMicrosoftEvents(req.user!.id, req.query.timeMin as string, req.query.timeMax as string));
-      return;
-    }
-    send(res, await listEvents(req.user!.id, req.query.timeMin as string, req.query.timeMax as string));
+    const accountId = String(req.query.accountId ?? 'all');
+    const accounts = accountId === 'all'
+      ? await listAccountContexts(req.user!)
+      : [await resolveAccountContext(req.user!, accountId)];
+
+    const grouped = await Promise.all(accounts.map(async (account) => {
+      const eventsForAccount = account.provider === 'microsoft'
+        ? account.isPrimary
+          ? await listMicrosoftEvents(req.user!.id, req.query.timeMin as string, req.query.timeMax as string)
+          : await listMicrosoftEventsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, account.email, req.query.timeMin as string, req.query.timeMax as string)
+        : account.isPrimary
+          ? await listEvents(req.user!.id, req.query.timeMin as string, req.query.timeMax as string)
+          : await listEventsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, account.email, req.query.timeMin as string, req.query.timeMax as string);
+      return eventsForAccount.map((event: any) => ({
+        ...event,
+        accountId: account.accountId,
+        accountEmail: account.email,
+        provider: account.provider
+      }));
+    }));
+
+    send(res, sortEvents(grouped.flat()));
   } catch (error) {
     next(error);
   }
@@ -17,11 +67,15 @@ export async function events(req: Request, res: Response, next: NextFunction) {
 
 export async function create(req: Request, res: Response, next: NextFunction) {
   try {
-    if (req.user!.provider === 'microsoft') {
-      send(res, await createMicrosoftEvent(req.user!.id, req.body), 201);
-      return;
-    }
-    send(res, await createEvent(req.user!.id, req.body, Boolean(req.body.force)), 201);
+    const account = await resolveAccountContext(req.user!, req.body.accountId);
+    const result = account.provider === 'microsoft'
+      ? account.isPrimary
+        ? await createMicrosoftEvent(req.user!.id, req.body)
+        : await createMicrosoftEventForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, req.body)
+      : account.isPrimary
+        ? await createEvent(req.user!.id, req.body, Boolean(req.body.force))
+        : await createEventForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, req.body);
+    send(res, result, 201);
   } catch (error) {
     next(error);
   }
@@ -29,12 +83,17 @@ export async function create(req: Request, res: Response, next: NextFunction) {
 
 export async function remove(req: Request, res: Response, next: NextFunction) {
   try {
-    if (req.user!.provider === 'microsoft') {
-      await deleteMicrosoftEvent(req.user!.id, req.params.id);
+    const connectedId = splitConnectedEventId(req.params.id);
+    if (connectedId) {
+      const account = await resolveAccountContext(req.user!, connectedId.accountId);
+      if (account.provider === 'microsoft') await deleteMicrosoftEventForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, connectedId.eventId);
+      else await deleteEventForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, connectedId.eventId);
       send(res, { deleted: true });
       return;
     }
-    await deleteEvent(req.user!.id, req.params.id);
+
+    if (req.user!.provider === 'microsoft') await deleteMicrosoftEvent(req.user!.id, req.params.id);
+    else await deleteEvent(req.user!.id, req.params.id);
     send(res, { deleted: true });
   } catch (error) {
     next(error);

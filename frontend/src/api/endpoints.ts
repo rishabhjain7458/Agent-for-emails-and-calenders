@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { AssistantConversation, CalendarEvent, EmailMessage, Task, User } from '../types';
+import type { AssistantConversation, CalendarEvent, ConnectedAccount, EmailMessage, Task, User } from '../types';
 
 export async function getMe() {
   const { data } = await api.get<{ data: User }>('/auth/me');
@@ -10,18 +10,33 @@ type EmailsApiResponse =
   | { data: EmailMessage[] }
   | { data: { messages: EmailMessage[]; nextPageToken?: string; resultSizeEstimate?: number } };
 
-export async function getEmails(q = 'in:inbox') {
-  const { data } = await api.get<EmailsApiResponse>('/emails', { params: { q } });
+export async function getEmails(q = 'in:inbox', accountId = 'all') {
+  const { data } = await api.get<EmailsApiResponse>('/emails', { params: { q, accountId } });
   return Array.isArray(data.data) ? data.data : data.data.messages;
 }
 
+export async function getConnectedAccounts() {
+  const { data } = await api.get<{ data: ConnectedAccount[] }>('/auth/connected-accounts');
+  return data.data;
+}
+
+export async function getConnectAccountUrl(provider: 'google' | 'microsoft') {
+  const { data } = await api.get<{ data: { url: string } }>(`/auth/${provider}/connect`);
+  return data.data.url;
+}
+
+export async function disconnectAccount(id: string) {
+  const { data } = await api.delete(`/auth/connected-accounts/${id}`);
+  return data.data;
+}
+
 export async function getEmail(id: string) {
-  const { data } = await api.get<{ data: EmailMessage }>(`/emails/${id}`);
+  const { data } = await api.get<{ data: EmailMessage }>(`/emails/${encodeURIComponent(id)}`);
   return data.data;
 }
 
 export async function generateReply(id: string) {
-  const { data } = await api.post<{ data: { draft: string; email: EmailMessage } }>(`/emails/${id}/ai-reply`);
+  const { data } = await api.post<{ data: { draft: string; email: EmailMessage } }>(`/emails/${encodeURIComponent(id)}/ai-reply`);
   return data.data;
 }
 
@@ -36,12 +51,12 @@ export async function saveDraft(id: string, payload: { threadId: string; subject
 }
 
 export async function archiveEmail(id: string) {
-  const { data } = await api.post(`/emails/${id}/archive`);
+  const { data } = await api.post(`/emails/${encodeURIComponent(id)}/archive`);
   return data.data;
 }
 
 export async function deleteEmail(id: string) {
-  const { data } = await api.delete(`/emails/${id}`);
+  const { data } = await api.delete(`/emails/${encodeURIComponent(id)}`);
   return data.data;
 }
 
@@ -50,8 +65,8 @@ export async function getEmailSummary() {
   return data.data.summary;
 }
 
-export async function getEvents() {
-  const { data } = await api.get<{ data: CalendarEvent[] }>('/calendar/events');
+export async function getEvents(accountId = 'all') {
+  const { data } = await api.get<{ data: CalendarEvent[] }>('/calendar/events', { params: { accountId } });
   return data.data;
 }
 
@@ -65,12 +80,12 @@ export async function deleteEvent(id: string) {
   return data.data;
 }
 
-export async function getTasks() {
-  const { data } = await api.get<{ data: Task[] }>('/tasks');
+export async function getTasks(accountId = 'all') {
+  const { data } = await api.get<{ data: Task[] }>('/tasks', { params: { accountId } });
   return data.data;
 }
 
-export async function createTask(payload: { title: string; dueDate?: string }) {
+export async function createTask(payload: { title: string; dueDate?: string; accountId?: string }) {
   const { data } = await api.post<{ data: Task }>('/tasks', payload);
   return data.data;
 }

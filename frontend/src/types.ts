@@ -10,6 +10,9 @@ export type User = {
 export type EmailMessage = {
   id: string;
   threadId: string;
+  accountId?: string;
+  accountEmail?: string;
+  provider?: 'google' | 'microsoft';
   subject: string;
   sender: string;
   date: string;
@@ -19,17 +22,32 @@ export type EmailMessage = {
   attachments?: { filename: string; mimeType: string; attachmentId: string }[];
 };
 
+export type ConnectedAccount = {
+  id: string;
+  provider: 'google' | 'microsoft';
+  email: string;
+  name?: string;
+  created_at: string;
+};
+
 export type Task = {
   id: string;
   title: string;
   due_date?: string;
   status: 'pending' | 'needsAction' | 'completed';
+  provider?: 'google' | 'microsoft';
+  account_id?: string;
+  account_email?: string;
 };
 
 export type CalendarEvent = {
   id: string;
   summary: string;
   description?: string;
+  subject?: string;
+  accountId?: string;
+  accountEmail?: string;
+  provider?: 'google' | 'microsoft';
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
 };
