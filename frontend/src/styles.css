@@ -101,6 +101,10 @@ body {
   font-family: Inter, system-ui, sans-serif;
 }
 
+.fc .fc-view-harness {
+  background: #ffffff;
+}
+
 .fc .fc-toolbar-title {
   font-size: 1.1rem;
   font-weight: 800;
@@ -115,6 +119,14 @@ body {
   box-shadow: none;
   font-weight: 700;
   text-transform: none;
+}
+
+.fc .fc-button-group {
+  gap: 6px;
+}
+
+.fc .fc-button-group > .fc-button {
+  border-radius: 8px !important;
 }
 
 .fc .fc-button-primary:not(:disabled).fc-button-active,
@@ -132,10 +144,27 @@ body {
   border-color: #e4e9f2;
 }
 
+.fc .fc-scrollgrid {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.fc .fc-col-header-cell {
+  background: #f8faff;
+  padding: 6px 0;
+}
+
 .fc .fc-col-header-cell-cushion,
 .fc .fc-daygrid-day-number {
   color: #47536a;
   text-decoration: none;
+}
+
+.fc .fc-timegrid-axis,
+.fc .fc-timegrid-slot-label {
+  background: #fbfcff;
+  color: #647085;
+  font-size: 0.76rem;
 }
 
 .fc .fc-event {
@@ -146,6 +175,10 @@ body {
   cursor: pointer;
   min-height: 34px;
   transition: box-shadow 160ms ease, filter 160ms ease, transform 160ms ease;
+}
+
+.fc .fc-timegrid-event {
+  margin: 1px 3px;
 }
 
 .fc .fc-event:hover {

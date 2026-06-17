@@ -168,8 +168,8 @@ export function DashboardLayout() {
         {drawer}
       </Drawer>
 
-      <Box component="main" sx={{ flex: 1, ml: { md: `${drawerWidth}px` }, pt: { xs: 9, sm: 10, md: 11 }, px: { xs: 1.5, sm: 2.5, md: 4 }, pb: { xs: 3, md: 5 }, minWidth: 0 }}>
-        <Box className="page-shell" sx={{ maxWidth: 1320, mx: 'auto' }}>
+      <Box component="main" sx={{ flex: 1, pt: { xs: 9, sm: 10, md: 11 }, px: { xs: 1.5, sm: 2.5, md: 3.5, xl: 5 }, pb: { xs: 3, md: 5 }, minWidth: 0 }}>
+        <Box className="page-shell" sx={{ maxWidth: 1360, mx: 'auto' }}>
           <Outlet />
         </Box>
       </Box>

@@ -124,11 +124,16 @@ export function CalendarPage() {
       {notice && <Alert sx={{ mb: 2 }} severity="success">{notice}</Alert>}
       {error && <Alert sx={{ mb: 2 }} severity="warning">{error}</Alert>}
       <Grid container spacing={2.5}>
-        <Grid item xs={12} lg={4}>
+        <Grid item xs={12} lg={3.6}>
           <Card>
             <CardContent>
-              <Typography variant="h6">Create Event</Typography>
-              <Typography color="text.secondary" variant="body2" sx={{ mb: 2 }}>Add meeting details and let the assistant check for conflicts.</Typography>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                <Box>
+                  <Typography variant="h6">Create Event</Typography>
+                  <Typography color="text.secondary" variant="body2">Add meeting details and attendees.</Typography>
+                </Box>
+                <Chip size="small" label="New" color="primary" variant="outlined" />
+              </Stack>
               <Stack spacing={2}>
                 <TextField select label="Create in account" value={createAccountId} onChange={(event) => setCreateAccountId(event.target.value)}>
                   {accountOptions.map((account) => (
@@ -159,7 +164,7 @@ export function CalendarPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} lg={8}>
+        <Grid item xs={12} lg={8.4}>
           <Card>
             <CardContent>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent="space-between" spacing={1.25} sx={{ mb: 2 }}>
@@ -182,11 +187,19 @@ export function CalendarPage() {
               <FullCalendar
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                 initialView={isMobile ? 'timeGridDay' : 'timeGridWeek'}
+                firstDay={1}
                 headerToolbar={isMobile ? { left: 'prev,next', center: 'title', right: 'today' } : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
+                buttonText={{ today: 'Today', month: 'Month', week: 'Week', day: 'Day' }}
                 events={calendarEvents}
                 height="auto"
                 expandRows
                 nowIndicator
+                allDaySlot={false}
+                slotMinTime="06:00:00"
+                slotMaxTime="22:00:00"
+                slotDuration="00:30:00"
+                slotLabelFormat={{ hour: 'numeric', minute: '2-digit', meridiem: 'short' }}
+                dayHeaderFormat={{ weekday: isMobile ? 'short' : 'short', day: 'numeric', month: 'short' }}
                 eventDisplay="block"
                 eventMinHeight={34}
                 eventShortHeight={34}
