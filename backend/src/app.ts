@@ -42,6 +42,7 @@ export function createApp() {
       maxAge: '1y'
     }));
     app.get('*', (_req, res) => {
+      res.setHeader('Cache-Control', 'no-cache');
       res.sendFile(path.join(frontendDist, 'index.html'));
     });
   }
