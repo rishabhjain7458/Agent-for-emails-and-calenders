@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import AddIcon from '@mui/icons-material/Add';
@@ -83,6 +83,7 @@ function inferEventType(event: CalendarEvent) {
 export function CalendarPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const calendarRef = useRef<FullCalendar | null>(null);
   const { user } = useAuth();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
@@ -95,6 +96,7 @@ export function CalendarPage() {
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [calendarView, setCalendarView] = useState(isMobile ? 'timeGridDay' : 'timeGridWeek');
 
   async function load() {
     setLoading(true);
@@ -112,6 +114,12 @@ export function CalendarPage() {
   useEffect(() => {
     load();
   }, [selectedAccountId]);
+
+  useEffect(() => {
+    const nextView = isMobile ? 'timeGridDay' : 'timeGridWeek';
+    setCalendarView(nextView);
+    calendarRef.current?.getApi().changeView(nextView);
+  }, [isMobile]);
 
   const accountOptions = [
     { id: 'primary', email: user?.email ?? 'Primary account', provider: user?.provider ?? 'google', label: `${user?.email ?? 'Primary account'} (primary)` },
@@ -248,6 +256,12 @@ export function CalendarPage() {
     setNotice('Event details copied.');
   }
 
+  function changeCalendarView(nextView: string | null) {
+    if (!nextView) return;
+    setCalendarView(nextView);
+    calendarRef.current?.getApi().changeView(nextView);
+  }
+
   function AgendaGroup({ title, items }: { title: string; items: typeof agendaEvents }) {
     return (
       <Box>
@@ -344,6 +358,28 @@ export function CalendarPage() {
                   <Typography color="text.secondary" variant="body2">{events.length} events loaded</Typography>
                 </Box>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }}>
+                  <ToggleButtonGroup
+                    exclusive
+                    size="small"
+                    value={calendarView}
+                    onChange={(_, nextView) => changeCalendarView(nextView)}
+                    sx={{
+                      alignSelf: { xs: 'stretch', sm: 'center' },
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      minWidth: { xs: '100%', sm: 230 },
+                      '& .MuiToggleButton-root': {
+                        borderColor: 'divider',
+                        fontWeight: 800,
+                        px: 1.25,
+                        whiteSpace: 'nowrap'
+                      }
+                    }}
+                  >
+                    <ToggleButton value="dayGridMonth">Month</ToggleButton>
+                    <ToggleButton value="timeGridWeek">Week</ToggleButton>
+                    <ToggleButton value="timeGridDay">Day</ToggleButton>
+                  </ToggleButtonGroup>
                   <TextField select size="small" label="View account" value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)} sx={{ minWidth: 220 }}>
                     <MenuItem value="all">All accounts</MenuItem>
                     {accountOptions.map((account) => (
@@ -356,10 +392,11 @@ export function CalendarPage() {
                 </Stack>
               </Stack>
               <FullCalendar
+                ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                initialView={isMobile ? 'timeGridDay' : 'timeGridWeek'}
+                initialView={calendarView}
                 firstDay={1}
-                headerToolbar={isMobile ? { left: 'prev,next', center: 'title', right: 'today' } : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
+                headerToolbar={isMobile ? { left: 'prev,next today', center: 'title', right: '' } : { left: 'prev,next today', center: 'title', right: '' }}
                 buttonText={{ today: 'Today', month: 'Month', week: 'Week', day: 'Day' }}
                 events={calendarEvents}
                 height="auto"
