@@ -4,18 +4,31 @@ import { Alert, Box, Button, Card, CardContent, Chip, Divider, Grid, LinearProgr
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SearchIcon from '@mui/icons-material/Search';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
+import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import { PageHeader } from '../components/PageHeader';
 import { getConnectedAccounts, getEmails, getEmailSummary } from '../api/endpoints';
 import { useAuth } from '../contexts/AuthContext';
 import type { ConnectedAccount, EmailMessage } from '../types';
 
 const emailFilters = [
-  { label: 'Inbox', query: 'in:inbox' },
-  { label: 'Unread', query: 'in:inbox is:unread' },
-  { label: 'Important', query: 'in:inbox is:important' },
-  { label: 'Attachments', query: 'in:inbox has:attachment' },
-  { label: 'This week', query: 'in:inbox newer_than:7d' },
-  { label: 'Sent', query: 'in:sent' }
+  { label: 'Inbox', query: 'in:inbox', helper: 'All inbox mail' },
+  { label: 'Unread', query: 'in:inbox is:unread', helper: 'Needs attention' },
+  { label: 'Important', query: 'in:inbox is:important', helper: 'Marked important' },
+  { label: 'Attachments', query: 'in:inbox has:attachment', helper: 'Files included' },
+  { label: 'This week', query: 'in:inbox newer_than:7d', helper: 'Recent inbox' },
+  { label: 'Sent', query: 'in:sent', helper: 'Sent mail' }
+];
+
+const queryOperators = [
+  'is:unread',
+  'has:attachment',
+  'newer_than:7d',
+  'older_than:30d',
+  'from:',
+  'to:',
+  'subject:',
+  'filename:pdf',
+  'larger:5M'
 ];
 
 export function EmailsPage() {
@@ -55,6 +68,10 @@ export function EmailsPage() {
     load(nextQuery);
   }
 
+  function appendOperator(operator: string) {
+    setQuery((current) => `${current} ${operator}`.replace(/\s+/g, ' ').trim());
+  }
+
   return (
     <>
       <PageHeader
@@ -66,22 +83,33 @@ export function EmailsPage() {
         <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
-              <Typography variant="h6">Advanced Search</Typography>
-              <Typography color="text.secondary" variant="body2" sx={{ mb: 2 }}>Compose a Gmail query or add common operators.</Typography>
-              <Stack spacing={2}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                <Box>
+                  <Typography variant="h6">Gmail Search</Typography>
+                  <Typography color="text.secondary" variant="body2">Build precise inbox queries with Gmail operators.</Typography>
+                </Box>
+                <Chip icon={<FilterAltIcon />} label="Filters" color="primary" variant="outlined" />
+              </Stack>
+              <Stack spacing={2.2}>
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Quick filters</Typography>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  <Grid container spacing={1}>
                     {emailFilters.map((filter) => (
-                      <Chip
-                        key={filter.query}
-                        label={filter.label}
-                        color={query === filter.query ? 'primary' : 'default'}
-                        variant={query === filter.query ? 'filled' : 'outlined'}
-                        onClick={() => applyFilter(filter.query)}
-                      />
+                      <Grid item xs={6} key={filter.query}>
+                        <Button
+                          fullWidth
+                          variant={query === filter.query ? 'contained' : 'outlined'}
+                          onClick={() => applyFilter(filter.query)}
+                          sx={{ alignItems: 'flex-start', justifyContent: 'flex-start', minHeight: 58, px: 1.25, py: 0.9 }}
+                        >
+                          <Box sx={{ textAlign: 'left', minWidth: 0 }}>
+                            <Typography component="span" sx={{ display: 'block', fontWeight: 850, lineHeight: 1.1 }}>{filter.label}</Typography>
+                            <Typography component="span" sx={{ display: 'block', fontSize: '0.72rem', opacity: 0.75, lineHeight: 1.2, mt: 0.35 }}>{filter.helper}</Typography>
+                          </Box>
+                        </Button>
+                      </Grid>
                     ))}
-                  </Stack>
+                  </Grid>
                 </Box>
                 <TextField select label="Search account" value={accountId} onChange={(event) => setAccountId(event.target.value)}>
                   <MenuItem value="all">All accounts</MenuItem>
@@ -91,14 +119,14 @@ export function EmailsPage() {
                     </MenuItem>
                   ))}
                 </TextField>
-                <TextField label="Mail query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="from:john@example.com is:unread" />
+                <TextField label="Gmail query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="in:inbox from:name@example.com newer_than:7d" helperText="Examples: from:person@example.com, subject:invoice, filename:pdf, older_than:30d" />
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Query operators</Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  {['is:unread', 'has:attachment', 'newer_than:7d', 'from:'].map((operator) => (
-                    <Chip key={operator} label={operator} variant="outlined" onClick={() => setQuery((current) => `${current} ${operator}`.trim())} />
-                  ))}
-                </Stack>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {queryOperators.map((operator) => (
+                      <Chip key={operator} label={operator} variant="outlined" onClick={() => appendOperator(operator)} sx={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }} />
+                    ))}
+                  </Stack>
                 </Box>
                 <Button variant="contained" startIcon={<SearchIcon />} onClick={() => load()}>Search</Button>
               </Stack>

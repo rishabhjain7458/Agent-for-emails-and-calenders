@@ -194,9 +194,11 @@ export function CalendarPage() {
                 height="auto"
                 expandRows
                 nowIndicator
-                allDaySlot={false}
-                slotMinTime="06:00:00"
-                slotMaxTime="22:00:00"
+                allDaySlot
+                allDayText="All day"
+                slotMinTime="00:00:00"
+                slotMaxTime="24:00:00"
+                scrollTime="08:00:00"
                 slotDuration="00:30:00"
                 slotLabelFormat={{ hour: 'numeric', minute: '2-digit', meridiem: 'short' }}
                 dayHeaderFormat={{ weekday: isMobile ? 'short' : 'short', day: 'numeric', month: 'short' }}

@@ -167,6 +167,25 @@ body {
   font-size: 0.76rem;
 }
 
+.fc .fc-timegrid-axis-cushion,
+.fc .fc-timegrid-slot-label-cushion {
+  font-weight: 650;
+}
+
+.fc .fc-timegrid-axis-frame,
+.fc .fc-timegrid-divider {
+  background: #f8faff;
+}
+
+.fc .fc-timegrid-all-day {
+  background: #fbfcff;
+}
+
+.fc .fc-timegrid-all-day .fc-event {
+  background: #0f9f8f;
+  box-shadow: 0 6px 14px rgba(15, 159, 143, 0.18);
+}
+
 .fc .fc-event {
   border: 0;
   border-radius: 6px;
