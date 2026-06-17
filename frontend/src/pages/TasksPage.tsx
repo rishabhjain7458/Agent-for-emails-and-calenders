@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, Grid, IconButton, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -10,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import type { ConnectedAccount, Task } from '../types';
 
 export function TasksPage() {
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
@@ -39,6 +41,11 @@ export function TasksPage() {
   useEffect(() => {
     getConnectedAccounts().then(setAccounts);
   }, []);
+
+  useEffect(() => {
+    const nextTitle = searchParams.get('title');
+    if (nextTitle) setTitle(nextTitle);
+  }, [searchParams]);
 
   useEffect(() => {
     load();

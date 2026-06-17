@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Alert, Avatar, Box, Button, Card, CardContent, Chip, Divider, Grid, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import type { AxiosError } from 'axios';
 import MicIcon from '@mui/icons-material/Mic';
@@ -197,6 +198,7 @@ function AssistantMessageContent({ content }: { content: string }) {
 }
 
 export function AssistantPage() {
+  const [searchParams] = useSearchParams();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [conversationId, setConversationId] = useState<string | undefined>();
@@ -271,6 +273,11 @@ export function AssistantPage() {
   useEffect(() => {
     loadConversations();
   }, []);
+
+  useEffect(() => {
+    const prompt = searchParams.get('prompt');
+    if (prompt) setInput(prompt);
+  }, [searchParams]);
 
   async function openConversation(id: string) {
     setError('');
