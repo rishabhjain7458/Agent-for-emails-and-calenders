@@ -27,6 +27,16 @@ function isCalendarInputValid(params: any) {
   return start.isValid() && end.isValid() && end.isAfter(start);
 }
 
+function fallbackCalendarTitle(message: string) {
+  const withMatch = message.match(/\bwith\s+([^,.;\n]+?)(?:\s+(?:at|from|on|today|tomorrow|next|for|regarding)\b|$)/i);
+  if (withMatch?.[1]?.trim()) return `Meeting with ${withMatch[1].trim()}`;
+
+  const aboutMatch = message.match(/\b(?:about|regarding|for)\s+([^,.;\n]+)$/i);
+  if (aboutMatch?.[1]?.trim()) return aboutMatch[1].trim();
+
+  return 'Meeting';
+}
+
 function clarifyCalendarRequest(params: any) {
   const missing = Array.isArray(params?.missing) && params.missing.length
     ? params.missing.join(', ')
@@ -172,6 +182,50 @@ function findPendingAccountRequest(history: AssistantHistoryMessage[] = []) {
   return null;
 }
 
+function lastAssistantIndex(history: AssistantHistoryMessage[] = []) {
+  const reversedIndex = [...history].reverse().findIndex((entry) => entry.role === 'assistant');
+  return reversedIndex < 0 ? -1 : history.length - 1 - reversedIndex;
+}
+
+function findUserBefore(history: AssistantHistoryMessage[], index: number) {
+  for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+    if (history[cursor].role === 'user') return { index: cursor, content: history[cursor].content };
+  }
+  return null;
+}
+
+function findPendingClarification(history: AssistantHistoryMessage[] = []) {
+  const assistantIndex = lastAssistantIndex(history);
+  if (assistantIndex < 0) return null;
+
+  const assistantMessage = history[assistantIndex];
+  if (!/^I need one more detail before I can create that meeting\./i.test(assistantMessage.content)) return null;
+
+  const userBeforeClarification = findUserBefore(history, assistantIndex);
+  if (!userBeforeClarification) return null;
+
+  const accountPromptIndex = history
+    .slice(0, assistantIndex)
+    .map((entry, index) => ({ entry, index }))
+    .reverse()
+    .find(({ entry }) => entry.role === 'assistant' && /^Which account should I use for /i.test(entry.content))?.index;
+
+  if (accountPromptIndex === undefined) {
+    return { originalRequest: userBeforeClarification.content, accountSelection: null as string | null };
+  }
+
+  const originalRequest = findUserBefore(history, accountPromptIndex)?.content ?? userBeforeClarification.content;
+  const accountSelection = history
+    .slice(accountPromptIndex + 1, assistantIndex)
+    .find((entry) => entry.role === 'user')?.content ?? null;
+
+  return { originalRequest, accountSelection };
+}
+
+function isStandaloneRequest(message: string) {
+  return /\b(create|schedule|meeting|calendar|task|email|summari[sz]e|show|list|find)\b/i.test(message);
+}
+
 async function listCalendarForAccount(user: AuthUser, account: AccountContext, params: any) {
   if (account.provider === 'microsoft') {
     return account.isPrimary
@@ -210,6 +264,7 @@ async function processAssistantMessage(user: AuthUser, message: string, forcedAc
     case 'calendar_create': {
       const calendarParams = {
         ...params,
+        title: params.title || fallbackCalendarTitle(message),
         timezone: params.timezone || userTimezone,
         attendees: Array.isArray(params.attendees) ? params.attendees.filter((item: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item)) : []
       };
@@ -288,6 +343,18 @@ export async function handleAssistantMessage(user: AuthUser, message: string, hi
       };
     }
     return processAssistantMessage(user, pendingOriginalRequest, selectedAccount);
+  }
+
+  const pendingClarification = findPendingClarification(history);
+  if (pendingClarification) {
+    const accounts = await listAccountContexts(user);
+    const selectedAccount = pendingClarification.accountSelection
+      ? resolveAccountSelection(accounts, pendingClarification.accountSelection)
+      : undefined;
+    const resumedMessage = isStandaloneRequest(message)
+      ? message
+      : `${pendingClarification.originalRequest}\n${message}`;
+    return processAssistantMessage(user, resumedMessage, selectedAccount);
   }
 
   return processAssistantMessage(user, message);
