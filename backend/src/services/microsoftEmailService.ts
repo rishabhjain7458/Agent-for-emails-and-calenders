@@ -37,6 +37,8 @@ function extractBodyTerms(query: string) {
     .replace(/\bis:(unread|important)\b/gi, ' ')
     .replace(/\bhas:attachment\b/gi, ' ')
     .replace(/\b(newer_than|older_than):\d+d\b/gi, ' ')
+    .replace(/\b(after|before):\d{4}[/-]\d{1,2}[/-]\d{1,2}\b/gi, ' ')
+    .replace(/-?\bcategory:[^\s]+\b/gi, ' ')
     .replace(/\b(filename|larger):[^\s]+\b/gi, ' ');
 
   const quoted = Array.from(withoutOperators.matchAll(/"([^"]+)"/g)).map((match) => unquote(match[1]));
@@ -57,6 +59,16 @@ function mapQuery(query: string) {
   if (newerThan) {
     const date = new Date(Date.now() - Number(newerThan[1]) * 24 * 60 * 60 * 1000).toISOString();
     filters.push(`receivedDateTime ge ${date}`);
+  }
+  const after = query.match(/\bafter:(\d{4})[/-](\d{1,2})[/-](\d{1,2})\b/i);
+  if (after) {
+    const date = new Date(Number(after[1]), Number(after[2]) - 1, Number(after[3])).toISOString();
+    filters.push(`receivedDateTime ge ${date}`);
+  }
+  const before = query.match(/\bbefore:(\d{4})[/-](\d{1,2})[/-](\d{1,2})\b/i);
+  if (before) {
+    const date = new Date(Number(before[1]), Number(before[2]) - 1, Number(before[3])).toISOString();
+    filters.push(`receivedDateTime le ${date}`);
   }
 
   return {
@@ -80,7 +92,8 @@ function mapMessage(message: any, meta: Partial<EmailMessage> = {}): EmailMessag
     date: message.receivedDateTime ?? message.sentDateTime ?? '',
     unread: message.isRead === false,
     snippet: message.bodyPreview ?? '',
-    body: looksLikeHtml(body) ? htmlToText(body) : body
+    body: looksLikeHtml(body) ? htmlToText(body) : body,
+    originalBody: looksLikeHtml(body) ? body : undefined
   };
 }
 

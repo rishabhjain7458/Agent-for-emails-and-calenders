@@ -13,6 +13,31 @@ import type { CalendarEvent, EmailMessage, Task } from '../types';
 
 type ActivityItem = { id: string; label: string };
 
+function eventStart(event: CalendarEvent) {
+  const value = event.start?.dateTime ?? event.start?.date;
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function nextMeetingText(events: CalendarEvent[]) {
+  const next = events
+    .map((event) => ({ event, starts: eventStart(event) }))
+    .filter((item): item is { event: CalendarEvent; starts: Date } => item.starts instanceof Date && item.starts.getTime() >= Date.now())
+    .sort((a, b) => a.starts.getTime() - b.starts.getTime())[0];
+  if (!next) return 'No upcoming meetings loaded';
+  const minutes = Math.max(0, Math.round((next.starts.getTime() - Date.now()) / 60000));
+  if (minutes < 60) return `Next meeting in ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  return `Next meeting in ${hours} hr`;
+}
+
+function overdueTasks(tasks: Task[]) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return tasks.filter((task) => task.status !== 'completed' && task.due_date && new Date(task.due_date).getTime() < today.getTime());
+}
+
 export function DashboardPage() {
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -52,9 +77,9 @@ export function DashboardPage() {
       <PageHeader eyebrow="Today" title="Dashboard" subtitle="A focused view of mail, meetings, and tasks that need attention." />
       {errors.length > 0 && <Alert sx={{ mb: 2 }} severity="warning">{errors.join(' ')}</Alert>}
       <Grid container spacing={2.5}>
-        <Grid item xs={12} md={4}><StatCard label="Unread Emails" value={emails.length} helper="Priority inbox scan" icon={<MailIcon fontSize="small" />} /></Grid>
-        <Grid item xs={12} md={4}><StatCard label="Upcoming Meetings" value={events.length} helper="Primary calendar" icon={<EventIcon fontSize="small" />} accent="#0f9f8f" /></Grid>
-        <Grid item xs={12} md={4}><StatCard label="Pending Tasks" value={tasks.filter((task) => task.status !== 'completed').length} helper="Tenant workspace tasks" icon={<CheckCircleIcon fontSize="small" />} accent="#b86b00" /></Grid>
+        <Grid item xs={12} md={4}><StatCard label="Unread Emails" value={emails.length} helper={`${emails.slice(0, 3).filter((email) => !/no-reply|newsletter|promotions/i.test(email.sender)).length} from likely important senders`} icon={<MailIcon fontSize="small" />} /></Grid>
+        <Grid item xs={12} md={4}><StatCard label="Upcoming Meetings" value={events.length} helper={nextMeetingText(events)} icon={<EventIcon fontSize="small" />} accent="#0f9f8f" /></Grid>
+        <Grid item xs={12} md={4}><StatCard label="Pending Tasks" value={tasks.filter((task) => task.status !== 'completed').length} helper={`${overdueTasks(tasks).length} overdue tasks`} icon={<CheckCircleIcon fontSize="small" />} accent="#b86b00" /></Grid>
         <Grid item xs={12} md={8}>
           <Card sx={{ height: '100%' }}>
             <CardContent>

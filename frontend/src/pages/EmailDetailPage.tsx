@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField, Typography } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SendIcon from '@mui/icons-material/Send';
 import SaveIcon from '@mui/icons-material/Save';
 import AttachmentIcon from '@mui/icons-material/Attachment';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import CodeIcon from '@mui/icons-material/Code';
 import { PageHeader } from '../components/PageHeader';
 import { archiveEmail, deleteEmail, generateReply, getEmail, saveDraft, sendReply } from '../api/endpoints';
 import type { EmailMessage } from '../types';
@@ -45,6 +47,23 @@ function displayUrl(url: string) {
   }
 }
 
+function extractLinks(body?: string) {
+  const matches = Array.from((body ?? '').matchAll(/https?:\/\/[^\s<>"\])]+/gi)).map((match) => match[0]);
+  const unique = Array.from(new Set(matches));
+  return unique.slice(0, 6).map((url) => {
+    try {
+      const parsed = new URL(url);
+      return {
+        url,
+        host: parsed.hostname.replace(/^www\./, ''),
+        title: parsed.pathname.split('/').filter(Boolean).slice(0, 2).join(' / ') || parsed.hostname.replace(/^www\./, '')
+      };
+    } catch {
+      return { url, host: 'Link', title: 'Open link' };
+    }
+  });
+}
+
 function EmailBody({ body }: { body?: string }) {
   const cleaned = cleanEmailBody(body);
   const blocks = cleaned.split(/\n{2,}/).filter(Boolean);
@@ -81,6 +100,7 @@ export function EmailDetailPage() {
   const [email, setEmail] = useState<EmailMessage | null>(null);
   const [draft, setDraft] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [originalOpen, setOriginalOpen] = useState(false);
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
@@ -101,6 +121,8 @@ export function EmailDetailPage() {
   }
 
   if (!email) return <PageHeader title="Email" subtitle="Loading message..." />;
+  const links = extractLinks(`${email.body ?? ''}\n${email.originalBody ?? ''}`);
+  const hasOriginalHtml = /<\/?[a-z][\s\S]*>/i.test(email.originalBody ?? email.body ?? '');
 
   return (
     <>
@@ -118,12 +140,52 @@ export function EmailDetailPage() {
               {email.accountEmail && <Chip size="small" label={email.accountEmail} variant="outlined" />}
             </Stack>
             <EmailBody body={email.body} />
+            {links.length > 0 && (
+              <Box sx={{ mt: 2.5 }}>
+                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Links in this email</Typography>
+                <Grid container spacing={1.25}>
+                  {links.map((link) => (
+                    <Grid item xs={12} sm={6} key={link.url}>
+                      <Box
+                        component="a"
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        sx={{
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          borderRadius: 2,
+                          color: 'inherit',
+                          display: 'flex',
+                          gap: 1,
+                          p: 1.25,
+                          textDecoration: 'none',
+                          transition: 'background 160ms ease, transform 160ms ease',
+                          '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateY(-1px)' } }
+                        }}
+                      >
+                        <OpenInNewIcon color="primary" fontSize="small" />
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 800 }} noWrap>{link.title}</Typography>
+                          <Typography variant="caption" color="text.secondary" noWrap>{link.host}</Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+            )}
             {!!email.attachments?.length && (
               <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2 }}>
                 {email.attachments.map((attachment) => (
                   <Chip key={attachment.attachmentId} icon={<AttachmentIcon />} label={attachment.filename} variant="outlined" />
                 ))}
               </Stack>
+            )}
+            {hasOriginalHtml && (
+              <Button sx={{ mt: 2 }} variant="outlined" startIcon={<CodeIcon />} onClick={() => setOriginalOpen(true)}>
+                View original HTML
+              </Button>
             )}
           </CardContent>
         </Card>
@@ -160,6 +222,17 @@ export function EmailDetailPage() {
         <DialogActions>
           <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={sendApprovedReply}>Send</Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={originalOpen} onClose={() => setOriginalOpen(false)} fullWidth maxWidth="md">
+        <DialogTitle>Original email HTML</DialogTitle>
+        <DialogContent>
+          <Box component="pre" className="scroll-thin" sx={{ bgcolor: '#0f172a', color: '#e5edf8', borderRadius: 2, fontSize: '0.78rem', maxHeight: 520, overflow: 'auto', p: 2, whiteSpace: 'pre-wrap' }}>
+            {email.originalBody ?? email.body}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOriginalOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </>

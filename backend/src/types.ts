@@ -19,6 +19,7 @@ export type EmailMessage = {
   unread: boolean;
   snippet?: string;
   body?: string;
+  originalBody?: string;
   attachments?: { filename: string; mimeType: string; attachmentId: string }[];
 };
 

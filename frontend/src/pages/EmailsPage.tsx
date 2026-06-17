@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
-import { Alert, Box, Button, Card, CardContent, Chip, Divider, Grid, LinearProgress, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Chip, Divider, Drawer, Grid, LinearProgress, MenuItem, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SearchIcon from '@mui/icons-material/Search';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
+import SaveIcon from '@mui/icons-material/Save';
 import { PageHeader } from '../components/PageHeader';
-import { getConnectedAccounts, getEmails, getEmailSummary } from '../api/endpoints';
+import { archiveEmail, deleteEmail, getConnectedAccounts, getEmails, getEmailSummary } from '../api/endpoints';
 import { useAuth } from '../contexts/AuthContext';
 import type { ConnectedAccount, EmailMessage } from '../types';
+
+const savedSearchKey = 'o-connect-email-saved-searches';
 
 const emailFilters = [
   { label: 'Inbox', query: 'in:inbox', helper: 'All inbox mail' },
@@ -16,7 +20,12 @@ const emailFilters = [
   { label: 'Important', query: 'in:inbox is:important', helper: 'Marked important' },
   { label: 'Attachments', query: 'in:inbox has:attachment', helper: 'Files included' },
   { label: 'This week', query: 'in:inbox newer_than:7d', helper: 'Recent inbox' },
-  { label: 'Sent', query: 'in:sent', helper: 'Sent mail' }
+  { label: 'Sent', query: 'in:sent', helper: 'Sent mail' },
+  { label: 'Has PDF', query: 'in:inbox filename:pdf', helper: 'PDF files' },
+  { label: 'Last 24h', query: 'in:inbox newer_than:1d', helper: 'Newest mail' },
+  { label: 'Needs reply', query: 'in:inbox is:unread', helper: 'Unread follow-up' },
+  { label: 'Promos hidden', query: 'in:inbox -category:promotions', helper: 'Cleaner inbox' },
+  { label: 'From boss', query: 'in:inbox from:boss', helper: 'Edit sender' }
 ];
 
 const queryOperators = [
@@ -32,6 +41,8 @@ const queryOperators = [
 ];
 
 export function EmailsPage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get('query') || 'in:inbox';
@@ -39,6 +50,12 @@ export function EmailsPage() {
   const [senderSearch, setSenderSearch] = useState('');
   const [subjectSearch, setSubjectSearch] = useState('');
   const [bodySearch, setBodySearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [savedSearchName, setSavedSearchName] = useState('');
+  const [savedSearches, setSavedSearches] = useState<{ name: string; query: string }[]>([]);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [accountId, setAccountId] = useState('all');
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [emails, setEmails] = useState<EmailMessage[]>([]);
@@ -56,6 +73,7 @@ export function EmailsPage() {
 
   useEffect(() => {
     getConnectedAccounts().then(setAccounts);
+    setSavedSearches(JSON.parse(localStorage.getItem(savedSearchKey) ?? '[]'));
     load(initialQuery);
   }, []);
 
@@ -96,6 +114,8 @@ export function EmailsPage() {
     if (sender) parts.push(`from:${sender}`);
     if (subject) parts.push(`subject:${subject}`);
     if (body) parts.push(body);
+    if (dateFrom) parts.push(`after:${dateFrom.replace(/-/g, '/')}`);
+    if (dateTo) parts.push(`before:${dateTo.replace(/-/g, '/')}`);
 
     return parts.join(' ').replace(/\s+/g, ' ').trim();
   }
@@ -110,13 +130,114 @@ export function EmailsPage() {
     setSenderSearch('');
     setSubjectSearch('');
     setBodySearch('');
+    setDateFrom('');
+    setDateTo('');
     setQuery('in:inbox');
     load('in:inbox');
+  }
+
+  function saveCurrentSearch() {
+    const nextQuery = buildFieldQuery();
+    const name = savedSearchName.trim() || nextQuery;
+    const next = [{ name, query: nextQuery }, ...savedSearches.filter((item) => item.query !== nextQuery)].slice(0, 8);
+    setSavedSearches(next);
+    setSavedSearchName('');
+    localStorage.setItem(savedSearchKey, JSON.stringify(next));
   }
 
   function appendOperator(operator: string) {
     setQuery((current) => `${current} ${operator}`.replace(/\s+/g, ' ').trim());
   }
+
+  async function handleEmailSwipe(email: EmailMessage, deltaX: number) {
+    if (Math.abs(deltaX) < 80) return;
+    setEmails((current) => current.filter((item) => item.id !== email.id));
+    if (deltaX > 0) await archiveEmail(email.id);
+    else await deleteEmail(email.id);
+  }
+
+  const filterContent = (
+    <Stack spacing={2.2}>
+      <Box>
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Quick filters</Typography>
+        <Grid container spacing={1}>
+          {emailFilters.map((filter) => (
+            <Grid item xs={6} key={filter.query}>
+              <Button
+                fullWidth
+                variant={query === filter.query ? 'contained' : 'outlined'}
+                onClick={() => {
+                  applyFilter(filter.query);
+                  if (isMobile) setFilterOpen(false);
+                }}
+                sx={{ alignItems: 'flex-start', justifyContent: 'flex-start', minHeight: 58, px: 1.25, py: 0.9 }}
+              >
+                <Box sx={{ textAlign: 'left', minWidth: 0 }}>
+                  <Typography component="span" sx={{ display: 'block', fontWeight: 850, lineHeight: 1.1 }}>{filter.label}</Typography>
+                  <Typography component="span" sx={{ display: 'block', fontSize: '0.72rem', opacity: 0.75, lineHeight: 1.2, mt: 0.35 }}>{filter.helper}</Typography>
+                </Box>
+              </Button>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+      {savedSearches.length > 0 && (
+        <Box>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Saved searches</Typography>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {savedSearches.map((saved) => (
+              <Chip key={saved.query} label={saved.name} onClick={() => applyFilter(saved.query)} onDelete={() => {
+                const next = savedSearches.filter((item) => item.query !== saved.query);
+                setSavedSearches(next);
+                localStorage.setItem(savedSearchKey, JSON.stringify(next));
+              }} />
+            ))}
+          </Stack>
+        </Box>
+      )}
+      <TextField select label="Search account" value={accountId} onChange={(event) => setAccountId(event.target.value)}>
+        <MenuItem value="all">All accounts</MenuItem>
+        {accountOptions.map((account) => (
+          <MenuItem key={account.id} value={account.id}>
+            {account.label}
+          </MenuItem>
+        ))}
+      </TextField>
+      <Box>
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Search by text</Typography>
+        <Stack spacing={1.25}>
+          <TextField label="Sender" value={senderSearch} onChange={(event) => setSenderSearch(event.target.value)} placeholder="name@example.com or sender name" />
+          <TextField label="Subject contains" value={subjectSearch} onChange={(event) => setSubjectSearch(event.target.value)} placeholder="invoice, project update, approval" />
+          <TextField label="Body contains" value={bodySearch} onChange={(event) => setBodySearch(event.target.value)} placeholder="words inside the email body" />
+        </Stack>
+      </Box>
+      <Box>
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Date range</Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25}>
+          <TextField fullWidth label="From" type="date" value={dateFrom} InputLabelProps={{ shrink: true }} onChange={(event) => setDateFrom(event.target.value)} />
+          <TextField fullWidth label="To" type="date" value={dateTo} InputLabelProps={{ shrink: true }} onChange={(event) => setDateTo(event.target.value)} />
+        </Stack>
+      </Box>
+      <TextField label="Advanced Gmail query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="in:inbox from:name@example.com newer_than:7d" helperText="Use this for Gmail operators. The fields above are added when you search." />
+      <Box>
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Query operators</Typography>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {queryOperators.map((operator) => (
+            <Chip key={operator} label={operator} variant="outlined" onClick={() => appendOperator(operator)} sx={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }} />
+          ))}
+        </Stack>
+      </Box>
+      <TextField label="Save search as" value={savedSearchName} onChange={(event) => setSavedSearchName(event.target.value)} placeholder="Invoices this month" />
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+        <Button fullWidth variant="contained" startIcon={<SearchIcon />} onClick={() => {
+          searchWithFields();
+          if (isMobile) setFilterOpen(false);
+        }}>Search</Button>
+        <Button variant="outlined" startIcon={<SaveIcon />} onClick={saveCurrentSearch}>Save</Button>
+        <Button variant="outlined" onClick={clearFieldSearch}>Clear</Button>
+      </Stack>
+    </Stack>
+  );
 
   return (
     <>
@@ -125,8 +246,19 @@ export function EmailsPage() {
         subtitle="Search Gmail, summarize important mail, and draft approved replies."
         action={<Button variant="outlined" startIcon={<AutoAwesomeIcon />} onClick={async () => setSummary(await getEmailSummary())}>AI Summary</Button>}
       />
+      {isMobile && (
+        <Button fullWidth variant="contained" startIcon={<FilterAltIcon />} onClick={() => setFilterOpen(true)} sx={{ mb: 2 }}>
+          Search and filters
+        </Button>
+      )}
+      <Drawer anchor="bottom" open={filterOpen} onClose={() => setFilterOpen(false)} PaperProps={{ sx: { borderRadius: '12px 12px 0 0', maxHeight: '88vh' } }}>
+        <Box className="scroll-thin" sx={{ p: 2, overflowY: 'auto' }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>Email filters</Typography>
+          {filterContent}
+        </Box>
+      </Drawer>
       <Grid container spacing={2.5}>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={4} sx={{ display: { xs: 'none', md: 'block' } }}>
           <Card className="premium-panel">
             <CardContent>
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
@@ -136,57 +268,7 @@ export function EmailsPage() {
                 </Box>
                 <Chip icon={<FilterAltIcon />} label="Filters" color="primary" variant="outlined" />
               </Stack>
-              <Stack spacing={2.2}>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Quick filters</Typography>
-                  <Grid container spacing={1}>
-                    {emailFilters.map((filter) => (
-                      <Grid item xs={6} key={filter.query}>
-                        <Button
-                          fullWidth
-                          variant={query === filter.query ? 'contained' : 'outlined'}
-                          onClick={() => applyFilter(filter.query)}
-                          sx={{ alignItems: 'flex-start', justifyContent: 'flex-start', minHeight: 58, px: 1.25, py: 0.9 }}
-                        >
-                          <Box sx={{ textAlign: 'left', minWidth: 0 }}>
-                            <Typography component="span" sx={{ display: 'block', fontWeight: 850, lineHeight: 1.1 }}>{filter.label}</Typography>
-                            <Typography component="span" sx={{ display: 'block', fontSize: '0.72rem', opacity: 0.75, lineHeight: 1.2, mt: 0.35 }}>{filter.helper}</Typography>
-                          </Box>
-                        </Button>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-                <TextField select label="Search account" value={accountId} onChange={(event) => setAccountId(event.target.value)}>
-                  <MenuItem value="all">All accounts</MenuItem>
-                  {accountOptions.map((account) => (
-                    <MenuItem key={account.id} value={account.id}>
-                      {account.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Search by text</Typography>
-                  <Stack spacing={1.25}>
-                    <TextField label="Sender" value={senderSearch} onChange={(event) => setSenderSearch(event.target.value)} placeholder="name@example.com or sender name" />
-                    <TextField label="Subject contains" value={subjectSearch} onChange={(event) => setSubjectSearch(event.target.value)} placeholder="invoice, project update, approval" />
-                    <TextField label="Body contains" value={bodySearch} onChange={(event) => setBodySearch(event.target.value)} placeholder="words inside the email body" />
-                  </Stack>
-                </Box>
-                <TextField label="Advanced Gmail query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="in:inbox from:name@example.com newer_than:7d" helperText="Use this for Gmail operators. The fields above are added when you search." />
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Query operators</Typography>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    {queryOperators.map((operator) => (
-                      <Chip key={operator} label={operator} variant="outlined" onClick={() => appendOperator(operator)} sx={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }} />
-                    ))}
-                  </Stack>
-                </Box>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                  <Button fullWidth variant="contained" startIcon={<SearchIcon />} onClick={searchWithFields}>Search</Button>
-                  <Button variant="outlined" onClick={clearFieldSearch}>Clear</Button>
-                </Stack>
-              </Stack>
+              {filterContent}
             </CardContent>
           </Card>
           {summary && <Alert sx={{ mt: 2 }} severity="info">{summary}</Alert>}
@@ -204,7 +286,22 @@ export function EmailsPage() {
               </Stack>
               <Stack divider={<Divider flexItem />} spacing={0}>
             {emails.map((email) => (
-              <Box key={email.id} component={RouterLink} to={`/emails/${encodeURIComponent(email.id)}`} sx={{ display: 'block', textDecoration: 'none', color: 'inherit', py: 1.6, px: 1, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease, box-shadow 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(4px)' }, boxShadow: 'inset 3px 0 0 #2557d6' } }}>
+              <Box
+                key={email.id}
+                component={RouterLink}
+                to={`/emails/${encodeURIComponent(email.id)}`}
+                onTouchStart={(event) => setTouchStartX(event.touches[0]?.clientX ?? null)}
+                onTouchEnd={(event) => {
+                  if (touchStartX === null) return;
+                  const deltaX = (event.changedTouches[0]?.clientX ?? touchStartX) - touchStartX;
+                  if (Math.abs(deltaX) >= 80) {
+                    event.preventDefault();
+                    handleEmailSwipe(email, deltaX);
+                  }
+                  setTouchStartX(null);
+                }}
+                sx={{ display: 'block', textDecoration: 'none', color: 'inherit', py: 1.6, px: 1, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease, box-shadow 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(4px)' }, boxShadow: 'inset 3px 0 0 #2557d6' } }}
+              >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: { xs: 0.75, sm: 2 }, alignItems: 'flex-start', flexDirection: { xs: 'column', sm: 'row' } }}>
                     <Box sx={{ minWidth: 0, width: '100%' }}>
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, flexWrap: 'wrap', rowGap: 0.75 }}>

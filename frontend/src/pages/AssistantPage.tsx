@@ -6,6 +6,10 @@ import SendIcon from '@mui/icons-material/Send';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import AddIcon from '@mui/icons-material/Add';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import EventIcon from '@mui/icons-material/Event';
+import MailOutlineIcon from '@mui/icons-material/MailOutline';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { PageHeader } from '../components/PageHeader';
 import { chat, getAssistantConversation, getAssistantConversations } from '../api/endpoints';
 import type { AssistantConversation } from '../types';
@@ -67,8 +71,79 @@ function renderInlineText(text: string) {
   });
 }
 
+function labelValue(lines: string[], label: string) {
+  return lines.find((line) => line.toLowerCase().startsWith(`${label.toLowerCase()}:`))?.replace(/^[^:]+:\s*/, '');
+}
+
+function AssistantStructuredCard({ cleaned }: { cleaned: string }) {
+  const lines = cleaned.split('\n').map((line) => line.trim()).filter(Boolean);
+  const first = lines[0] ?? '';
+  const isMeeting = /meeting created|calendar result/i.test(first);
+  const isEmail = /^found \d+ emails?/i.test(first) || lines.includes('Emails');
+  const isTask = /tasks?|pending/i.test(first) && lines.some((line) => /task|pending|completed/i.test(line));
+
+  if (!isMeeting && !isEmail && !isTask) return null;
+
+  const icon = isMeeting ? <EventIcon /> : isEmail ? <MailOutlineIcon /> : <CheckCircleIcon />;
+  const title = isMeeting ? 'Meeting created' : isEmail ? first : 'Tasks';
+  const actionHref = isMeeting ? '/calendar' : isEmail ? '/emails' : '/tasks';
+  const calendarLink = labelValue(lines, 'Calendar link');
+  const rows = isMeeting
+    ? [
+      ['Title', labelValue(lines, 'Title')],
+      ['Starts', labelValue(lines, 'Starts')],
+      ['Ends', labelValue(lines, 'Ends')],
+      ['Notes', labelValue(lines, 'Notes')]
+    ].filter((row) => row[1])
+    : lines
+      .filter((line) => !/^email \d+$/i.test(line) && !/^(emails|available accounts)$/i.test(line) && line !== first)
+      .slice(0, 8)
+      .map((line) => {
+        const match = line.match(/^([^:]+):\s*(.+)$/);
+        return match ? [match[1], match[2]] : ['', line];
+      });
+
+  return (
+    <Card variant="outlined" sx={{ bgcolor: '#ffffff', boxShadow: 'none' }}>
+      <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+        <Stack spacing={1.25}>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Avatar sx={{ width: 30, height: 30, bgcolor: isMeeting ? 'secondary.light' : 'primary.light', color: isMeeting ? 'secondary.dark' : 'primary.dark' }}>
+              {icon}
+            </Avatar>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 850 }}>{title}</Typography>
+              {isEmail && <Typography variant="caption" color="text.secondary">Showing compact results</Typography>}
+            </Box>
+          </Stack>
+          <Stack spacing={0.8}>
+            {rows.map(([label, value], index) => (
+              <Box key={`${label}-${index}`} sx={{ borderTop: index ? '1px solid' : 0, borderColor: 'divider', pt: index ? 0.8 : 0 }}>
+                {label && <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>{label}</Typography>}
+                <Typography variant="body2" sx={{ lineHeight: 1.55, overflowWrap: 'anywhere' }}>{renderInlineText(String(value))}</Typography>
+              </Box>
+            ))}
+          </Stack>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button size="small" variant="contained" href={actionHref} endIcon={<OpenInNewIcon />}>
+              Open {isMeeting ? 'calendar' : isEmail ? 'emails' : 'tasks'}
+            </Button>
+            {isMeeting && calendarLink && (
+              <Button size="small" variant="outlined" href={calendarLink} target="_blank">
+                Google event
+              </Button>
+            )}
+          </Stack>
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+}
+
 function AssistantMessageContent({ content }: { content: string }) {
   const cleaned = cleanAssistantText(content);
+  const rendered = AssistantStructuredCard({ cleaned });
+  if (rendered) return rendered;
   const blocks = cleaned.split(/\n{2,}/).filter(Boolean);
 
   return (
@@ -338,7 +413,7 @@ export function AssistantPage() {
                 </Box>
               )}
             </Box>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="stretch" sx={{ position: { md: 'sticky' }, bottom: 0 }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="stretch" sx={{ position: 'sticky', bottom: 0, bgcolor: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(12px)', borderTop: '1px solid', borderColor: 'divider', mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, pt: 1.25, pb: { xs: 1, sm: 0 } }}>
               <TextField
                 fullWidth
                 value={input}

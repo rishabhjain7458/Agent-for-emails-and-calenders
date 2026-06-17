@@ -29,6 +29,19 @@ function bodyFromPayload(payload: any): string {
   return looksLikeHtml(decoded) ? htmlToText(decoded) : decoded;
 }
 
+function htmlFromPayload(payload: any): string | undefined {
+  const parts: any[] = [];
+  const collectParts = (part: any) => {
+    if (!part) return;
+    parts.push(part);
+    for (const child of part.parts ?? []) collectParts(child);
+  };
+  collectParts(payload);
+  const html = parts.find((part) => part.mimeType === 'text/html' && part.body?.data);
+  const decoded = html ? decodeBody(html.body.data) : decodeBody(payload?.body?.data);
+  return looksLikeHtml(decoded) ? decoded : undefined;
+}
+
 function attachmentsFromPayload(payload: any) {
   return (payload?.parts ?? [])
     .filter((part: any) => part.filename && part.body?.attachmentId)
@@ -98,6 +111,7 @@ async function getEmailWithAuth(auth: any, messageId: string, meta: Partial<Emai
     unread: detail.data.labelIds?.includes('UNREAD') ?? false,
     snippet: detail.data.snippet ?? '',
     body: bodyFromPayload(detail.data.payload),
+    originalBody: htmlFromPayload(detail.data.payload),
     attachments: attachmentsFromPayload(detail.data.payload)
   };
 }

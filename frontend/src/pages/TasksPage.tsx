@@ -20,6 +20,7 @@ export function TasksPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const pendingTasks = tasks.filter((task) => task.status !== 'completed');
   const completedTasks = tasks.filter((task) => task.status === 'completed');
 
@@ -88,6 +89,15 @@ export function TasksPage() {
     }
   }
 
+  function handleTaskTouchEnd(task: Task, x: number) {
+    if (touchStartX === null) return;
+    const deltaX = x - touchStartX;
+    setTouchStartX(null);
+    if (Math.abs(deltaX) < 80) return;
+    if (deltaX > 0 && task.status !== 'completed') markComplete(task);
+    if (deltaX < 0) deleteOne(task);
+  }
+
   return (
     <>
       <PageHeader title="Tasks" subtitle="Create, complete, and sync work with your task list." />
@@ -143,7 +153,12 @@ export function TasksPage() {
                   <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.75, fontWeight: 800 }}>Pending</Typography>
                   <Stack divider={<Divider flexItem />} spacing={0}>
                     {pendingTasks.map((task) => (
-                      <Box key={task.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 0.75, sm: 1.5 }, py: 1.25, px: 0.75, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(3px)' } } }}>
+                      <Box
+                        key={task.id}
+                        onTouchStart={(event) => setTouchStartX(event.touches[0]?.clientX ?? null)}
+                        onTouchEnd={(event) => handleTaskTouchEnd(task, event.changedTouches[0]?.clientX ?? touchStartX ?? 0)}
+                        sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 0.75, sm: 1.5 }, py: 1.25, px: 0.75, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(3px)' } } }}
+                      >
                   <Checkbox disabled={busyTaskId === task.id} checked={task.status === 'completed'} onChange={() => markComplete(task)} sx={{ mt: -0.5 }} />
                   <Stack sx={{ flex: 1, minWidth: 0 }}>
                     <Typography sx={{ textDecoration: task.status === 'completed' ? 'line-through' : 'none', fontWeight: 700, overflowWrap: 'anywhere' }}>{task.title}</Typography>
@@ -167,7 +182,12 @@ export function TasksPage() {
                     <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.75, fontWeight: 800 }}>Completed</Typography>
                     <Stack divider={<Divider flexItem />} spacing={0}>
                       {completedTasks.map((task) => (
-                        <Box key={task.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 0.75, sm: 1.5 }, py: 1.25, px: 0.75, borderRadius: 2, opacity: 0.72, transition: 'background 160ms ease', '&:hover': { bgcolor: 'action.hover' } }}>
+                        <Box
+                          key={task.id}
+                          onTouchStart={(event) => setTouchStartX(event.touches[0]?.clientX ?? null)}
+                          onTouchEnd={(event) => handleTaskTouchEnd(task, event.changedTouches[0]?.clientX ?? touchStartX ?? 0)}
+                          sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 0.75, sm: 1.5 }, py: 1.25, px: 0.75, borderRadius: 2, opacity: 0.72, transition: 'background 160ms ease', '&:hover': { bgcolor: 'action.hover' } }}
+                        >
                           <Checkbox disabled checked sx={{ mt: -0.5 }} />
                           <Stack sx={{ flex: 1, minWidth: 0 }}>
                             <Typography sx={{ textDecoration: 'line-through', fontWeight: 700, overflowWrap: 'anywhere' }}>{task.title}</Typography>

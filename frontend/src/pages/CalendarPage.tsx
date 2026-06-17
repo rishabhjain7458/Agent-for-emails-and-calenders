@@ -69,6 +69,12 @@ export function CalendarPage() {
     extendedProps: { description: event.description, accountEmail: event.accountEmail }
   })), [events]);
 
+  const agendaEvents = useMemo(() => events
+    .map((event) => ({ event, starts: new Date(event.start?.dateTime ?? event.start?.date ?? '') }))
+    .filter((item) => !Number.isNaN(item.starts.getTime()))
+    .sort((a, b) => a.starts.getTime() - b.starts.getTime())
+    .slice(0, 8), [events]);
+
   function formatEventDate(value?: string) {
     if (!value) return 'Not set';
     const parsed = new Date(value);
@@ -220,6 +226,20 @@ export function CalendarPage() {
                   </Box>
                 )}
               />
+              {isMobile && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 850 }}>Agenda</Typography>
+                  <Stack spacing={1}>
+                    {agendaEvents.map(({ event, starts }) => (
+                      <Box key={event.id} onClick={() => setSelectedEvent(event)} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, bgcolor: '#fff', cursor: 'pointer' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 850 }}>{event.summary ?? event.subject ?? '(No title)'}</Typography>
+                        <Typography variant="caption" color="text.secondary">{starts.toLocaleString([], { dateStyle: 'medium', timeStyle: event.start?.dateTime ? 'short' : undefined })}</Typography>
+                      </Box>
+                    ))}
+                    {agendaEvents.length === 0 && <Alert severity="info">No agenda items loaded.</Alert>}
+                  </Stack>
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>
