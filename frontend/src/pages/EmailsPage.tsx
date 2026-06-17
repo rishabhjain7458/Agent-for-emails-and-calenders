@@ -36,6 +36,9 @@ export function EmailsPage() {
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get('query') || 'in:inbox';
   const [query, setQuery] = useState(initialQuery);
+  const [senderSearch, setSenderSearch] = useState('');
+  const [subjectSearch, setSubjectSearch] = useState('');
+  const [bodySearch, setBodySearch] = useState('');
   const [accountId, setAccountId] = useState('all');
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [emails, setEmails] = useState<EmailMessage[]>([]);
@@ -76,6 +79,39 @@ export function EmailsPage() {
   function applyFilter(nextQuery: string) {
     setQuery(nextQuery);
     load(nextQuery);
+  }
+
+  function quoteSearchValue(value: string) {
+    const cleaned = value.trim().replace(/"/g, '\\"');
+    if (!cleaned) return '';
+    return /\s/.test(cleaned) ? `"${cleaned}"` : cleaned;
+  }
+
+  function buildFieldQuery() {
+    const parts = [query.trim() || 'in:inbox'];
+    const sender = quoteSearchValue(senderSearch);
+    const subject = quoteSearchValue(subjectSearch);
+    const body = quoteSearchValue(bodySearch);
+
+    if (sender) parts.push(`from:${sender}`);
+    if (subject) parts.push(`subject:${subject}`);
+    if (body) parts.push(body);
+
+    return parts.join(' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function searchWithFields() {
+    const nextQuery = buildFieldQuery();
+    setQuery(nextQuery);
+    load(nextQuery);
+  }
+
+  function clearFieldSearch() {
+    setSenderSearch('');
+    setSubjectSearch('');
+    setBodySearch('');
+    setQuery('in:inbox');
+    load('in:inbox');
   }
 
   function appendOperator(operator: string) {
@@ -129,7 +165,15 @@ export function EmailsPage() {
                     </MenuItem>
                   ))}
                 </TextField>
-                <TextField label="Gmail query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="in:inbox from:name@example.com newer_than:7d" helperText="Examples: from:person@example.com, subject:invoice, filename:pdf, older_than:30d" />
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Search by text</Typography>
+                  <Stack spacing={1.25}>
+                    <TextField label="Sender" value={senderSearch} onChange={(event) => setSenderSearch(event.target.value)} placeholder="name@example.com or sender name" />
+                    <TextField label="Subject contains" value={subjectSearch} onChange={(event) => setSubjectSearch(event.target.value)} placeholder="invoice, project update, approval" />
+                    <TextField label="Body contains" value={bodySearch} onChange={(event) => setBodySearch(event.target.value)} placeholder="words inside the email body" />
+                  </Stack>
+                </Box>
+                <TextField label="Advanced Gmail query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="in:inbox from:name@example.com newer_than:7d" helperText="Use this for Gmail operators. The fields above are added when you search." />
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Query operators</Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -138,7 +182,10 @@ export function EmailsPage() {
                     ))}
                   </Stack>
                 </Box>
-                <Button variant="contained" startIcon={<SearchIcon />} onClick={() => load()}>Search</Button>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                  <Button fullWidth variant="contained" startIcon={<SearchIcon />} onClick={searchWithFields}>Search</Button>
+                  <Button variant="outlined" onClick={clearFieldSearch}>Clear</Button>
+                </Stack>
               </Stack>
             </CardContent>
           </Card>

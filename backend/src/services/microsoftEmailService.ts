@@ -5,6 +5,50 @@ import { htmlToText, looksLikeHtml } from '../utils/htmlToText.js';
 
 const graph = 'https://graph.microsoft.com/v1.0';
 
+type ParsedSearch = {
+  folder: string;
+  filter: string;
+  senderTerms: string[];
+  subjectTerms: string[];
+  bodyTerms: string[];
+};
+
+function unquote(value: string) {
+  return value.replace(/^"|"$/g, '').replace(/\\"/g, '"').trim().toLowerCase();
+}
+
+function extractOperatorTerms(query: string, operator: 'from' | 'subject') {
+  const terms: string[] = [];
+  const pattern = new RegExp(`${operator}:(?:"([^"]+)"|([^\\s]+))`, 'gi');
+  let match = pattern.exec(query);
+  while (match) {
+    const value = match[1] ?? match[2] ?? '';
+    if (value.trim()) terms.push(unquote(value));
+    match = pattern.exec(query);
+  }
+  return terms;
+}
+
+function extractBodyTerms(query: string) {
+  const withoutOperators = query
+    .replace(/\bfrom:(?:"[^"]+"|[^\s]+)/gi, ' ')
+    .replace(/\bsubject:(?:"[^"]+"|[^\s]+)/gi, ' ')
+    .replace(/\bin:(inbox|sent|trash|spam|drafts|all|anywhere)\b/gi, ' ')
+    .replace(/\bis:(unread|important)\b/gi, ' ')
+    .replace(/\bhas:attachment\b/gi, ' ')
+    .replace(/\b(newer_than|older_than):\d+d\b/gi, ' ')
+    .replace(/\b(filename|larger):[^\s]+\b/gi, ' ');
+
+  const quoted = Array.from(withoutOperators.matchAll(/"([^"]+)"/g)).map((match) => unquote(match[1]));
+  const unquoted = withoutOperators
+    .replace(/"[^"]+"/g, ' ')
+    .split(/\s+/)
+    .map(unquote)
+    .filter((term) => term.length >= 2);
+
+  return [...quoted, ...unquoted];
+}
+
 function mapQuery(query: string) {
   const filters: string[] = [];
   if (query.includes('is:unread')) filters.push('isRead eq false');
@@ -17,8 +61,11 @@ function mapQuery(query: string) {
 
   return {
     folder: query.includes('in:sent') ? 'sentitems' : 'inbox',
-    filter: filters.join(' and ')
-  };
+    filter: filters.join(' and '),
+    senderTerms: extractOperatorTerms(query, 'from'),
+    subjectTerms: extractOperatorTerms(query, 'subject'),
+    bodyTerms: extractBodyTerms(query)
+  } satisfies ParsedSearch;
 }
 
 function mapMessage(message: any, meta: Partial<EmailMessage> = {}): EmailMessage {
@@ -40,7 +87,7 @@ function mapMessage(message: any, meta: Partial<EmailMessage> = {}): EmailMessag
 async function listMicrosoftEmailsWithToken(token: string, query = 'in:inbox', maxResults = 20, meta: Partial<EmailMessage> = {}) {
   const mapped = mapQuery(query);
   const params: Record<string, string | number> = {
-    '$top': maxResults,
+    '$top': Math.max(maxResults, mapped.senderTerms.length || mapped.subjectTerms.length || mapped.bodyTerms.length ? 50 : maxResults),
     '$orderby': 'receivedDateTime desc',
     '$select': 'id,conversationId,subject,from,sender,receivedDateTime,sentDateTime,isRead,bodyPreview,hasAttachments'
   };
@@ -50,7 +97,28 @@ async function listMicrosoftEmailsWithToken(token: string, query = 'in:inbox', m
     headers: { Authorization: `Bearer ${token}` },
     params
   });
-  const messages = (data.value ?? []).map((message: any) => mapMessage(message, meta));
+  const matchesTerm = (value: string | undefined, terms: string[]) => {
+    if (!terms.length) return true;
+    const haystack = (value ?? '').toLowerCase();
+    return terms.every((term) => haystack.includes(term));
+  };
+  const matchesMessage = (message: any) => {
+    const sender = [
+      message.from?.emailAddress?.address,
+      message.from?.emailAddress?.name,
+      message.sender?.emailAddress?.address,
+      message.sender?.emailAddress?.name
+    ].filter(Boolean).join(' ');
+    const bodySearch = [message.bodyPreview, message.subject].filter(Boolean).join(' ');
+    return matchesTerm(sender, mapped.senderTerms)
+      && matchesTerm(message.subject, mapped.subjectTerms)
+      && matchesTerm(bodySearch, mapped.bodyTerms);
+  };
+
+  const messages = (data.value ?? [])
+    .filter(matchesMessage)
+    .slice(0, maxResults)
+    .map((message: any) => mapMessage(message, meta));
   return { messages, nextPageToken: data['@odata.nextLink'], resultSizeEstimate: messages.length };
 }
 
