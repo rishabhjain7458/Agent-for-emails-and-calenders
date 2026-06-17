@@ -13,12 +13,67 @@ import type { EmailMessage } from '../types';
 
 function stripHtmlFallback(value?: string) {
   if (!value) return '';
-  if (!/<\/?[a-z][\s\S]*>/i.test(value)) return value;
   const element = document.createElement('div');
   element.innerHTML = value
+    .replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, ' ')
+    .replace(/<\s*img[^>]*>/gi, ' ')
     .replace(/<\s*br\s*\/?>/gi, '\n')
     .replace(/<\s*\/\s*(p|div|tr|table|li|h[1-6])\s*>/gi, '\n');
-  return (element.textContent ?? '').replace(/\n{3,}/g, '\n\n').trim();
+  return element.textContent ?? '';
+}
+
+function cleanEmailBody(value?: string) {
+  const text = /<\/?[a-z][\s\S]*>/i.test(value ?? '') ? stripHtmlFallback(value) : (value ?? '');
+  return text
+    .replace(/\r/g, '')
+    .replace(/\[(https?:\/\/[^\]\s]+)\]\s*\1/gi, '$1')
+    .replace(/\[(https?:\/\/[^\]\s]+)\]\s*(https?:\/\/\S+)/gi, '$2')
+    .replace(/^\s*(image|logo|banner|spacer|tracking pixel)\s*$/gim, '')
+    .replace(/^\s*[-_]{4,}\s*$/gm, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function displayUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname.replace(/^www\./, '');
+  } catch {
+    return 'Open link';
+  }
+}
+
+function EmailBody({ body }: { body?: string }) {
+  const cleaned = cleanEmailBody(body);
+  const blocks = cleaned.split(/\n{2,}/).filter(Boolean);
+  if (!blocks.length) return <Typography color="text.secondary">No readable email body found.</Typography>;
+
+  return (
+    <Stack spacing={1.4}>
+      {blocks.map((block, blockIndex) => (
+        <Typography key={blockIndex} sx={{ lineHeight: 1.75, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+          {block.split(/(https?:\/\/\S+)/g).map((part, index) => {
+            if (!/^https?:\/\//i.test(part)) return <span key={index}>{part}</span>;
+            const cleanUrl = part.replace(/[),.;]+$/, '');
+            return (
+              <Box
+                key={index}
+                component="a"
+                href={cleanUrl}
+                target="_blank"
+                rel="noreferrer"
+                sx={{ color: 'primary.main', fontWeight: 800, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+              >
+                {displayUrl(cleanUrl)}
+              </Box>
+            );
+          })}
+        </Typography>
+      ))}
+    </Stack>
+  );
 }
 
 export function EmailDetailPage() {
@@ -62,7 +117,7 @@ export function EmailDetailPage() {
               {email.unread && <Chip size="small" label="Unread" color="primary" />}
               {email.accountEmail && <Chip size="small" label={email.accountEmail} variant="outlined" />}
             </Stack>
-            <Typography sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{stripHtmlFallback(email.body)}</Typography>
+            <EmailBody body={email.body} />
             {!!email.attachments?.length && (
               <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2 }}>
                 {email.attachments.map((attachment) => (
