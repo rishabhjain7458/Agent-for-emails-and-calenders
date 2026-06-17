@@ -46,6 +46,10 @@ export type CalendarEvent = {
   summary: string;
   description?: string;
   subject?: string;
+  eventType?: string;
+  isAllDay?: boolean;
+  showAs?: string;
+  categories?: string[];
   accountId?: string;
   accountEmail?: string;
   provider?: 'google' | 'microsoft';

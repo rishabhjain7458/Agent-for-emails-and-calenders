@@ -35,6 +35,16 @@ const timezoneOptions = [
 
 const accountPalette = ['#2557d6', '#0f9f8f', '#b86b00', '#8b5cf6', '#e0476b', '#168053'];
 
+const eventTypeStyles: Record<string, { label: string; color: string }> = {
+  meeting: { label: 'Meeting', color: '#2557d6' },
+  allDay: { label: 'All day', color: '#0f9f8f' },
+  birthday: { label: 'Birthday', color: '#d946ef' },
+  focusTime: { label: 'Focus time', color: '#8b5cf6' },
+  outOfOffice: { label: 'Out of office', color: '#f97316' },
+  workingLocation: { label: 'Working location', color: '#64748b' },
+  reminder: { label: 'Reminder', color: '#e0476b' }
+};
+
 function toDateInput(value: Date) {
   return value.toISOString().slice(0, 10);
 }
@@ -49,6 +59,25 @@ function eventAccountKey(event: CalendarEvent) {
 
 function eventUrlFromDescription(description?: string) {
   return description?.match(/https?:\/\/\S+/)?.[0]?.replace(/[),.;]+$/, '');
+}
+
+function eventTitle(event: CalendarEvent) {
+  return event.summary ?? event.subject ?? '(No title)';
+}
+
+function inferEventType(event: CalendarEvent) {
+  const providerType = event.eventType;
+  const title = eventTitle(event).toLowerCase();
+  const description = event.description?.toLowerCase() ?? '';
+
+  if (providerType && eventTypeStyles[providerType]) return providerType;
+  if (providerType === 'outOfOffice') return 'outOfOffice';
+  if (providerType === 'focusTime') return 'focusTime';
+  if (providerType === 'workingLocation') return 'workingLocation';
+  if (providerType === 'birthday' || title.includes('birthday')) return 'birthday';
+  if (event.isAllDay || (event.start?.date && !event.start?.dateTime)) return 'allDay';
+  if (title.includes('reminder') || description.includes('reminder')) return 'reminder';
+  return 'meeting';
 }
 
 export function CalendarPage() {
@@ -96,18 +125,26 @@ export function CalendarPage() {
   }, [accountOptions]);
 
   function colorForEvent(event: CalendarEvent) {
-    if (event.start?.date && !event.start?.dateTime) return '#0f9f8f';
     return accountColors.get(eventAccountKey(event)) ?? '#2557d6';
+  }
+
+  function typeColorForEvent(event: CalendarEvent) {
+    return eventTypeStyles[inferEventType(event)]?.color ?? eventTypeStyles.meeting.color;
+  }
+
+  function typeLabelForEvent(event: CalendarEvent) {
+    return eventTypeStyles[inferEventType(event)]?.label ?? eventTypeStyles.meeting.label;
   }
 
   const calendarEvents = useMemo(() => events.map((event) => ({
     id: event.id,
-    title: event.summary ?? event.subject ?? '(No title)',
+    title: eventTitle(event),
     start: event.start?.dateTime ?? event.start?.date,
     end: event.end?.dateTime ?? event.end?.date,
     backgroundColor: colorForEvent(event),
-    borderColor: colorForEvent(event),
-    extendedProps: { description: event.description, accountEmail: event.accountEmail, providerEvent: event }
+    borderColor: typeColorForEvent(event),
+    textColor: '#fff',
+    extendedProps: { description: event.description, accountEmail: event.accountEmail, providerEvent: event, typeLabel: typeLabelForEvent(event), typeColor: typeColorForEvent(event) }
   })), [events, accountColors]);
 
   const agendaEvents = useMemo(() => events
@@ -217,8 +254,12 @@ export function CalendarPage() {
         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 850 }}>{title}</Typography>
         <Stack spacing={1}>
           {items.map(({ event, starts }) => (
-            <Box key={event.id} onClick={() => setSelectedEvent(event)} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, bgcolor: '#fff', cursor: 'pointer', borderLeft: `4px solid ${colorForEvent(event)}`, transition: 'transform 160ms ease, background 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(2px)' } } }}>
-              <Typography variant="body2" sx={{ fontWeight: 850, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{event.summary ?? event.subject ?? '(No title)'}</Typography>
+            <Box key={event.id} onClick={() => setSelectedEvent(event)} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, bgcolor: '#fff', cursor: 'pointer', borderLeft: `4px solid ${colorForEvent(event)}`, boxShadow: `inset 0 3px 0 ${typeColorForEvent(event)}`, transition: 'transform 160ms ease, background 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(2px)' } } }}>
+              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.4 }}>
+                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: typeColorForEvent(event), flex: '0 0 auto' }} />
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>{typeLabelForEvent(event)}</Typography>
+              </Stack>
+              <Typography variant="body2" sx={{ fontWeight: 850, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{eventTitle(event)}</Typography>
               <Typography variant="caption" color="text.secondary">{starts.toLocaleString([], { dateStyle: title === 'Today' || title === 'Tomorrow' ? undefined : 'medium', timeStyle: event.start?.dateTime ? 'short' : undefined })}</Typography>
               {event.accountEmail && <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }} noWrap>{event.accountEmail}</Typography>}
             </Box>
@@ -346,8 +387,11 @@ export function CalendarPage() {
                   if (matchingEvent) setSelectedEvent(matchingEvent);
                 }}
                 eventContent={(info) => (
-                  <Box sx={{ px: 0.75, py: 0.4, overflow: 'hidden' }}>
-                    {info.timeText && <Typography component="div" variant="caption" sx={{ fontWeight: 800, lineHeight: 1.1 }}>{info.timeText}</Typography>}
+                  <Box sx={{ px: 0.75, py: 0.4, overflow: 'hidden', borderLeft: `4px solid ${info.event.extendedProps.typeColor}`, minHeight: '100%' }}>
+                    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ minWidth: 0 }}>
+                      <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: info.event.extendedProps.typeColor, border: '1px solid rgba(255,255,255,0.75)', flex: '0 0 auto' }} />
+                      {info.timeText && <Typography component="div" variant="caption" sx={{ fontWeight: 800, lineHeight: 1.1 }}>{info.timeText}</Typography>}
+                    </Stack>
                     <Typography component="div" variant="caption" sx={{ fontWeight: 750, lineHeight: 1.2, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{info.event.title}</Typography>
                     {info.event.extendedProps.accountEmail && <Typography component="div" variant="caption" sx={{ lineHeight: 1.2, opacity: 0.9 }}>{info.event.extendedProps.accountEmail}</Typography>}
                   </Box>
@@ -373,7 +417,27 @@ export function CalendarPage() {
                     }}
                   />
                 ))}
-                <Chip size="small" label="All-day / birthdays" variant="outlined" sx={{ borderColor: '#0f9f8f' }} />
+              </Stack>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.25 }}>
+                {Object.entries(eventTypeStyles).map(([key, style]) => (
+                  <Chip
+                    key={key}
+                    size="small"
+                    label={style.label}
+                    variant="outlined"
+                    sx={{
+                      borderColor: style.color,
+                      '&::before': {
+                        bgcolor: style.color,
+                        borderRadius: '50%',
+                        content: '""',
+                        height: 8,
+                        ml: 1,
+                        width: 8
+                      }
+                    }}
+                  />
+                ))}
               </Stack>
               <Box sx={{ mt: 2.5 }}>
                 <Typography variant="h6" sx={{ mb: 1.5 }}>Agenda</Typography>
@@ -396,9 +460,9 @@ export function CalendarPage() {
       <Dialog open={Boolean(selectedEvent)} onClose={() => setSelectedEvent(null)} fullWidth maxWidth="sm">
         <DialogTitle>
           <Stack direction="row" spacing={1.25} alignItems="center">
-            <Box sx={{ bgcolor: selectedEvent ? colorForEvent(selectedEvent) : 'primary.main', borderRadius: 1.5, height: 34, width: 6 }} />
+            <Box sx={{ bgcolor: selectedEvent ? colorForEvent(selectedEvent) : 'primary.main', borderRadius: 1.5, boxShadow: selectedEvent ? `inset 0 -10px 0 ${typeColorForEvent(selectedEvent)}` : undefined, height: 34, width: 8 }} />
             <Box sx={{ minWidth: 0 }}>
-              <Typography variant="h6" sx={{ overflowWrap: 'anywhere' }}>{selectedEvent?.summary ?? selectedEvent?.subject ?? '(No title)'}</Typography>
+              <Typography variant="h6" sx={{ overflowWrap: 'anywhere' }}>{selectedEvent ? eventTitle(selectedEvent) : '(No title)'}</Typography>
               {selectedEvent?.accountEmail && <Typography variant="body2" color="text.secondary">{selectedEvent.accountEmail}</Typography>}
             </Box>
           </Stack>
@@ -409,6 +473,12 @@ export function CalendarPage() {
               <Button fullWidth variant="contained" href={selectedEventLink} target="_blank" endIcon={<OpenInNewIcon />}>
                 Join / Open Link
               </Button>
+            )}
+            {selectedEvent && (
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Chip size="small" label={`Account color: ${selectedEvent.accountEmail ?? 'Primary'}`} sx={{ bgcolor: colorForEvent(selectedEvent), color: '#fff' }} />
+                <Chip size="small" label={`Type: ${typeLabelForEvent(selectedEvent)}`} variant="outlined" sx={{ borderColor: typeColorForEvent(selectedEvent) }} />
+              </Stack>
             )}
             <Box>
               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>Starts</Typography>
