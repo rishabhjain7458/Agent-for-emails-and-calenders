@@ -126,6 +126,7 @@ export async function getMicrosoftAccessTokenForConnectedAccount(tenantId: strin
   return refreshed.access_token;
 }
 
-export function redirectWithMicrosoftSession(token: string) {
-  return `${env.FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`;
+export function redirectWithMicrosoftSession(token: string, mobile = false) {
+  const baseUrl = mobile ? env.MOBILE_APP_URL : env.FRONTEND_URL;
+  return `${baseUrl}/auth/callback?token=${encodeURIComponent(token)}`;
 }

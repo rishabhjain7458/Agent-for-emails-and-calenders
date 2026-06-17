@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
 import { Alert, Box, Button, Card, CardContent, Chip, Divider, FormControlLabel, Grid, Stack, Switch, TextField, Typography } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -42,7 +44,13 @@ export function SettingsPage() {
   }
 
   async function connect(provider: 'google' | 'microsoft') {
-    window.location.href = await getConnectAccountUrl(provider);
+    const isNative = Capacitor.isNativePlatform();
+    const url = await getConnectAccountUrl(provider, isNative);
+    if (isNative) {
+      await Browser.open({ url });
+      return;
+    }
+    window.location.href = url;
   }
 
   async function removeAccount(id: string) {
@@ -57,7 +65,7 @@ export function SettingsPage() {
       {notice && <Alert sx={{ mb: 2 }} severity="success">{notice}</Alert>}
       <Grid container spacing={2.5}>
         <Grid item xs={12} md={7}>
-          <Card>
+          <Card className="premium-panel">
             <CardContent>
               <Stack spacing={2}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -76,7 +84,7 @@ export function SettingsPage() {
           </Card>
         </Grid>
         <Grid item xs={12} md={5}>
-          <Card>
+          <Card className="premium-panel">
             <CardContent>
               <Stack spacing={2}>
                 <Box>

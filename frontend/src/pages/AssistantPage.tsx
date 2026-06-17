@@ -5,6 +5,7 @@ import MicIcon from '@mui/icons-material/Mic';
 import SendIcon from '@mui/icons-material/Send';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import AddIcon from '@mui/icons-material/Add';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { PageHeader } from '../components/PageHeader';
 import { chat, getAssistantConversation, getAssistantConversations } from '../api/endpoints';
 import type { AssistantConversation } from '../types';
@@ -259,7 +260,7 @@ export function AssistantPage() {
       <PageHeader title="AI Assistant" subtitle="Ask for calendar, email, task, and general productivity help." />
       <Grid container spacing={2.5}>
         <Grid item xs={12} md={3.5} lg={3}>
-          <Card sx={{ height: '100%' }}>
+          <Card className="premium-panel" sx={{ height: '100%' }}>
             <CardContent>
               <Stack spacing={2}>
                 <Button variant="contained" startIcon={<AddIcon />} onClick={startNewChat}>New Chat</Button>
@@ -267,7 +268,7 @@ export function AssistantPage() {
                   <Typography variant="h6">History</Typography>
                   <Typography variant="body2" color="text.secondary">{historyLoading ? 'Loading chats...' : `${conversations.length} saved conversations`}</Typography>
                 </Box>
-                <Stack divider={<Divider flexItem />} spacing={0} sx={{ maxHeight: { md: 560 }, overflowY: 'auto' }}>
+                <Stack className="scroll-thin" divider={<Divider flexItem />} spacing={0} sx={{ maxHeight: { md: 560 }, overflowY: 'auto', pr: 0.5 }}>
                   {conversations.map((conversation) => (
                     <Box
                       key={conversation.id}
@@ -300,23 +301,24 @@ export function AssistantPage() {
           </Card>
         </Grid>
         <Grid item xs={12} md={8.5} lg={9}>
-          <Card>
+          <Card className="premium-panel">
             <CardContent>
           <Stack spacing={2} sx={{ minHeight: { xs: 'calc(100vh - 150px)', md: 560 } }}>
             {error && <Alert severity="error">{error}</Alert>}
             <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.25}>
               <Stack direction="row" spacing={1.25} alignItems="center">
-                <Avatar sx={{ bgcolor: 'primary.main' }}><SmartToyIcon /></Avatar>
+                <Avatar sx={{ bgcolor: 'primary.main', boxShadow: '0 12px 26px rgba(37, 87, 214, 0.24)' }}><SmartToyIcon /></Avatar>
                 <Box>
                   <Typography variant="h6">Workspace Copilot</Typography>
                   <Typography variant="body2" color="text.secondary">Mail, calendar, and tasks in one conversation.</Typography>
                 </Box>
               </Stack>
-              <Chip size="small" label={conversationId ? 'Conversation saved' : 'New chat'} color={conversationId ? 'success' : 'default'} variant="outlined" sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }} />
+              <Chip size="small" icon={<AutoAwesomeIcon />} label={conversationId ? 'Conversation saved' : 'New chat'} color={conversationId ? 'success' : 'default'} variant="outlined" sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }} />
             </Stack>
-            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, p: { xs: 1.25, sm: 2 }, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: '#f8faff', minHeight: { xs: 300, sm: 340 } }}>
+            <Box className="scroll-thin" sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, p: { xs: 1.25, sm: 2 }, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: '#f8faff', minHeight: { xs: 300, sm: 340 }, maxHeight: { xs: 'none', md: 620 }, overflowY: 'auto' }}>
               {messages.length === 0 && (
                 <Box sx={{ my: 'auto', textAlign: 'center', mx: 'auto', maxWidth: 480 }}>
+                  <Avatar sx={{ bgcolor: 'secondary.light', color: 'secondary.dark', mx: 'auto', mb: 1.5 }}><AutoAwesomeIcon /></Avatar>
                   <Typography variant="h6">What should we move forward?</Typography>
                   <Typography color="text.secondary">Try asking for unread email priorities, a meeting plan, or a task breakdown.</Typography>
                 </Box>
@@ -336,7 +338,7 @@ export function AssistantPage() {
                 </Box>
               )}
             </Box>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="stretch">
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="stretch" sx={{ position: { md: 'sticky' }, bottom: 0 }}>
               <TextField
                 fullWidth
                 value={input}

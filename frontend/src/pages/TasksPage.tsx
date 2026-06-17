@@ -3,6 +3,7 @@ import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, Grid, I
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import { PageHeader } from '../components/PageHeader';
 import { completeTask, createTask, getConnectedAccounts, getTasks, removeTask } from '../api/endpoints';
 import { useAuth } from '../contexts/AuthContext';
@@ -93,10 +94,16 @@ export function TasksPage() {
       {error && <Alert sx={{ mb: 2 }} severity="warning">{error}</Alert>}
       <Grid container spacing={2.5}>
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card className="premium-panel">
             <CardContent>
               <Stack spacing={2}>
-                <Typography variant="h6">Create Task</Typography>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                  <Box>
+                    <Typography variant="h6">Create Task</Typography>
+                    <Typography color="text.secondary" variant="body2">Capture a next action with an optional due date.</Typography>
+                  </Box>
+                  <Chip size="small" icon={<PlaylistAddCheckIcon />} label="New" color="primary" variant="outlined" />
+                </Stack>
                 <TextField select label="Create in account" value={createAccountId} onChange={(event) => setCreateAccountId(event.target.value)}>
                   {accountOptions.map((account) => (
                     <MenuItem key={account.id} value={account.id}>
@@ -112,15 +119,15 @@ export function TasksPage() {
           </Card>
         </Grid>
         <Grid item xs={12} md={8}>
-          <Card>
+          <Card className="premium-panel">
             <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }} spacing={1}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ mb: 1.5 }} spacing={1.25}>
                 <Box>
                   <Typography variant="h6">Task List</Typography>
                   <Typography color="text.secondary" variant="body2">{loading ? 'Loading tasks...' : `${pendingTasks.length} pending, ${completedTasks.length} completed`}</Typography>
                 </Box>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <TextField select size="small" label="View account" value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)} sx={{ minWidth: 220 }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }}>
+                  <TextField select size="small" label="View account" value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)} sx={{ minWidth: { sm: 220 } }}>
                     <MenuItem value="all">All accounts</MenuItem>
                     {accountOptions.map((account) => (
                       <MenuItem key={account.id} value={account.id}>

@@ -8,6 +8,7 @@ import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import AddIcon from '@mui/icons-material/Add';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { PageHeader } from '../components/PageHeader';
 import { createEvent, getConnectedAccounts, getEvents } from '../api/endpoints';
 import { useAuth } from '../contexts/AuthContext';
@@ -125,14 +126,14 @@ export function CalendarPage() {
       {error && <Alert sx={{ mb: 2 }} severity="warning">{error}</Alert>}
       <Grid container spacing={2.5}>
         <Grid item xs={12} lg={3.6}>
-          <Card>
+          <Card className="premium-panel">
             <CardContent>
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
                 <Box>
                   <Typography variant="h6">Create Event</Typography>
                   <Typography color="text.secondary" variant="body2">Add meeting details and attendees.</Typography>
                 </Box>
-                <Chip size="small" label="New" color="primary" variant="outlined" />
+                <Chip size="small" icon={<AccessTimeIcon />} label={form.timezone.replace('_', ' ')} color="primary" variant="outlined" />
               </Stack>
               <Stack spacing={2}>
                 <TextField select label="Create in account" value={createAccountId} onChange={(event) => setCreateAccountId(event.target.value)}>
@@ -165,7 +166,7 @@ export function CalendarPage() {
           </Card>
         </Grid>
         <Grid item xs={12} lg={8.4}>
-          <Card>
+          <Card className="premium-panel">
             <CardContent>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent="space-between" spacing={1.25} sx={{ mb: 2 }}>
                 <Box>

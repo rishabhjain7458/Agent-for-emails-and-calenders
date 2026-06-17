@@ -14,24 +14,51 @@ type ConnectState = {
   mode: 'connect';
   provider: 'google' | 'microsoft';
   user: AuthUser;
+  mobile?: boolean;
 };
 
-function signConnectState(user: AuthUser, provider: 'google' | 'microsoft') {
-  return jwt.sign({ mode: 'connect', provider, user }, env.JWT_SECRET, { expiresIn: '10m' });
+type LoginState = {
+  mode: 'login';
+  provider: 'google' | 'microsoft';
+  mobile?: boolean;
+};
+
+type OAuthState = ConnectState | LoginState;
+
+function isMobileRequest(req: Request) {
+  return req.query.mobile === '1' || req.query.platform === 'mobile';
 }
 
-function readConnectState(value: unknown, provider: 'google' | 'microsoft') {
+function signConnectState(user: AuthUser, provider: 'google' | 'microsoft', mobile = false) {
+  return jwt.sign({ mode: 'connect', provider, user, mobile }, env.JWT_SECRET, { expiresIn: '10m' });
+}
+
+function signLoginState(provider: 'google' | 'microsoft', mobile = false) {
+  return jwt.sign({ mode: 'login', provider, mobile }, env.JWT_SECRET, { expiresIn: '10m' });
+}
+
+function readOAuthState(value: unknown, provider: 'google' | 'microsoft') {
   if (!value) return null;
   try {
-    const state = jwt.verify(String(value), env.JWT_SECRET) as ConnectState;
-    return state.mode === 'connect' && state.provider === provider ? state : null;
+    const state = jwt.verify(String(value), env.JWT_SECRET) as OAuthState;
+    return state.provider === provider ? state : null;
   } catch {
     return null;
   }
 }
 
-function redirectAfterConnect(provider: 'google' | 'microsoft') {
-  return `${env.FRONTEND_URL}/settings?connected=${provider}`;
+function readConnectState(value: unknown, provider: 'google' | 'microsoft') {
+  const state = readOAuthState(value, provider);
+  return state?.mode === 'connect' ? state : null;
+}
+
+function isMobileState(value: unknown, provider: 'google' | 'microsoft') {
+  return Boolean(readOAuthState(value, provider)?.mobile);
+}
+
+function redirectAfterConnect(provider: 'google' | 'microsoft', mobile = false) {
+  const baseUrl = mobile ? env.MOBILE_APP_URL : env.FRONTEND_URL;
+  return `${baseUrl}/settings?connected=${provider}`;
 }
 
 function isPrimaryAccount(user: AuthUser, provider: 'google' | 'microsoft', email: string) {
@@ -49,12 +76,13 @@ function visibleConnectedAccounts(user: AuthUser, accounts: any[]) {
   });
 }
 
-export function googleLogin(_req: Request, res: Response) {
-  res.redirect(getGoogleAuthUrl());
+export function googleLogin(req: Request, res: Response) {
+  const mobile = isMobileRequest(req);
+  res.redirect(getGoogleAuthUrl(mobile ? signLoginState('google', true) : undefined));
 }
 
 export function googleConnect(req: Request, res: Response) {
-  send(res, { url: getGoogleAuthUrl(signConnectState(req.user!, 'google')) });
+  send(res, { url: getGoogleAuthUrl(signConnectState(req.user!, 'google', isMobileRequest(req))) });
 }
 
 export async function googleCallback(req: Request, res: Response, next: NextFunction) {
@@ -63,7 +91,7 @@ export async function googleCallback(req: Request, res: Response, next: NextFunc
     const connectState = readConnectState(req.query.state, 'google');
     if (connectState) {
       if (isPrimaryAccount(connectState.user, 'google', profile.email!)) {
-        res.redirect(redirectAfterConnect('google'));
+        res.redirect(redirectAfterConnect('google', connectState.mobile));
         return;
       }
       await upsertConnectedAccount({
@@ -77,7 +105,7 @@ export async function googleCallback(req: Request, res: Response, next: NextFunc
         refreshToken: tokens.refresh_token,
         tokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null
       });
-      res.redirect(redirectAfterConnect('google'));
+      res.redirect(redirectAfterConnect('google', connectState.mobile));
       return;
     }
 
@@ -92,18 +120,19 @@ export async function googleCallback(req: Request, res: Response, next: NextFunc
     });
     const tenant = await ensureDefaultTenant(user.id, user.email);
     const token = signSession({ id: user.id, tenantId: tenant.id, email: user.email, name: user.name, role: tenant.role, provider: 'google' });
-    res.redirect(redirectWithSession(token));
+    res.redirect(redirectWithSession(token, isMobileState(req.query.state, 'google')));
   } catch (error) {
     next(error);
   }
 }
 
-export function microsoftLogin(_req: Request, res: Response) {
-  res.redirect(getMicrosoftAuthUrl());
+export function microsoftLogin(req: Request, res: Response) {
+  const mobile = isMobileRequest(req);
+  res.redirect(getMicrosoftAuthUrl(mobile ? signLoginState('microsoft', true) : undefined));
 }
 
 export function microsoftConnect(req: Request, res: Response) {
-  send(res, { url: getMicrosoftAuthUrl(signConnectState(req.user!, 'microsoft')) });
+  send(res, { url: getMicrosoftAuthUrl(signConnectState(req.user!, 'microsoft', isMobileRequest(req))) });
 }
 
 export async function microsoftCallback(req: Request, res: Response, next: NextFunction) {
@@ -112,7 +141,7 @@ export async function microsoftCallback(req: Request, res: Response, next: NextF
     const connectState = readConnectState(req.query.state, 'microsoft');
     if (connectState) {
       if (isPrimaryAccount(connectState.user, 'microsoft', profile.email)) {
-        res.redirect(redirectAfterConnect('microsoft'));
+        res.redirect(redirectAfterConnect('microsoft', connectState.mobile));
         return;
       }
       await upsertConnectedAccount({
@@ -126,7 +155,7 @@ export async function microsoftCallback(req: Request, res: Response, next: NextF
         refreshToken: tokens.refreshToken,
         tokenExpiry: tokens.expiry
       });
-      res.redirect(redirectAfterConnect('microsoft'));
+      res.redirect(redirectAfterConnect('microsoft', connectState.mobile));
       return;
     }
 
@@ -140,7 +169,7 @@ export async function microsoftCallback(req: Request, res: Response, next: NextF
     });
     const tenant = await ensureDefaultTenant(user.id, user.email);
     const token = signSession({ id: user.id, tenantId: tenant.id, email: user.email, name: user.name, role: tenant.role, provider: 'microsoft' });
-    res.redirect(redirectWithMicrosoftSession(token));
+    res.redirect(redirectWithMicrosoftSession(token, isMobileState(req.query.state, 'microsoft')));
   } catch (error) {
     next(error);
   }

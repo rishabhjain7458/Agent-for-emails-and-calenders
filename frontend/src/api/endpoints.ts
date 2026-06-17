@@ -20,8 +20,8 @@ export async function getConnectedAccounts() {
   return data.data;
 }
 
-export async function getConnectAccountUrl(provider: 'google' | 'microsoft') {
-  const { data } = await api.get<{ data: { url: string } }>(`/auth/${provider}/connect`);
+export async function getConnectAccountUrl(provider: 'google' | 'microsoft', mobile = false) {
+  const { data } = await api.get<{ data: { url: string } }>(`/auth/${provider}/connect`, { params: mobile ? { mobile: '1' } : undefined });
   return data.data.url;
 }
 

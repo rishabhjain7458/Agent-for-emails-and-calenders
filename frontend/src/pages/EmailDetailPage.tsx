@@ -52,7 +52,7 @@ export function EmailDetailPage() {
       <PageHeader title={email.subject} subtitle={email.sender} />
       <Stack spacing={2.5}>
         {notice && <Alert severity="success">{notice}</Alert>}
-        <Card>
+        <Card className="premium-panel">
           <CardContent>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }} flexWrap="wrap" gap={1}>
               <Box>
@@ -77,19 +77,25 @@ export function EmailDetailPage() {
           <Button variant="outlined" startIcon={<ArchiveIcon />} onClick={() => archiveEmail(email.id)}>Archive</Button>
           <Button color="error" variant="outlined" startIcon={<DeleteIcon />} onClick={() => deleteEmail(email.id)}>Delete</Button>
         </Stack>
-        <TextField
-          label="Editable reply draft"
-          multiline
-          minRows={8}
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="Generate or write a reply. Nothing is sent until you approve it."
-          sx={{ '& .MuiOutlinedInput-root': { alignItems: 'flex-start' } }}
-        />
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-          <Button disabled={!draft} variant="outlined" startIcon={<SaveIcon />} onClick={() => saveDraft(email.id, { threadId: email.threadId, subject: email.subject, body: draft })}>Save Draft</Button>
-          <Button disabled={!draft} variant="contained" startIcon={<SendIcon />} onClick={() => setConfirmOpen(true)}>Send Reply</Button>
-        </Stack>
+        <Card className="premium-panel">
+          <CardContent>
+            <Stack spacing={1.5}>
+              <TextField
+                label="Editable reply draft"
+                multiline
+                minRows={8}
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder="Generate or write a reply. Nothing is sent until you approve it."
+                sx={{ '& .MuiOutlinedInput-root': { alignItems: 'flex-start' } }}
+              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                <Button disabled={!draft} variant="outlined" startIcon={<SaveIcon />} onClick={() => saveDraft(email.id, { threadId: email.threadId, subject: email.subject, body: draft })}>Save Draft</Button>
+                <Button disabled={!draft} variant="contained" startIcon={<SendIcon />} onClick={() => setConfirmOpen(true)}>Send Reply</Button>
+              </Stack>
+            </Stack>
+          </CardContent>
+        </Card>
       </Stack>
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <DialogTitle>Send this reply?</DialogTitle>

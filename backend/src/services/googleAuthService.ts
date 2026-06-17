@@ -72,6 +72,7 @@ export async function getAuthorizedGoogleClientForConnectedAccount(tenantId: str
   return client;
 }
 
-export function redirectWithSession(token: string) {
-  return `${env.FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`;
+export function redirectWithSession(token: string, mobile = false) {
+  const baseUrl = mobile ? env.MOBILE_APP_URL : env.FRONTEND_URL;
+  return `${baseUrl}/auth/callback?token=${encodeURIComponent(token)}`;
 }

@@ -5,6 +5,7 @@ import MailIcon from '@mui/icons-material/Mail';
 import EventIcon from '@mui/icons-material/Event';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { PageHeader } from '../components/PageHeader';
 import { StatCard } from '../components/StatCard';
 import { getEmails, getEvents, getTasks } from '../api/endpoints';
@@ -57,19 +58,19 @@ export function DashboardPage() {
         <Grid item xs={12} md={8}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between" sx={{ mb: 2 }} spacing={1.25}>
                 <Box>
                   <Typography variant="h6">Recent Activity</Typography>
                   <Typography color="text.secondary" variant="body2">Latest items pulled from your inbox and task list.</Typography>
                 </Box>
-                <Chip size="small" label={`${emails.length + tasks.length} total`} />
+                <Chip size="small" icon={<AutoAwesomeIcon />} label={`${emails.length + tasks.length} total`} color="primary" variant="outlined" />
               </Stack>
               <Stack divider={<Divider flexItem />} spacing={0}>
                 {([
                   ...emails.slice(0, 3).map((email) => ({ id: email.id, label: email.subject })),
                   ...tasks.slice(0, 3).map((task) => ({ id: task.id, label: task.title }))
                 ] satisfies ActivityItem[]).map((item) => (
-                  <Box key={item.id} sx={{ py: 1.3, px: 0.75, display: 'flex', alignItems: 'center', gap: 1.5, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(3px)' } } }}>
+                  <Box key={item.id} sx={{ py: 1.35, px: 1, display: 'flex', alignItems: 'center', gap: 1.5, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(3px)' } } }}>
                     <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.main', flex: '0 0 auto', boxShadow: '0 0 0 4px rgba(36, 84, 198, 0.12)' }} />
                     <Typography color="text.secondary" noWrap>{item.label}</Typography>
                   </Box>
@@ -87,6 +88,7 @@ export function DashboardPage() {
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>Quick Actions</Typography>
+              <Typography color="text.secondary" variant="body2" sx={{ mb: 2 }}>Jump straight into the workflows you use most.</Typography>
               <Stack spacing={1.5}>
                 <Button href="/calendar" variant="contained" startIcon={<AddIcon />} endIcon={<ArrowForwardIcon />} sx={{ justifyContent: 'space-between' }}>Create Meeting</Button>
                 <Button href="/tasks" variant="outlined" startIcon={<AddIcon />} endIcon={<ArrowForwardIcon />} sx={{ justifyContent: 'space-between' }}>Create Task</Button>

@@ -14,6 +14,7 @@ export const env = {
   NODE_ENV: process.env.NODE_ENV ?? 'development',
   PORT: Number(process.env.PORT ?? 4000),
   FRONTEND_URL: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+  MOBILE_APP_URL: process.env.MOBILE_APP_URL ?? 'oconnect://app',
   FRONTEND_ORIGINS: (process.env.FRONTEND_URL ?? 'http://localhost:5173')
     .split(',')
     .map((origin) => origin.trim())

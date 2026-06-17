@@ -3,31 +3,31 @@ import { createTheme } from '@mui/material/styles';
 export const theme = createTheme({
   palette: {
     mode: 'light',
-    primary: { main: '#2454c6', dark: '#173b91', light: '#e8eefc' },
-    secondary: { main: '#0f9f8f', dark: '#087c72', light: '#dff7f3' },
-    success: { main: '#168053' },
-    warning: { main: '#b86b00' },
-    error: { main: '#c93535' },
+    primary: { main: '#2557d6', dark: '#163d9e', light: '#eaf0ff' },
+    secondary: { main: '#0f9f8f', dark: '#087c72', light: '#def8f3' },
+    success: { main: '#137a50' },
+    warning: { main: '#aa6400' },
+    error: { main: '#c53636' },
     background: {
-      default: '#f4f6fa',
+      default: '#f6f8fc',
       paper: '#ffffff'
     },
     text: {
-      primary: '#121a2b',
-      secondary: '#647085'
+      primary: '#111827',
+      secondary: '#5f6b7f'
     },
-    divider: '#dfe5ef',
+    divider: '#e0e7f1',
     action: {
-      hover: '#eef3fb',
-      selected: '#e8eefc'
+      hover: '#eef4ff',
+      selected: '#eaf0ff'
     }
   },
   shape: { borderRadius: 8 },
   typography: {
     fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    h4: { fontWeight: 800, letterSpacing: 0 },
-    h5: { fontWeight: 800, letterSpacing: 0 },
-    h6: { fontWeight: 750, letterSpacing: 0 },
+    h4: { fontWeight: 850, letterSpacing: 0 },
+    h5: { fontWeight: 850, letterSpacing: 0 },
+    h6: { fontWeight: 800, letterSpacing: 0 },
     button: { textTransform: 'none', fontWeight: 700 }
   },
   components: {
@@ -35,7 +35,8 @@ export const theme = createTheme({
       styleOverrides: {
         body: {
           backgroundImage:
-            'radial-gradient(circle at top left, rgba(36, 84, 198, 0.08), transparent 34rem), linear-gradient(180deg, #f8faff 0%, #f4f6fa 46%)'
+            'linear-gradient(180deg, #fbfcff 0%, #f6f8fc 46%, #f3f6fb 100%)',
+          color: '#111827'
         }
       }
     },
@@ -45,23 +46,27 @@ export const theme = createTheme({
         root: {
           borderRadius: 8,
           minHeight: 40,
-          transition: 'transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease',
+          transition: 'transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease',
           '&:hover': { transform: 'translateY(-1px)' },
           '&:active': { transform: 'translateY(0)' }
         },
-        contained: { boxShadow: '0 8px 18px rgba(36, 84, 198, 0.18)' }
+        contained: { boxShadow: '0 10px 22px rgba(37, 87, 214, 0.2)' },
+        outlined: {
+          backgroundColor: '#ffffff',
+          '&:hover': { backgroundColor: '#f8fbff' }
+        }
       }
     },
     MuiCard: {
       styleOverrides: {
         root: {
           borderRadius: 8,
-          border: '1px solid #e4e9f2',
-          boxShadow: '0 16px 36px rgba(18, 26, 43, 0.07)',
+          border: '1px solid rgba(210, 220, 235, 0.9)',
+          boxShadow: '0 18px 42px rgba(24, 35, 56, 0.075)',
           transition: 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
           '&:hover': {
-            borderColor: '#d4ddec',
-            boxShadow: '0 20px 44px rgba(18, 26, 43, 0.1)'
+            borderColor: '#cdd9ea',
+            boxShadow: '0 22px 52px rgba(24, 35, 56, 0.105)'
           }
         }
       }
@@ -81,8 +86,14 @@ export const theme = createTheme({
           '& .MuiOutlinedInput-root': {
             backgroundColor: '#ffffff',
             transition: 'box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease',
+            '& fieldset': {
+              borderColor: '#d8e1ee'
+            },
+            '&:hover fieldset': {
+              borderColor: '#b9c7db'
+            },
             '&.Mui-focused': {
-              boxShadow: '0 0 0 4px rgba(36, 84, 198, 0.1)'
+              boxShadow: '0 0 0 4px rgba(37, 87, 214, 0.1)'
             }
           }
         }
@@ -97,11 +108,25 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           transition: 'background-color 160ms ease, color 160ms ease, transform 160ms ease',
-          '&:hover': { transform: 'translateX(2px)' },
+          '&:hover': { transform: 'translateX(2px)', backgroundColor: '#f2f6ff' },
           '&.Mui-selected': {
-            color: '#173b91',
-            '& .MuiListItemIcon-root': { color: '#2454c6' }
+            color: '#163d9e',
+            '& .MuiListItemIcon-root': { color: '#2557d6' }
           }
+        }
+      }
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none'
+        }
+      }
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          borderRadius: 12
         }
       }
     }

@@ -12,6 +12,8 @@
     "build": "npm run build -w backend && npm run build -w frontend",
     "start": "npm run start -w backend",
     "migrate": "npm run migrate -w backend",
-    "migrate:prod": "npm run migrate:prod -w backend"
+    "migrate:prod": "npm run migrate:prod -w backend",
+    "android:sync": "npm run android:sync -w frontend",
+    "android:open": "npm run android:open -w frontend"
   }
 }

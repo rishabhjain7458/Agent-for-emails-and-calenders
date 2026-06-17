@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { Alert, Box, Button, Card, CardContent, Chip, Divider, Grid, LinearProgress, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SearchIcon from '@mui/icons-material/Search';
@@ -33,7 +33,9 @@ const queryOperators = [
 
 export function EmailsPage() {
   const { user } = useAuth();
-  const [query, setQuery] = useState('in:inbox');
+  const [searchParams] = useSearchParams();
+  const initialQuery = searchParams.get('query') || 'in:inbox';
+  const [query, setQuery] = useState(initialQuery);
   const [accountId, setAccountId] = useState('all');
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [emails, setEmails] = useState<EmailMessage[]>([]);
@@ -51,8 +53,16 @@ export function EmailsPage() {
 
   useEffect(() => {
     getConnectedAccounts().then(setAccounts);
-    load('in:inbox');
+    load(initialQuery);
   }, []);
+
+  useEffect(() => {
+    const nextQuery = searchParams.get('query');
+    if (nextQuery && nextQuery !== query) {
+      setQuery(nextQuery);
+      load(nextQuery);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     load(query);
@@ -81,7 +91,7 @@ export function EmailsPage() {
       />
       <Grid container spacing={2.5}>
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card className="premium-panel">
             <CardContent>
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
                 <Box>
@@ -135,19 +145,19 @@ export function EmailsPage() {
           {summary && <Alert sx={{ mt: 2 }} severity="info">{summary}</Alert>}
         </Grid>
         <Grid item xs={12} md={8}>
-          <Card>
+          <Card className="premium-panel">
             {loading && <LinearProgress />}
             <CardContent>
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between" sx={{ mb: 1.5 }} spacing={1.25}>
                 <Box>
                   <Typography variant="h6">Inbox Results</Typography>
-              <Typography color="text.secondary" variant="body2">{emails.length} messages returned across connected inboxes</Typography>
+                  <Typography color="text.secondary" variant="body2">{emails.length} messages returned across connected inboxes</Typography>
                 </Box>
                 <MailOutlineIcon color="primary" />
               </Stack>
               <Stack divider={<Divider flexItem />} spacing={0}>
             {emails.map((email) => (
-              <Box key={email.id} component={RouterLink} to={`/emails/${encodeURIComponent(email.id)}`} sx={{ display: 'block', textDecoration: 'none', color: 'inherit', py: 1.6, px: 1, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease, box-shadow 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(4px)' }, boxShadow: 'inset 3px 0 0 #2454c6' } }}>
+              <Box key={email.id} component={RouterLink} to={`/emails/${encodeURIComponent(email.id)}`} sx={{ display: 'block', textDecoration: 'none', color: 'inherit', py: 1.6, px: 1, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease, box-shadow 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(4px)' }, boxShadow: 'inset 3px 0 0 #2557d6' } }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: { xs: 0.75, sm: 2 }, alignItems: 'flex-start', flexDirection: { xs: 'column', sm: 'row' } }}>
                     <Box sx={{ minWidth: 0 }}>
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
