@@ -3,14 +3,18 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import AddIcon from '@mui/icons-material/Add';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import DeleteIcon from '@mui/icons-material/Delete';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { PageHeader } from '../components/PageHeader';
-import { createEvent, getConnectedAccounts, getEvents } from '../api/endpoints';
+import { createEvent, deleteEvent, getConnectedAccounts, getEvents } from '../api/endpoints';
 import { useAuth } from '../contexts/AuthContext';
 import type { CalendarEvent, ConnectedAccount } from '../types';
 
@@ -29,6 +33,24 @@ const timezoneOptions = [
   { label: 'Japan', value: 'Asia/Tokyo' }
 ];
 
+const accountPalette = ['#2557d6', '#0f9f8f', '#b86b00', '#8b5cf6', '#e0476b', '#168053'];
+
+function toDateInput(value: Date) {
+  return value.toISOString().slice(0, 10);
+}
+
+function toTimeInput(value: Date) {
+  return value.toTimeString().slice(0, 5);
+}
+
+function eventAccountKey(event: CalendarEvent) {
+  return event.accountId ?? event.accountEmail ?? 'primary';
+}
+
+function eventUrlFromDescription(description?: string) {
+  return description?.match(/https?:\/\/\S+/)?.[0]?.replace(/[),.;]+$/, '');
+}
+
 export function CalendarPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -43,9 +65,15 @@ export function CalendarPage() {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   async function load() {
-    setEvents(await getEvents(selectedAccountId));
+    setLoading(true);
+    try {
+      setEvents(await getEvents(selectedAccountId));
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -61,19 +89,46 @@ export function CalendarPage() {
     ...accounts.map((account) => ({ id: account.id, email: account.email, provider: account.provider, label: account.email }))
   ];
 
+  const accountColors = useMemo(() => {
+    const entries = accountOptions.map((account, index) => [account.id, accountPalette[index % accountPalette.length]] as const);
+    const byEmail = accountOptions.map((account, index) => [account.email, accountPalette[index % accountPalette.length]] as const);
+    return new Map([...entries, ...byEmail]);
+  }, [accountOptions]);
+
+  function colorForEvent(event: CalendarEvent) {
+    if (event.start?.date && !event.start?.dateTime) return '#0f9f8f';
+    return accountColors.get(eventAccountKey(event)) ?? '#2557d6';
+  }
+
   const calendarEvents = useMemo(() => events.map((event) => ({
     id: event.id,
     title: event.summary ?? event.subject ?? '(No title)',
     start: event.start?.dateTime ?? event.start?.date,
     end: event.end?.dateTime ?? event.end?.date,
-    extendedProps: { description: event.description, accountEmail: event.accountEmail }
-  })), [events]);
+    backgroundColor: colorForEvent(event),
+    borderColor: colorForEvent(event),
+    extendedProps: { description: event.description, accountEmail: event.accountEmail, providerEvent: event }
+  })), [events, accountColors]);
 
   const agendaEvents = useMemo(() => events
     .map((event) => ({ event, starts: new Date(event.start?.dateTime ?? event.start?.date ?? '') }))
     .filter((item) => !Number.isNaN(item.starts.getTime()))
     .sort((a, b) => a.starts.getTime() - b.starts.getTime())
-    .slice(0, 8), [events]);
+    .slice(0, isMobile ? 12 : 10), [events, isMobile]);
+
+  const groupedAgenda = useMemo(() => ({
+    today: agendaEvents.filter(({ starts }) => starts.toDateString() === new Date().toDateString()),
+    tomorrow: agendaEvents.filter(({ starts }) => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return starts.toDateString() === tomorrow.toDateString();
+    }),
+    upcoming: agendaEvents.filter(({ starts }) => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return starts.toDateString() !== new Date().toDateString() && starts.toDateString() !== tomorrow.toDateString();
+    })
+  }), [agendaEvents]);
 
   function formatEventDate(value?: string) {
     if (!value) return 'Not set';
@@ -84,6 +139,17 @@ export function CalendarPage() {
 
   function updateForm(key: keyof typeof initialForm, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function prefillFromSlot(start: Date, end?: Date | null) {
+    const fallbackEnd = end ?? new Date(start.getTime() + 30 * 60 * 1000);
+    setForm((current) => ({
+      ...current,
+      date: toDateInput(start),
+      startTime: toTimeInput(start),
+      endTime: toTimeInput(fallbackEnd)
+    }));
+    setNotice('Time selected. Add a title and create the event.');
   }
 
   function validateForm() {
@@ -125,51 +191,104 @@ export function CalendarPage() {
     }
   }
 
+  async function removeSelectedEvent() {
+    if (!selectedEvent) return;
+    await deleteEvent(selectedEvent.id);
+    setSelectedEvent(null);
+    setNotice('Event deleted.');
+    await load();
+  }
+
+  function copyEventDetails() {
+    if (!selectedEvent) return;
+    const text = [
+      selectedEvent.summary ?? selectedEvent.subject ?? '(No title)',
+      `Starts: ${formatEventDate(selectedEvent.start?.dateTime ?? selectedEvent.start?.date)}`,
+      `Ends: ${formatEventDate(selectedEvent.end?.dateTime ?? selectedEvent.end?.date)}`,
+      selectedEvent.description ?? ''
+    ].filter(Boolean).join('\n');
+    navigator.clipboard?.writeText(text);
+    setNotice('Event details copied.');
+  }
+
+  function AgendaGroup({ title, items }: { title: string; items: typeof agendaEvents }) {
+    return (
+      <Box>
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 850 }}>{title}</Typography>
+        <Stack spacing={1}>
+          {items.map(({ event, starts }) => (
+            <Box key={event.id} onClick={() => setSelectedEvent(event)} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, bgcolor: '#fff', cursor: 'pointer', borderLeft: `4px solid ${colorForEvent(event)}`, transition: 'transform 160ms ease, background 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(2px)' } } }}>
+              <Typography variant="body2" sx={{ fontWeight: 850, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{event.summary ?? event.subject ?? '(No title)'}</Typography>
+              <Typography variant="caption" color="text.secondary">{starts.toLocaleString([], { dateStyle: title === 'Today' || title === 'Tomorrow' ? undefined : 'medium', timeStyle: event.start?.dateTime ? 'short' : undefined })}</Typography>
+              {event.accountEmail && <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }} noWrap>{event.accountEmail}</Typography>}
+            </Box>
+          ))}
+          {items.length === 0 && <Alert severity="info">No {title.toLowerCase()} events.</Alert>}
+        </Stack>
+      </Box>
+    );
+  }
+
+  const selectedEventLink = eventUrlFromDescription(selectedEvent?.description);
+
   return (
     <>
-      <PageHeader title="Calendar" subtitle="Create meetings with conflict detection and availability suggestions." />
+      <PageHeader title="Calendar" subtitle="Create meetings, inspect your agenda, and use open slots to schedule faster." action={<Button variant="outlined" startIcon={<RefreshIcon />} onClick={load}>Refresh</Button>} />
       {notice && <Alert sx={{ mb: 2 }} severity="success">{notice}</Alert>}
       {error && <Alert sx={{ mb: 2 }} severity="warning">{error}</Alert>}
+      {loading && <Alert sx={{ mb: 2 }} severity="info">Loading calendar events...</Alert>}
       <Grid container spacing={2.5}>
         <Grid item xs={12} lg={3.6}>
-          <Card className="premium-panel">
-            <CardContent>
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                <Box>
-                  <Typography variant="h6">Create Event</Typography>
-                  <Typography color="text.secondary" variant="body2">Add meeting details and attendees.</Typography>
-                </Box>
-                <Chip size="small" icon={<AccessTimeIcon />} label={form.timezone.replace('_', ' ')} color="primary" variant="outlined" />
-              </Stack>
-              <Stack spacing={2}>
-                <TextField select label="Create in account" value={createAccountId} onChange={(event) => setCreateAccountId(event.target.value)}>
-                  {accountOptions.map((account) => (
-                    <MenuItem key={account.id} value={account.id}>
-                      {account.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField label="Meeting title" value={form.title} onChange={(event) => updateForm('title', event.target.value)} placeholder="Project discussion" />
-                <TextField label="Date" type="date" value={form.date} InputLabelProps={{ shrink: true }} onChange={(event) => updateForm('date', event.target.value)} />
-                <Stack direction={{ xs: 'column', sm: 'row', lg: 'column' }} spacing={2}>
-                  <TextField fullWidth label="Start time" type="time" value={form.startTime} InputLabelProps={{ shrink: true }} onChange={(event) => updateForm('startTime', event.target.value)} />
-                  <TextField fullWidth label="End time" type="time" value={form.endTime} InputLabelProps={{ shrink: true }} onChange={(event) => updateForm('endTime', event.target.value)} />
+          <Stack spacing={2.5}>
+            <Card className="premium-panel">
+              <CardContent>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                  <Box>
+                    <Typography variant="h6">Create Event</Typography>
+                    <Typography color="text.secondary" variant="body2">Tap a calendar slot to prefill time.</Typography>
+                  </Box>
+                  <Chip size="small" icon={<AccessTimeIcon />} label={form.timezone.replace('_', ' ')} color="primary" variant="outlined" />
                 </Stack>
-                <TextField select label="Country / timezone" value={form.timezone} onChange={(event) => updateForm('timezone', event.target.value)} helperText="Choose the country/timezone for this meeting.">
-                  {timezoneOptions.map((timezone) => (
-                    <MenuItem key={timezone.value} value={timezone.value}>
-                      {timezone.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField label="Description" value={form.description} onChange={(event) => updateForm('description', event.target.value)} placeholder="Agenda or context" multiline minRows={3} />
-                <TextField label="Attendees" value={form.attendees} onChange={(event) => updateForm('attendees', event.target.value)} placeholder="name@example.com, teammate@example.com" helperText="Use comma-separated email addresses." />
-                <Button disabled={creating} variant="contained" startIcon={<AddIcon />} onClick={() => submit(false)}>
-                  {creating ? 'Creating...' : 'Create Event'}
-                </Button>
-              </Stack>
-            </CardContent>
-          </Card>
+                <Stack spacing={2}>
+                  <TextField select label="Create in account" value={createAccountId} onChange={(event) => setCreateAccountId(event.target.value)}>
+                    {accountOptions.map((account) => (
+                      <MenuItem key={account.id} value={account.id}>
+                        {account.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField label="Meeting title" value={form.title} onChange={(event) => updateForm('title', event.target.value)} placeholder="Project discussion" />
+                  <TextField label="Date" type="date" value={form.date} InputLabelProps={{ shrink: true }} onChange={(event) => updateForm('date', event.target.value)} />
+                  <Stack direction={{ xs: 'column', sm: 'row', lg: 'column' }} spacing={2}>
+                    <TextField fullWidth label="Start time" type="time" value={form.startTime} InputLabelProps={{ shrink: true }} onChange={(event) => updateForm('startTime', event.target.value)} />
+                    <TextField fullWidth label="End time" type="time" value={form.endTime} InputLabelProps={{ shrink: true }} onChange={(event) => updateForm('endTime', event.target.value)} />
+                  </Stack>
+                  <TextField select label="Country / timezone" value={form.timezone} onChange={(event) => updateForm('timezone', event.target.value)} helperText="Choose the country/timezone for this meeting.">
+                    {timezoneOptions.map((timezone) => (
+                      <MenuItem key={timezone.value} value={timezone.value}>
+                        {timezone.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField label="Description" value={form.description} onChange={(event) => updateForm('description', event.target.value)} placeholder="Agenda, Meet link, or context" multiline minRows={3} />
+                  <TextField label="Attendees" value={form.attendees} onChange={(event) => updateForm('attendees', event.target.value)} placeholder="name@example.com, teammate@example.com" helperText="Use comma-separated email addresses." />
+                  <Button disabled={creating} variant="contained" startIcon={<AddIcon />} onClick={() => submit(false)}>
+                    {creating ? 'Creating...' : 'Create Event'}
+                  </Button>
+                </Stack>
+              </CardContent>
+            </Card>
+            <Card className="premium-panel" sx={{ display: { xs: 'none', lg: 'block' } }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Agenda</Typography>
+                <Stack spacing={2}>
+                  <AgendaGroup title="Today" items={groupedAgenda.today} />
+                  <AgendaGroup title="Tomorrow" items={groupedAgenda.tomorrow} />
+                  <AgendaGroup title="Upcoming" items={groupedAgenda.upcoming} />
+                </Stack>
+              </CardContent>
+            </Card>
+          </Stack>
         </Grid>
         <Grid item xs={12} lg={8.4}>
           <Card className="premium-panel">
@@ -201,6 +320,8 @@ export function CalendarPage() {
                 height="auto"
                 expandRows
                 nowIndicator
+                selectable
+                selectMirror
                 allDaySlot
                 allDayText="All day"
                 slotMinTime="00:00:00"
@@ -214,6 +335,8 @@ export function CalendarPage() {
                 eventShortHeight={34}
                 slotEventOverlap={false}
                 dayMaxEvents
+                select={(info) => prefillFromSlot(info.start, info.end)}
+                dateClick={(info) => prefillFromSlot(info.date)}
                 eventClick={(info) => {
                   const matchingEvent = events.find((event) => event.id === info.event.id);
                   if (matchingEvent) setSelectedEvent(matchingEvent);
@@ -226,17 +349,34 @@ export function CalendarPage() {
                   </Box>
                 )}
               />
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 2 }}>
+                {accountOptions.map((account) => (
+                  <Chip
+                    key={account.id}
+                    size="small"
+                    label={account.label}
+                    variant="outlined"
+                    sx={{
+                      borderColor: accountColors.get(account.id),
+                      '&::before': {
+                        bgcolor: accountColors.get(account.id),
+                        borderRadius: '50%',
+                        content: '""',
+                        height: 8,
+                        ml: 1,
+                        width: 8
+                      }
+                    }}
+                  />
+                ))}
+                <Chip size="small" label="All-day / birthdays" variant="outlined" sx={{ borderColor: '#0f9f8f' }} />
+              </Stack>
               {isMobile && (
                 <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 850 }}>Agenda</Typography>
-                  <Stack spacing={1}>
-                    {agendaEvents.map(({ event, starts }) => (
-                      <Box key={event.id} onClick={() => setSelectedEvent(event)} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, bgcolor: '#fff', cursor: 'pointer' }}>
-                        <Typography variant="body2" sx={{ fontWeight: 850 }}>{event.summary ?? event.subject ?? '(No title)'}</Typography>
-                        <Typography variant="caption" color="text.secondary">{starts.toLocaleString([], { dateStyle: 'medium', timeStyle: event.start?.dateTime ? 'short' : undefined })}</Typography>
-                      </Box>
-                    ))}
-                    {agendaEvents.length === 0 && <Alert severity="info">No agenda items loaded.</Alert>}
+                  <Stack spacing={2}>
+                    <AgendaGroup title="Today" items={groupedAgenda.today} />
+                    <AgendaGroup title="Tomorrow" items={groupedAgenda.tomorrow} />
+                    <AgendaGroup title="Upcoming" items={groupedAgenda.upcoming} />
                   </Stack>
                 </Box>
               )}
@@ -245,9 +385,22 @@ export function CalendarPage() {
         </Grid>
       </Grid>
       <Dialog open={Boolean(selectedEvent)} onClose={() => setSelectedEvent(null)} fullWidth maxWidth="sm">
-        <DialogTitle>{selectedEvent?.summary}</DialogTitle>
+        <DialogTitle>
+          <Stack direction="row" spacing={1.25} alignItems="center">
+            <Box sx={{ bgcolor: selectedEvent ? colorForEvent(selectedEvent) : 'primary.main', borderRadius: 1.5, height: 34, width: 6 }} />
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h6" sx={{ overflowWrap: 'anywhere' }}>{selectedEvent?.summary ?? selectedEvent?.subject ?? '(No title)'}</Typography>
+              {selectedEvent?.accountEmail && <Typography variant="body2" color="text.secondary">{selectedEvent.accountEmail}</Typography>}
+            </Box>
+          </Stack>
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={1.5}>
+            {selectedEventLink && (
+              <Button fullWidth variant="contained" href={selectedEventLink} target="_blank" endIcon={<OpenInNewIcon />}>
+                Join / Open Link
+              </Button>
+            )}
             <Box>
               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>Starts</Typography>
               <Typography>{formatEventDate(selectedEvent?.start?.dateTime ?? selectedEvent?.start?.date)}</Typography>
@@ -271,6 +424,8 @@ export function CalendarPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
+          <Button startIcon={<ContentCopyIcon />} onClick={copyEventDetails}>Copy</Button>
+          <Button color="error" startIcon={<DeleteIcon />} onClick={removeSelectedEvent}>Delete</Button>
           <Button onClick={() => setSelectedEvent(null)}>Close</Button>
         </DialogActions>
       </Dialog>
