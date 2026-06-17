@@ -93,7 +93,15 @@ function mapMessage(message: any, meta: Partial<EmailMessage> = {}): EmailMessag
     unread: message.isRead === false,
     snippet: message.bodyPreview ?? '',
     body: looksLikeHtml(body) ? htmlToText(body) : body,
-    originalBody: looksLikeHtml(body) ? body : undefined
+    originalBody: looksLikeHtml(body) ? body : undefined,
+    attachments: (message.attachments ?? [])
+      .filter((attachment: any) => attachment.id && attachment.name)
+      .map((attachment: any) => ({
+        filename: attachment.name,
+        mimeType: attachment.contentType ?? 'application/octet-stream',
+        attachmentId: attachment.id,
+        size: attachment.size
+      }))
   };
 }
 
@@ -153,7 +161,7 @@ export async function getMicrosoftEmail(userId: string, messageId: string): Prom
 async function getMicrosoftEmailWithToken(token: string, messageId: string, meta: Partial<EmailMessage> = {}): Promise<EmailMessage> {
   const { data } = await axios.get(`${graph}/me/messages/${messageId}`, {
     headers: { Authorization: `Bearer ${token}` },
-    params: { '$select': 'id,subject,from,sender,receivedDateTime,isRead,bodyPreview,body,hasAttachments' }
+    params: { '$select': 'id,subject,from,sender,receivedDateTime,isRead,bodyPreview,body,hasAttachments', '$expand': 'attachments' }
   });
   return mapMessage(data, meta);
 }
@@ -161,6 +169,23 @@ async function getMicrosoftEmailWithToken(token: string, messageId: string, meta
 export async function getMicrosoftEmailForConnectedAccount(tenantId: string, userId: string, accountId: string, accountEmail: string, messageId: string): Promise<EmailMessage> {
   const token = await getMicrosoftAccessTokenForConnectedAccount(tenantId, userId, accountId);
   return getMicrosoftEmailWithToken(token, messageId, { accountId, accountEmail, provider: 'microsoft' });
+}
+
+async function getMicrosoftAttachmentWithToken(token: string, messageId: string, attachmentId: string) {
+  const { data } = await axios.get(`${graph}/me/messages/${messageId}/attachments/${attachmentId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return Buffer.from(data.contentBytes ?? '', 'base64');
+}
+
+export async function getMicrosoftAttachment(userId: string, messageId: string, attachmentId: string) {
+  const token = await getMicrosoftAccessToken(userId);
+  return getMicrosoftAttachmentWithToken(token, messageId, attachmentId);
+}
+
+export async function getMicrosoftAttachmentForConnectedAccount(tenantId: string, userId: string, accountId: string, messageId: string, attachmentId: string) {
+  const token = await getMicrosoftAccessTokenForConnectedAccount(tenantId, userId, accountId);
+  return getMicrosoftAttachmentWithToken(token, messageId, attachmentId);
 }
 
 export async function sendMicrosoftReply(userId: string, input: { threadId: string; body: string }) {

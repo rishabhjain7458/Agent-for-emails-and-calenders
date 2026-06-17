@@ -1,16 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, ButtonGroup, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField, Typography } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SendIcon from '@mui/icons-material/Send';
 import SaveIcon from '@mui/icons-material/Save';
-import AttachmentIcon from '@mui/icons-material/Attachment';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CodeIcon from '@mui/icons-material/Code';
+import DownloadIcon from '@mui/icons-material/Download';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import ImageIcon from '@mui/icons-material/Image';
+import LinkIcon from '@mui/icons-material/Link';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { PageHeader } from '../components/PageHeader';
-import { archiveEmail, deleteEmail, generateReply, getEmail, saveDraft, sendReply } from '../api/endpoints';
+import { archiveEmail, deleteEmail, generateReply, getEmail, getEmailAttachment, saveDraft, sendReply } from '../api/endpoints';
 import type { EmailMessage } from '../types';
 
 function stripHtmlFallback(value?: string) {
@@ -104,6 +109,50 @@ function extractLinks(body?: string) {
   });
 }
 
+function sanitizeEmailHtml(value?: string) {
+  if (!value) return '';
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(value, 'text/html');
+  doc.querySelectorAll('script, iframe, object, embed, form, input, button, textarea, select').forEach((node) => node.remove());
+  doc.querySelectorAll('*').forEach((node) => {
+    Array.from(node.attributes).forEach((attribute) => {
+      if (/^on/i.test(attribute.name)) node.removeAttribute(attribute.name);
+    });
+  });
+  doc.querySelectorAll('a[href]').forEach((node) => {
+    node.setAttribute('target', '_blank');
+    node.setAttribute('rel', 'noreferrer noopener');
+  });
+  const style = doc.createElement('style');
+  style.textContent = `
+    html, body { margin: 0; padding: 0; background: #ffffff; color: #202124; font-family: Arial, Helvetica, sans-serif; }
+    body { overflow-wrap: anywhere; }
+    img { max-width: 100% !important; height: auto !important; }
+    table { max-width: 100% !important; }
+    a { color: #1a73e8; }
+    pre { white-space: pre-wrap; }
+  `;
+  doc.head.appendChild(style);
+  return `<!doctype html>${doc.documentElement.outerHTML}`;
+}
+
+function formatAttachmentSize(size?: number) {
+  if (!size) return '';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function attachmentIcon(mimeType?: string) {
+  if (mimeType?.includes('pdf')) return <PictureAsPdfIcon color="error" />;
+  if (mimeType?.startsWith('image/')) return <ImageIcon color="primary" />;
+  return <InsertDriveFileIcon color="action" />;
+}
+
+function canPreviewAttachment(mimeType?: string) {
+  return Boolean(mimeType?.startsWith('image/') || mimeType?.includes('pdf') || mimeType?.startsWith('text/'));
+}
+
 function EmailBody({ body }: { body?: string }) {
   const cleaned = cleanEmailBody(body);
   const blocks = cleaned.split(/\n{2,}/).filter(Boolean);
@@ -135,6 +184,53 @@ function EmailBody({ body }: { body?: string }) {
   );
 }
 
+function RichEmailBody({ html, text }: { html?: string; text?: string }) {
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [height, setHeight] = useState(620);
+  const [mode, setMode] = useState(html ? 'rich' : 'text');
+  const srcDoc = useMemo(() => sanitizeEmailHtml(html), [html]);
+  const hasHtml = Boolean(srcDoc);
+
+  function resizeFrame() {
+    try {
+      const doc = iframeRef.current?.contentDocument;
+      const nextHeight = Math.min(Math.max(doc?.documentElement.scrollHeight ?? 620, 460), 2800);
+      setHeight(nextHeight);
+    } catch {
+      setHeight(720);
+    }
+  }
+
+  return (
+    <Box>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }} gap={1} flexWrap="wrap">
+        <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 800 }}>Message</Typography>
+        <ButtonGroup size="small" variant="outlined">
+          <Button disabled={!hasHtml} variant={mode === 'rich' ? 'contained' : 'outlined'} onClick={() => setMode('rich')}>Rich view</Button>
+          <Button variant={mode === 'text' ? 'contained' : 'outlined'} onClick={() => setMode('text')}>Clean text</Button>
+        </ButtonGroup>
+      </Stack>
+      <Box sx={{ bgcolor: '#ffffff', border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
+        {mode === 'rich' && hasHtml ? (
+          <Box
+            component="iframe"
+            ref={iframeRef}
+            sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+            srcDoc={srcDoc}
+            onLoad={resizeFrame}
+            title="Email body"
+            sx={{ border: 0, display: 'block', minHeight: 460, width: '100%', height }}
+          />
+        ) : (
+          <Box sx={{ p: { xs: 2, sm: 3 } }}>
+            <EmailBody body={text} />
+          </Box>
+        )}
+      </Box>
+    </Box>
+  );
+}
+
 export function EmailDetailPage() {
   const { id } = useParams();
   const [email, setEmail] = useState<EmailMessage | null>(null);
@@ -160,6 +256,21 @@ export function EmailDetailPage() {
     setNotice('Reply sent.');
   }
 
+  async function openAttachment(attachment: NonNullable<EmailMessage['attachments']>[number], preview = false) {
+    if (!email) return;
+    const blob = await getEmailAttachment(email.id, attachment.attachmentId);
+    const url = URL.createObjectURL(new Blob([blob], { type: attachment.mimeType || blob.type || 'application/octet-stream' }));
+    if (preview) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = attachment.filename || 'attachment';
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+
   if (!email) return <PageHeader title="Email" subtitle="Loading message..." />;
   const links = extractLinks(`${email.body ?? ''}\n${email.originalBody ?? ''}`);
   const hasOriginalHtml = /<\/?[a-z][\s\S]*>/i.test(email.originalBody ?? email.body ?? '');
@@ -169,72 +280,104 @@ export function EmailDetailPage() {
       <PageHeader title={email.subject} subtitle={email.sender} />
       <Stack spacing={2.5}>
         {notice && <Alert severity="success">{notice}</Alert>}
-        <Card className="premium-panel">
+        <Card className="premium-panel" sx={{ maxWidth: 980, mx: 'auto', width: '100%' }}>
           <CardContent>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }} flexWrap="wrap" gap={1}>
-              <Box>
-                <Typography color="text.secondary" variant="body2">{email.date}</Typography>
-                <Typography variant="body2" sx={{ fontWeight: 750 }}>{email.sender}</Typography>
-              </Box>
-              {email.unread && <Chip size="small" label="Unread" color="primary" />}
-              {email.accountEmail && <Chip size="small" label={email.accountEmail} variant="outlined" />}
-            </Stack>
-            <EmailBody body={email.body} />
-            {links.length > 0 && (
-              <Box sx={{ mt: 2.5 }}>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Links in this email</Typography>
-                <Grid container spacing={1.25}>
-                  {links.map((link) => (
-                    <Grid item xs={12} sm={6} key={link.url}>
-                      <Box
-                        component="a"
-                        href={link.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        sx={{
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          borderRadius: 2,
-                          color: 'inherit',
-                          display: 'flex',
-                          gap: 1,
-                          p: 1.25,
-                          textDecoration: 'none',
-                          transition: 'background 160ms ease, transform 160ms ease',
-                          '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateY(-1px)' } }
-                        }}
-                      >
-                        <OpenInNewIcon color="primary" fontSize="small" />
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 800 }} noWrap>{link.title}</Typography>
-                          <Typography variant="caption" color="text.secondary" noWrap>{link.host}</Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Box>
-            )}
-            {!!email.attachments?.length && (
-              <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2 }}>
-                {email.attachments.map((attachment) => (
-                  <Chip key={attachment.attachmentId} icon={<AttachmentIcon />} label={attachment.filename} variant="outlined" />
-                ))}
+            <Stack spacing={2.25}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={1.5}>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 850, overflowWrap: 'anywhere' }}>{email.subject}</Typography>
+                  <Typography color="text.secondary" variant="body2">{email.date}</Typography>
+                </Box>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {email.unread && <Chip size="small" label="Unread" color="primary" />}
+                  {email.accountEmail && <Chip size="small" label={email.accountEmail} variant="outlined" />}
+                </Stack>
               </Stack>
-            )}
-            {hasOriginalHtml && (
-              <Button sx={{ mt: 2 }} variant="outlined" startIcon={<CodeIcon />} onClick={() => setOriginalOpen(true)}>
-                View original HTML
-              </Button>
-            )}
+              <Stack direction="row" spacing={1.25} alignItems="center" sx={{ borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}>
+                <Box sx={{ bgcolor: 'primary.main', borderRadius: '50%', color: '#fff', display: 'grid', flex: '0 0 auto', fontWeight: 850, height: 38, placeItems: 'center', width: 38 }}>
+                  {(email.sender || 'M').trim()[0]?.toUpperCase()}
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 800, overflowWrap: 'anywhere' }}>{email.sender}</Typography>
+                  <Typography variant="caption" color="text.secondary">to me</Typography>
+                </Box>
+              </Stack>
+              <RichEmailBody html={email.originalBody} text={email.body} />
+              {!!email.attachments?.length && (
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Attachments</Typography>
+                  <Grid container spacing={1.25}>
+                    {email.attachments.map((attachment) => (
+                      <Grid item xs={12} sm={6} key={attachment.attachmentId}>
+                        <Box sx={{ alignItems: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 2, display: 'flex', gap: 1.25, p: 1.25 }}>
+                          {attachmentIcon(attachment.mimeType)}
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 800 }} noWrap>{attachment.filename}</Typography>
+                            <Typography variant="caption" color="text.secondary" noWrap>{attachment.mimeType || 'Attachment'} {formatAttachmentSize(attachment.size)}</Typography>
+                          </Box>
+                          {canPreviewAttachment(attachment.mimeType) && (
+                            <Button size="small" startIcon={<VisibilityIcon />} onClick={() => openAttachment(attachment, true)}>View</Button>
+                          )}
+                          <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={() => openAttachment(attachment)}>Download</Button>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
+              {links.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Links in this email</Typography>
+                  <Grid container spacing={1.25}>
+                    {links.map((link) => (
+                      <Grid item xs={12} sm={6} key={link.url}>
+                        <Box
+                          component="a"
+                          href={link.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          sx={{
+                            alignItems: 'center',
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 2,
+                            color: 'inherit',
+                            display: 'flex',
+                            gap: 1.25,
+                            p: 1.25,
+                            textDecoration: 'none',
+                            transition: 'background 160ms ease, transform 160ms ease',
+                            '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateY(-1px)' } }
+                          }}
+                        >
+                          <Box sx={{ bgcolor: 'primary.light', borderRadius: 1.5, color: 'primary.main', display: 'grid', flex: '0 0 auto', height: 38, placeItems: 'center', width: 38 }}>
+                            <LinkIcon />
+                          </Box>
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 800 }} noWrap>{link.title}</Typography>
+                            <Typography variant="caption" color="text.secondary" noWrap>{link.host}</Typography>
+                          </Box>
+                          <OpenInNewIcon color="primary" fontSize="small" />
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
+              {hasOriginalHtml && (
+                <Button sx={{ alignSelf: 'flex-start' }} variant="outlined" startIcon={<CodeIcon />} onClick={() => setOriginalOpen(true)}>
+                  View original HTML
+                </Button>
+              )}
+            </Stack>
           </CardContent>
         </Card>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ maxWidth: 980, mx: 'auto', width: '100%' }}>
           <Button variant="contained" startIcon={<AutoAwesomeIcon />} onClick={createDraft}>{draft ? 'Regenerate Reply' : 'Generate AI Reply'}</Button>
           <Button variant="outlined" startIcon={<ArchiveIcon />} onClick={() => archiveEmail(email.id)}>Archive</Button>
           <Button color="error" variant="outlined" startIcon={<DeleteIcon />} onClick={() => deleteEmail(email.id)}>Delete</Button>
         </Stack>
-        <Card className="premium-panel">
+        <Card className="premium-panel" sx={{ maxWidth: 980, mx: 'auto', width: '100%' }}>
           <CardContent>
             <Stack spacing={1.5}>
               <TextField

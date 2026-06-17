@@ -20,7 +20,7 @@ export type EmailMessage = {
   snippet?: string;
   body?: string;
   originalBody?: string;
-  attachments?: { filename: string; mimeType: string; attachmentId: string }[];
+  attachments?: { filename: string; mimeType: string; attachmentId: string; size?: number }[];
 };
 
 export type IntentName =

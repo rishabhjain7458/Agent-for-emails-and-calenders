@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
-import { archiveEmail, archiveEmailForConnectedAccount, deleteEmail, deleteEmailForConnectedAccount, getEmail, getEmailForConnectedAccount, getThread, listEmails, listEmailsForConnectedAccount, sendReply } from '../services/emailService.js';
-import { archiveMicrosoftEmail, archiveMicrosoftEmailForConnectedAccount, deleteMicrosoftEmail, deleteMicrosoftEmailForConnectedAccount, getMicrosoftEmail, getMicrosoftEmailForConnectedAccount, listMicrosoftEmails, listMicrosoftEmailsForConnectedAccount, sendMicrosoftReply } from '../services/microsoftEmailService.js';
+import { archiveEmail, archiveEmailForConnectedAccount, deleteEmail, deleteEmailForConnectedAccount, getEmail, getEmailAttachment, getEmailAttachmentForConnectedAccount, getEmailForConnectedAccount, getThread, listEmails, listEmailsForConnectedAccount, sendReply } from '../services/emailService.js';
+import { archiveMicrosoftEmail, archiveMicrosoftEmailForConnectedAccount, deleteMicrosoftEmail, deleteMicrosoftEmailForConnectedAccount, getMicrosoftAttachment, getMicrosoftAttachmentForConnectedAccount, getMicrosoftEmail, getMicrosoftEmailForConnectedAccount, listMicrosoftEmails, listMicrosoftEmailsForConnectedAccount, sendMicrosoftReply } from '../services/microsoftEmailService.js';
 import { generateEmailReply, generateEmailSummary, generateSingleEmailSummary } from '../services/geminiService.js';
 import { saveDraft } from '../repositories/draftRepository.js';
 import { getConnectedAccount } from '../repositories/connectedAccountRepository.js';
@@ -65,6 +65,19 @@ async function deleteEmailForRequest(req: Request, id: string) {
     : deleteEmail(req.user!.id, id);
 }
 
+async function getAttachmentForRequest(req: Request, id: string, attachmentId: string) {
+  const connectedId = splitConnectedMessageId(id);
+  if (connectedId) {
+    const account = await getConnectedAccount(req.user!.tenantId, req.user!.id, connectedId.accountId);
+    if (account?.provider === 'microsoft') return getMicrosoftAttachmentForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId, attachmentId);
+    if (account?.provider === 'google') return getEmailAttachmentForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId, attachmentId);
+  }
+
+  return req.user!.provider === 'microsoft'
+    ? getMicrosoftAttachment(req.user!.id, id, attachmentId)
+    : getEmailAttachment(req.user!.id, id, attachmentId);
+}
+
 export async function inbox(req: Request, res: Response, next: NextFunction) {
   try {
     const query = normalizeInboxQuery(String(req.query.q ?? 'in:inbox'));
@@ -118,6 +131,20 @@ export async function inbox(req: Request, res: Response, next: NextFunction) {
 export async function detail(req: Request, res: Response, next: NextFunction) {
   try {
     send(res, await getEmailForRequest(req, req.params.id));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function attachment(req: Request, res: Response, next: NextFunction) {
+  try {
+    const email = await getEmailForRequest(req, req.params.id);
+    const file = email.attachments?.find((item) => item.attachmentId === req.params.attachmentId);
+    const bytes = await getAttachmentForRequest(req, req.params.id, req.params.attachmentId);
+    const filename = file?.filename ?? 'attachment';
+    res.setHeader('Content-Type', file?.mimeType ?? 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename.replace(/"/g, '')}"`);
+    res.send(bytes);
   } catch (error) {
     next(error);
   }

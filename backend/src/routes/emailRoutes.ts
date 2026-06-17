@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import Joi from 'joi';
-import { archive, detail, draftReply, emailSummary, inbox, remove, saveEmailDraft, sendEmailReply, summary, thread } from '../controllers/emailController.js';
+import { archive, attachment, detail, draftReply, emailSummary, inbox, remove, saveEmailDraft, sendEmailReply, summary, thread } from '../controllers/emailController.js';
 import { validateBody } from '../middleware/validate.js';
 
 export const emailRoutes = Router();
@@ -14,6 +14,7 @@ emailRoutes.post('/send-reply', validateBody(Joi.object({
   subject: Joi.string().required(),
   body: Joi.string().required()
 })), sendEmailReply);
+emailRoutes.get('/:id/attachments/:attachmentId', attachment);
 emailRoutes.get('/:id', detail);
 emailRoutes.post('/:id/summary', emailSummary);
 emailRoutes.post('/:id/ai-reply', validateBody(Joi.object({

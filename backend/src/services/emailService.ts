@@ -43,12 +43,21 @@ function htmlFromPayload(payload: any): string | undefined {
 }
 
 function attachmentsFromPayload(payload: any) {
-  return (payload?.parts ?? [])
+  const parts: any[] = [];
+  const collectParts = (part: any) => {
+    if (!part) return;
+    parts.push(part);
+    for (const child of part.parts ?? []) collectParts(child);
+  };
+  collectParts(payload);
+
+  return parts
     .filter((part: any) => part.filename && part.body?.attachmentId)
     .map((part: any) => ({
       filename: part.filename,
       mimeType: part.mimeType,
-      attachmentId: part.body.attachmentId
+      attachmentId: part.body.attachmentId,
+      size: part.body.size
     }));
 }
 
@@ -124,6 +133,22 @@ export async function getEmail(userId: string, messageId: string): Promise<Email
 export async function getEmailForConnectedAccount(tenantId: string, userId: string, accountId: string, accountEmail: string, messageId: string): Promise<EmailMessage> {
   const auth = await getAuthorizedGoogleClientForConnectedAccount(tenantId, userId, accountId);
   return getEmailWithAuth(auth, messageId, { accountId, accountEmail, provider: 'google' });
+}
+
+async function getAttachmentWithAuth(auth: any, messageId: string, attachmentId: string) {
+  const gmail = google.gmail({ version: 'v1', auth });
+  const { data } = await gmail.users.messages.attachments.get({ userId: 'me', messageId, id: attachmentId });
+  return Buffer.from((data.data ?? '').replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+}
+
+export async function getEmailAttachment(userId: string, messageId: string, attachmentId: string) {
+  const auth = await getAuthorizedGoogleClient(userId);
+  return getAttachmentWithAuth(auth, messageId, attachmentId);
+}
+
+export async function getEmailAttachmentForConnectedAccount(tenantId: string, userId: string, accountId: string, messageId: string, attachmentId: string) {
+  const auth = await getAuthorizedGoogleClientForConnectedAccount(tenantId, userId, accountId);
+  return getAttachmentWithAuth(auth, messageId, attachmentId);
 }
 
 export async function getThread(userId: string, threadId: string): Promise<EmailMessage[]> {

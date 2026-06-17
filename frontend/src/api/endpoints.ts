@@ -35,6 +35,11 @@ export async function getEmail(id: string) {
   return data.data;
 }
 
+export async function getEmailAttachment(id: string, attachmentId: string) {
+  const response = await api.get(`/emails/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}`, { responseType: 'blob' });
+  return response.data as Blob;
+}
+
 export async function generateReply(id: string) {
   const { data } = await api.post<{ data: { draft: string; email: EmailMessage } }>(`/emails/${encodeURIComponent(id)}/ai-reply`);
   return data.data;
