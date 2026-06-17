@@ -2,8 +2,8 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 import timezonePlugin from 'dayjs/plugin/timezone.js';
 import { classifyIntent, answerGeneralQuestion, generateEmailSummary, extractAssistantParameters } from './geminiService.js';
-import { createEvent, createEventForConnectedAccount, deleteEvent, listEvents } from './calendarService.js';
-import { createMicrosoftEvent, createMicrosoftEventForConnectedAccount } from './microsoftCalendarService.js';
+import { createEvent, createEventForConnectedAccount, deleteEvent, listEvents, listEventsForConnectedAccount } from './calendarService.js';
+import { createMicrosoftEvent, createMicrosoftEventForConnectedAccount, listMicrosoftEvents, listMicrosoftEventsForConnectedAccount } from './microsoftCalendarService.js';
 import { listEmails, listEmailsForConnectedAccount } from './emailService.js';
 import { listMicrosoftEmails, listMicrosoftEmailsForConnectedAccount } from './microsoftEmailService.js';
 import { createTask, listTasks } from '../repositories/taskRepository.js';
@@ -11,7 +11,7 @@ import { createGoogleTask, createGoogleTaskForConnectedAccount } from './googleT
 import { createMicrosoftTask, createMicrosoftTaskForConnectedAccount } from './microsoftTasksService.js';
 import { getSettings } from '../repositories/settingsRepository.js';
 import type { AuthUser, EmailMessage } from '../types.js';
-import { formatAccountChoicePrompt, listAccountContexts, resolveMentionedAccount, type AccountContext } from './accountContextService.js';
+import { formatAccountChoicePrompt, listAccountContexts, resolveAccountSelection, resolveMentionedAccount, type AccountContext } from './accountContextService.js';
 import { normalizeInboxQuery } from '../utils/emailQuery.js';
 
 dayjs.extend(utc);
@@ -134,6 +134,11 @@ function formatTaskList(tasks: any[]) {
   ].filter(Boolean).join('\n');
 }
 
+type AssistantHistoryMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
 async function searchEmails(user: AuthUser, query: string, account: AccountContext) {
   if (!account.isPrimary) {
     return account.provider === 'microsoft'
@@ -152,7 +157,34 @@ async function searchEmails(user: AuthUser, query: string, account: AccountConte
   return { ...primary, messages: primaryMessages };
 }
 
-export async function handleAssistantMessage(user: AuthUser, message: string) {
+function findPendingAccountRequest(history: AssistantHistoryMessage[] = []) {
+  const lastAssistantIndex = [...history].reverse().findIndex((entry) => entry.role === 'assistant');
+  if (lastAssistantIndex < 0) return null;
+
+  const assistantIndex = history.length - 1 - lastAssistantIndex;
+  const assistantMessage = history[assistantIndex];
+  if (!/^Which account should I use for /i.test(assistantMessage.content)) return null;
+
+  for (let index = assistantIndex - 1; index >= 0; index -= 1) {
+    if (history[index].role === 'user') return history[index].content;
+  }
+
+  return null;
+}
+
+async function listCalendarForAccount(user: AuthUser, account: AccountContext, params: any) {
+  if (account.provider === 'microsoft') {
+    return account.isPrimary
+      ? listMicrosoftEvents(user.id, params.timeMin, params.timeMax)
+      : listMicrosoftEventsForConnectedAccount(user.tenantId, user.id, account.accountId, account.email, params.timeMin, params.timeMax);
+  }
+
+  return account.isPrimary
+    ? listEvents(user.id, params.timeMin, params.timeMax)
+    : listEventsForConnectedAccount(user.tenantId, user.id, account.accountId, account.email, params.timeMin, params.timeMax);
+}
+
+async function processAssistantMessage(user: AuthUser, message: string, forcedAccount?: AccountContext) {
   const tenantId = user.tenantId;
   const userId = user.id;
   const intent = await classifyIntent(tenantId, userId, message);
@@ -162,9 +194,9 @@ export async function handleAssistantMessage(user: AuthUser, message: string) {
   const params = { ...(intent.parameters as any), ...extracted };
   const accountIntents = ['calendar_create', 'calendar_check', 'calendar_delete', 'email_summary', 'email_search', 'task_create', 'task_list'];
   const accounts = accountIntents.includes(intent.intent) ? await listAccountContexts(user) : [];
-  const selectedAccount = accounts.length ? await resolveMentionedAccount(user, message) : undefined;
+  const selectedAccount = forcedAccount ?? (accounts.length ? await resolveMentionedAccount(user, message) : undefined);
 
-  if (accounts.length > 1 && !selectedAccount) {
+  if (!forcedAccount && accounts.length > 1 && !selectedAccount) {
     const action = intent.intent.startsWith('calendar')
       ? 'calendar'
       : intent.intent.startsWith('task')
@@ -198,7 +230,7 @@ export async function handleAssistantMessage(user: AuthUser, message: string) {
       };
     }
     case 'calendar_check':
-      return { intent, result: await listEvents(userId, params.timeMin, params.timeMax) };
+      return { intent, result: await listCalendarForAccount(user, account!, params) };
     case 'calendar_delete':
       await deleteEvent(userId, params.eventId);
       return { intent, result: 'Calendar event deleted.' };
@@ -242,4 +274,21 @@ export async function handleAssistantMessage(user: AuthUser, message: string) {
     default:
       return { intent, result: await answerGeneralQuestion(tenantId, userId, message) };
   }
+}
+
+export async function handleAssistantMessage(user: AuthUser, message: string, history: AssistantHistoryMessage[] = []) {
+  const pendingOriginalRequest = findPendingAccountRequest(history);
+  if (pendingOriginalRequest) {
+    const accounts = await listAccountContexts(user);
+    const selectedAccount = resolveAccountSelection(accounts, message);
+    if (!selectedAccount) {
+      return {
+        intent: { intent: 'general_question' as const, confidence: 1, parameters: {} },
+        result: formatAccountChoicePrompt(accounts, 'that request')
+      };
+    }
+    return processAssistantMessage(user, pendingOriginalRequest, selectedAccount);
+  }
+
+  return processAssistantMessage(user, message);
 }

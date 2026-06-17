@@ -34,6 +34,21 @@ function redirectAfterConnect(provider: 'google' | 'microsoft') {
   return `${env.FRONTEND_URL}/settings?connected=${provider}`;
 }
 
+function isPrimaryAccount(user: AuthUser, provider: 'google' | 'microsoft', email: string) {
+  return user.provider === provider && user.email.toLowerCase() === email.toLowerCase();
+}
+
+function visibleConnectedAccounts(user: AuthUser, accounts: any[]) {
+  const seen = new Set<string>();
+  return accounts.filter((account) => {
+    if (isPrimaryAccount(user, account.provider, account.email)) return false;
+    const key = `${account.provider}:${account.email.toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function googleLogin(_req: Request, res: Response) {
   res.redirect(getGoogleAuthUrl());
 }
@@ -47,6 +62,10 @@ export async function googleCallback(req: Request, res: Response, next: NextFunc
     const { profile, tokens } = await exchangeCode(String(req.query.code ?? ''));
     const connectState = readConnectState(req.query.state, 'google');
     if (connectState) {
+      if (isPrimaryAccount(connectState.user, 'google', profile.email!)) {
+        res.redirect(redirectAfterConnect('google'));
+        return;
+      }
       await upsertConnectedAccount({
         tenantId: connectState.user.tenantId,
         userId: connectState.user.id,
@@ -92,6 +111,10 @@ export async function microsoftCallback(req: Request, res: Response, next: NextF
     const { profile, tokens } = await exchangeMicrosoftCode(String(req.query.code ?? ''));
     const connectState = readConnectState(req.query.state, 'microsoft');
     if (connectState) {
+      if (isPrimaryAccount(connectState.user, 'microsoft', profile.email)) {
+        res.redirect(redirectAfterConnect('microsoft'));
+        return;
+      }
       await upsertConnectedAccount({
         tenantId: connectState.user.tenantId,
         userId: connectState.user.id,
@@ -129,7 +152,7 @@ export function me(req: Request, res: Response) {
 
 export async function connectedAccounts(req: Request, res: Response, next: NextFunction) {
   try {
-    send(res, await listConnectedAccounts(req.user!.tenantId, req.user!.id));
+    send(res, visibleConnectedAccounts(req.user!, await listConnectedAccounts(req.user!.tenantId, req.user!.id)));
   } catch (error) {
     next(error);
   }
