@@ -5,7 +5,9 @@ function decodeEntities(value: string) {
     gt: '>',
     quot: '"',
     apos: "'",
-    nbsp: ' '
+    nbsp: ' ',
+    zwnj: '',
+    zwj: ''
   };
 
   return value.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, entity) => {
@@ -31,6 +33,8 @@ export function htmlToText(input?: string | null) {
     .replace(/<\s*\/\s*(p|div|tr|table|li|h[1-6])\s*>/gi, '\n')
     .replace(/<[^>]+>/g, ' ')
     .replace(/\r/g, '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/&zwnj;|&zwj;|&#8204;|&#8205;|&#x200c;|&#x200d;/gi, '')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n[ \t]+/g, '\n')
     .replace(/[ \t]{2,}/g, ' ')

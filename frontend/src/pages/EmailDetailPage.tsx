@@ -24,16 +24,56 @@ function stripHtmlFallback(value?: string) {
   return element.textContent ?? '';
 }
 
+function decodeTextEntities(value: string) {
+  const element = document.createElement('textarea');
+  element.innerHTML = value;
+  return element.value;
+}
+
+function isStandaloneTrackingLine(line: string) {
+  const cleaned = line.trim();
+  return cleaned === '#'
+    || /^(?:https?:\/\/)?(?:[\w-]+\.)+[a-z]{2,}(?:\/\S*)?$/i.test(cleaned)
+    || /^\[(?:https?:\/\/)?[^\]]+\](?:\s*(?:https?:\/\/)?\S+)?$/i.test(cleaned);
+}
+
+function removeTrailingTrackingHost(line: string) {
+  const trimmed = line.trim();
+  const withoutHost = trimmed.replace(/\s+(?:https?:\/\/)?(?:[\w-]+\.)+[a-z]{2,}(?:\/\S*)?$/i, '').trim();
+  return withoutHost.length >= 6 ? withoutHost : trimmed;
+}
+
+function cleanNewsletterLines(value: string) {
+  const seen = new Map<string, number>();
+  const lines = value
+    .split('\n')
+    .map((line) => removeTrailingTrackingHost(line.replace(/\s+/g, ' ').trim()))
+    .filter((line) => line && !isStandaloneTrackingLine(line));
+
+  return lines.filter((line) => {
+    const key = line.toLowerCase().replace(/\W+/g, ' ').trim();
+    if (!key) return false;
+    const count = seen.get(key) ?? 0;
+    seen.set(key, count + 1);
+    return count < 2;
+  }).join('\n');
+}
+
 function cleanEmailBody(value?: string) {
-  const text = /<\/?[a-z][\s\S]*>/i.test(value ?? '') ? stripHtmlFallback(value) : (value ?? '');
-  return text
+  const rawText = /<\/?[a-z][\s\S]*>/i.test(value ?? '') ? stripHtmlFallback(value) : (value ?? '');
+  const text = decodeTextEntities(rawText)
     .replace(/\r/g, '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/&zwnj;|&zwj;|&#8204;|&#8205;|&#x200c;|&#x200d;/gi, '')
     .replace(/\[(https?:\/\/[^\]\s]+)\]\s*\1/gi, '$1')
     .replace(/\[(https?:\/\/[^\]\s]+)\]\s*(https?:\/\/\S+)/gi, '$2')
     .replace(/^\s*(image|logo|banner|spacer|tracking pixel)\s*$/gim, '')
     .replace(/^\s*[-_]{4,}\s*$/gm, '')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n[ \t]+/g, '\n')
+    .replace(/\n{3,}/g, '\n\n');
+
+  return cleanNewsletterLines(text)
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
