@@ -32,9 +32,12 @@ import MenuIcon from '@mui/icons-material/Menu';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useAuth } from '../contexts/AuthContext';
 
 const drawerWidth = 276;
+const collapsedDrawerWidth = 78;
 const navItems = [
   { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
   { label: 'Emails', path: '/emails', icon: <EmailIcon /> },
@@ -46,61 +49,104 @@ const navItems = [
 
 export function DashboardLayout() {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') !== 'false');
+  const [sidebarHover, setSidebarHover] = useState(false);
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const drawerExpanded = isMobile || !collapsed || sidebarHover;
+  const layoutDrawerWidth = isMobile ? drawerWidth : collapsed ? collapsedDrawerWidth : drawerWidth;
+  const paperDrawerWidth = isMobile ? drawerWidth : drawerExpanded ? drawerWidth : collapsedDrawerWidth;
+
+  function toggleCollapsed() {
+    setCollapsed((current) => {
+      const next = !current;
+      localStorage.setItem('sidebar-collapsed', String(next));
+      return next;
+    });
+  }
 
   const drawer = (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#ffffff' }}>
-      <Toolbar sx={{ px: { xs: 2, sm: 3 }, minHeight: { xs: 64, sm: 76 }, justifyContent: 'space-between' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Box sx={{ width: 40, height: 40, display: 'grid', placeItems: 'center', borderRadius: 2, bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 900, boxShadow: '0 12px 26px rgba(37, 87, 214, 0.28)' }}>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#ffffff', overflowX: 'hidden' }}>
+      <Toolbar sx={{ px: drawerExpanded ? { xs: 2, sm: 3 } : 1.25, minHeight: { xs: 64, sm: 76 }, justifyContent: drawerExpanded ? 'space-between' : 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: drawerExpanded ? 1.5 : 0 }}>
+          <Box sx={{ width: 40, height: 40, display: 'grid', placeItems: 'center', borderRadius: 2, bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 900, boxShadow: '0 12px 26px rgba(37, 87, 214, 0.28)', flex: '0 0 auto' }}>
             AI
           </Box>
-          <Box>
+          <Box sx={{ display: drawerExpanded ? 'block' : 'none', minWidth: 0 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 850, lineHeight: 1.1 }}>Executive</Typography>
             <Typography variant="body2" color="text.secondary">Assistant</Typography>
           </Box>
         </Box>
-        {isMobile && (
+        {isMobile ? (
           <IconButton onClick={() => setOpen(false)} aria-label="Close navigation">
             <CloseIcon />
           </IconButton>
+        ) : drawerExpanded && (
+          <Tooltip title={collapsed ? 'Pin sidebar open' : 'Collapse sidebar'}>
+            <IconButton onClick={toggleCollapsed} aria-label={collapsed ? 'Pin sidebar open' : 'Collapse sidebar'}>
+              {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+            </IconButton>
+          </Tooltip>
         )}
       </Toolbar>
       <Divider sx={{ borderColor: 'rgba(224, 231, 241, 0.75)' }} />
       <List sx={{ p: 1.5, flex: 1 }}>
-        {navItems.map((item) => (
-          <ListItemButton
-            key={item.path}
-            component={RouterLink}
-            to={item.path}
-            selected={location.pathname.startsWith(item.path)}
-            sx={{
-              borderRadius: 2,
-              mb: 0.65,
-              minHeight: 48,
-              px: 1.35,
-              '& .MuiListItemIcon-root': { minWidth: 40, color: 'text.secondary' },
-              '&.Mui-selected': {
-                bgcolor: alpha(theme.palette.primary.main, 0.11),
-                boxShadow: `inset 3px 0 0 ${theme.palette.primary.main}, 0 8px 18px ${alpha(theme.palette.primary.main, 0.08)}`
-              }
-            }}
-            onClick={() => setOpen(false)}
-          >
-            <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} />
-          </ListItemButton>
-        ))}
+        {navItems.map((item) => {
+          const selected = location.pathname.startsWith(item.path);
+          const navButton = (
+            <ListItemButton
+              key={item.path}
+              component={RouterLink}
+              to={item.path}
+              selected={selected}
+              sx={{
+                borderRadius: 2,
+                justifyContent: drawerExpanded ? 'flex-start' : 'center',
+                mb: 0.65,
+                minHeight: 48,
+                px: drawerExpanded ? 1.35 : 1,
+                position: 'relative',
+                '& .MuiListItemIcon-root': { color: selected ? 'primary.main' : 'text.secondary', justifyContent: 'center', minWidth: drawerExpanded ? 40 : 0 },
+                '&.Mui-selected': {
+                  bgcolor: alpha(theme.palette.primary.main, 0.11),
+                  boxShadow: drawerExpanded
+                    ? `inset 3px 0 0 ${theme.palette.primary.main}, 0 8px 18px ${alpha(theme.palette.primary.main, 0.08)}`
+                    : `0 8px 18px ${alpha(theme.palette.primary.main, 0.1)}`
+                },
+                '&.Mui-selected::after': drawerExpanded ? undefined : {
+                  bgcolor: 'primary.main',
+                  borderRadius: 999,
+                  bottom: 6,
+                  content: '""',
+                  height: 4,
+                  left: '50%',
+                  position: 'absolute',
+                  transform: 'translateX(-50%)',
+                  width: 18
+                }
+              }}
+              onClick={() => setOpen(false)}
+            >
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              {drawerExpanded && <ListItemText primary={item.label} />}
+            </ListItemButton>
+          );
+
+          return drawerExpanded ? navButton : (
+            <Tooltip key={item.path} title={item.label} placement="right">
+              {navButton}
+            </Tooltip>
+          );
+        })}
       </List>
-      <Box sx={{ p: 2 }}>
-        <Box sx={{ p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: '#f8faff', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8)' }}>
-          <Stack direction="row" spacing={1.25} alignItems="center">
+      <Box sx={{ p: drawerExpanded ? 2 : 1.25 }}>
+        <Box sx={{ p: drawerExpanded ? 1.5 : 0, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: '#f8faff', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8)', display: 'grid', placeItems: drawerExpanded ? 'stretch' : 'center', minHeight: drawerExpanded ? 'auto' : 48 }}>
+          <Stack direction="row" spacing={drawerExpanded ? 1.25 : 0} alignItems="center">
             <Avatar sx={{ width: 34, height: 34, bgcolor: 'secondary.main' }}>{user?.name?.[0] ?? 'U'}</Avatar>
-            <Box sx={{ minWidth: 0 }}>
+            <Box sx={{ minWidth: 0, display: drawerExpanded ? 'block' : 'none' }}>
               <Typography variant="body2" sx={{ fontWeight: 750 }} noWrap>{user?.name ?? 'Workspace user'}</Typography>
               <Typography variant="caption" color="text.secondary" noWrap>{user?.role ?? 'Connected'}</Typography>
             </Box>
@@ -172,22 +218,32 @@ export function DashboardLayout() {
         open={isMobile ? open : true}
         onClose={() => setOpen(false)}
         ModalProps={{ keepMounted: true }}
+        onMouseEnter={() => {
+          if (!isMobile && collapsed) setSidebarHover(true);
+        }}
+        onMouseLeave={() => {
+          if (!isMobile) setSidebarHover(false);
+        }}
         sx={{
-          width: drawerWidth,
+          flexShrink: 0,
+          width: layoutDrawerWidth,
+          transition: theme.transitions.create('width', { duration: theme.transitions.duration.shorter }),
           '& .MuiDrawer-paper': {
-            width: drawerWidth,
+            width: paperDrawerWidth,
             boxSizing: 'border-box',
             borderRight: '1px solid',
             borderColor: 'divider',
-            boxShadow: isMobile ? '0 24px 70px rgba(17, 24, 39, 0.22)' : 'none'
+            boxShadow: isMobile ? '0 24px 70px rgba(17, 24, 39, 0.22)' : drawerExpanded && collapsed ? '12px 0 34px rgba(17, 24, 39, 0.1)' : 'none',
+            overflowX: 'hidden',
+            transition: theme.transitions.create(['width', 'box-shadow'], { duration: theme.transitions.duration.shorter })
           }
         }}
       >
         {drawer}
       </Drawer>
 
-      <Box component="main" sx={{ flex: 1, pt: { xs: 9, sm: 10, md: 11 }, px: { xs: 1.25, sm: 2.5, md: 3.5, xl: 5 }, pb: { xs: 3, md: 5 }, minWidth: 0 }}>
-        <Box className="page-shell" sx={{ maxWidth: 1320, mx: 'auto', width: '100%' }}>
+      <Box component="main" sx={{ flex: 1, pt: { xs: 9, sm: 10, md: 11 }, px: { xs: 1.25, sm: 2.5, md: 3.5, xl: 5 }, pb: { xs: 3, md: 5 }, minWidth: 0, transition: theme.transitions.create('padding', { duration: theme.transitions.duration.shorter }) }}>
+        <Box className="page-shell" sx={{ maxWidth: 1480, mx: 'auto', width: '100%' }}>
           <Outlet />
         </Box>
       </Box>
