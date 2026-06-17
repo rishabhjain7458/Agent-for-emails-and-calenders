@@ -159,13 +159,35 @@ export function EmailsPage() {
             {emails.map((email) => (
               <Box key={email.id} component={RouterLink} to={`/emails/${encodeURIComponent(email.id)}`} sx={{ display: 'block', textDecoration: 'none', color: 'inherit', py: 1.6, px: 1, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease, box-shadow 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(4px)' }, boxShadow: 'inset 3px 0 0 #2557d6' } }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: { xs: 0.75, sm: 2 }, alignItems: 'flex-start', flexDirection: { xs: 'column', sm: 'row' } }}>
-                    <Box sx={{ minWidth: 0 }}>
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+                    <Box sx={{ minWidth: 0, width: '100%' }}>
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, flexWrap: 'wrap', rowGap: 0.75 }}>
                         {email.unread && <Chip size="small" label="Unread" color="primary" />}
-                        {email.accountEmail && <Chip size="small" label={email.accountEmail} variant="outlined" />}
-                        <Typography variant="subtitle1" sx={{ fontWeight: 800, overflowWrap: 'anywhere' }}>{email.subject}</Typography>
+                        {email.accountEmail && (
+                          <Chip
+                            size="small"
+                            label={email.accountEmail}
+                            variant="outlined"
+                            sx={{ maxWidth: { xs: 190, sm: 260 }, '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' } }}
+                          />
+                        )}
+                        <Typography
+                          variant="subtitle1"
+                          sx={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: { xs: 2, sm: 2 },
+                            WebkitBoxOrient: 'vertical',
+                            flexBasis: '100%',
+                            fontWeight: 800,
+                            lineHeight: 1.28,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            wordBreak: 'normal'
+                          }}
+                        >
+                          {email.subject}
+                        </Typography>
                       </Stack>
-                      <Typography color="text.secondary" variant="body2" sx={{ overflowWrap: 'anywhere' }}>{email.sender}</Typography>
+                      <Typography color="text.secondary" variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.sender}</Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, display: '-webkit-box', WebkitLineClamp: { xs: 3, sm: 2 }, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{email.snippet}</Typography>
                     </Box>
                     <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: { xs: 'normal', sm: 'nowrap' } }}>{email.date}</Typography>
