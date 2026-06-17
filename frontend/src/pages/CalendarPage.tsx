@@ -3,7 +3,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import AddIcon from '@mui/icons-material/Add';
@@ -238,59 +238,63 @@ export function CalendarPage() {
       {error && <Alert sx={{ mb: 2 }} severity="warning">{error}</Alert>}
       {loading && <Alert sx={{ mb: 2 }} severity="info">Loading calendar events...</Alert>}
       <Grid container spacing={2.5}>
-        <Grid item xs={12} lg={3.6}>
-          <Stack spacing={2.5}>
-            <Card className="premium-panel">
-              <CardContent>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                  <Box>
-                    <Typography variant="h6">Create Event</Typography>
-                    <Typography color="text.secondary" variant="body2">Tap a calendar slot to prefill time.</Typography>
-                  </Box>
-                  <Chip size="small" icon={<AccessTimeIcon />} label={form.timezone.replace('_', ' ')} color="primary" variant="outlined" />
-                </Stack>
-                <Stack spacing={2}>
-                  <TextField select label="Create in account" value={createAccountId} onChange={(event) => setCreateAccountId(event.target.value)}>
+        <Grid item xs={12}>
+          <Card className="premium-panel">
+            <CardContent>
+              <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'flex-start', md: 'center' }} justifyContent="space-between" spacing={1.5} sx={{ mb: 2 }}>
+                <Box>
+                  <Typography variant="h6">Create Event</Typography>
+                  <Typography color="text.secondary" variant="body2">Tap a calendar slot to prefill time, then finish the meeting details here.</Typography>
+                </Box>
+                <Chip size="small" icon={<AccessTimeIcon />} label={form.timezone.replace('_', ' ')} color="primary" variant="outlined" />
+              </Stack>
+              <Grid container spacing={1.5} alignItems="flex-start">
+                <Grid item xs={12} md={3}>
+                  <TextField fullWidth select label="Create in account" value={createAccountId} onChange={(event) => setCreateAccountId(event.target.value)}>
                     {accountOptions.map((account) => (
                       <MenuItem key={account.id} value={account.id}>
                         {account.label}
                       </MenuItem>
                     ))}
                   </TextField>
-                  <TextField label="Meeting title" value={form.title} onChange={(event) => updateForm('title', event.target.value)} placeholder="Project discussion" />
-                  <TextField label="Date" type="date" value={form.date} InputLabelProps={{ shrink: true }} onChange={(event) => updateForm('date', event.target.value)} />
-                  <Stack direction={{ xs: 'column', sm: 'row', lg: 'column' }} spacing={2}>
-                    <TextField fullWidth label="Start time" type="time" value={form.startTime} InputLabelProps={{ shrink: true }} onChange={(event) => updateForm('startTime', event.target.value)} />
-                    <TextField fullWidth label="End time" type="time" value={form.endTime} InputLabelProps={{ shrink: true }} onChange={(event) => updateForm('endTime', event.target.value)} />
-                  </Stack>
-                  <TextField select label="Country / timezone" value={form.timezone} onChange={(event) => updateForm('timezone', event.target.value)} helperText="Choose the country/timezone for this meeting.">
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <TextField fullWidth label="Meeting title" value={form.title} onChange={(event) => updateForm('title', event.target.value)} placeholder="Project discussion" />
+                </Grid>
+                <Grid item xs={12} sm={4} md={2}>
+                  <TextField fullWidth label="Date" type="date" value={form.date} InputLabelProps={{ shrink: true }} onChange={(event) => updateForm('date', event.target.value)} />
+                </Grid>
+                <Grid item xs={6} sm={4} md={1.5}>
+                  <TextField fullWidth label="Start" type="time" value={form.startTime} InputLabelProps={{ shrink: true }} onChange={(event) => updateForm('startTime', event.target.value)} />
+                </Grid>
+                <Grid item xs={6} sm={4} md={1.5}>
+                  <TextField fullWidth label="End" type="time" value={form.endTime} InputLabelProps={{ shrink: true }} onChange={(event) => updateForm('endTime', event.target.value)} />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <TextField fullWidth select label="Country / timezone" value={form.timezone} onChange={(event) => updateForm('timezone', event.target.value)} helperText="Meeting timezone">
                     {timezoneOptions.map((timezone) => (
                       <MenuItem key={timezone.value} value={timezone.value}>
                         {timezone.label}
                       </MenuItem>
                     ))}
                   </TextField>
-                  <TextField label="Description" value={form.description} onChange={(event) => updateForm('description', event.target.value)} placeholder="Agenda, Meet link, or context" multiline minRows={3} />
-                  <TextField label="Attendees" value={form.attendees} onChange={(event) => updateForm('attendees', event.target.value)} placeholder="name@example.com, teammate@example.com" helperText="Use comma-separated email addresses." />
-                  <Button disabled={creating} variant="contained" startIcon={<AddIcon />} onClick={() => submit(false)}>
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <TextField fullWidth label="Attendees" value={form.attendees} onChange={(event) => updateForm('attendees', event.target.value)} placeholder="name@example.com, teammate@example.com" helperText="Comma-separated emails" />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField fullWidth label="Description" value={form.description} onChange={(event) => updateForm('description', event.target.value)} placeholder="Agenda, Meet link, or context" multiline minRows={1} maxRows={3} />
+                </Grid>
+                <Grid item xs={12} md={2}>
+                  <Button fullWidth disabled={creating} variant="contained" startIcon={<AddIcon />} onClick={() => submit(false)} sx={{ minHeight: 56 }}>
                     {creating ? 'Creating...' : 'Create Event'}
                   </Button>
-                </Stack>
-              </CardContent>
-            </Card>
-            <Card className="premium-panel" sx={{ display: { xs: 'none', lg: 'block' } }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>Agenda</Typography>
-                <Stack spacing={2}>
-                  <AgendaGroup title="Today" items={groupedAgenda.today} />
-                  <AgendaGroup title="Tomorrow" items={groupedAgenda.tomorrow} />
-                  <AgendaGroup title="Upcoming" items={groupedAgenda.upcoming} />
-                </Stack>
-              </CardContent>
-            </Card>
-          </Stack>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
         </Grid>
-        <Grid item xs={12} lg={8.4}>
+        <Grid item xs={12}>
           <Card className="premium-panel">
             <CardContent>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent="space-between" spacing={1.25} sx={{ mb: 2 }}>
@@ -371,15 +375,20 @@ export function CalendarPage() {
                 ))}
                 <Chip size="small" label="All-day / birthdays" variant="outlined" sx={{ borderColor: '#0f9f8f' }} />
               </Stack>
-              {isMobile && (
-                <Box sx={{ mt: 2 }}>
-                  <Stack spacing={2}>
+              <Box sx={{ mt: 2.5 }}>
+                <Typography variant="h6" sx={{ mb: 1.5 }}>Agenda</Typography>
+                <Grid container spacing={1.5}>
+                  <Grid item xs={12} md={4}>
                     <AgendaGroup title="Today" items={groupedAgenda.today} />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
                     <AgendaGroup title="Tomorrow" items={groupedAgenda.tomorrow} />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
                     <AgendaGroup title="Upcoming" items={groupedAgenda.upcoming} />
-                  </Stack>
-                </Box>
-              )}
+                  </Grid>
+                </Grid>
+              </Box>
             </CardContent>
           </Card>
         </Grid>

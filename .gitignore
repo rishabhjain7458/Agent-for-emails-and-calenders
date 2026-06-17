@@ -3,6 +3,7 @@ backend/dist/
 frontend/dist/
 frontend/node_modules/
 frontend/android/.gradle/
+frontend/android/.idea/
 frontend/android/**/build/
 frontend/.env.mobile
 backend/node_modules/

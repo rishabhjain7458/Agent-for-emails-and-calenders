@@ -239,6 +239,85 @@ export function EmailsPage() {
     </Stack>
   );
 
+  const desktopFilterContent = (
+    <Stack spacing={2}>
+      <Box>
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Quick filters</Typography>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {emailFilters.map((filter) => (
+            <Button
+              key={filter.query}
+              variant={query === filter.query ? 'contained' : 'outlined'}
+              onClick={() => applyFilter(filter.query)}
+              sx={{ minHeight: 42, px: 1.5 }}
+            >
+              {filter.label}
+            </Button>
+          ))}
+        </Stack>
+      </Box>
+      {savedSearches.length > 0 && (
+        <Box>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Saved searches</Typography>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {savedSearches.map((saved) => (
+              <Chip key={saved.query} label={saved.name} onClick={() => applyFilter(saved.query)} onDelete={() => {
+                const next = savedSearches.filter((item) => item.query !== saved.query);
+                setSavedSearches(next);
+                localStorage.setItem(savedSearchKey, JSON.stringify(next));
+              }} />
+            ))}
+          </Stack>
+        </Box>
+      )}
+      <Grid container spacing={1.5} alignItems="flex-start">
+        <Grid item xs={12} md={3}>
+          <TextField fullWidth select label="Search account" value={accountId} onChange={(event) => setAccountId(event.target.value)}>
+            <MenuItem value="all">All accounts</MenuItem>
+            {accountOptions.map((account) => (
+              <MenuItem key={account.id} value={account.id}>
+                {account.label}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+        <Grid item xs={12} sm={4} md={3}>
+          <TextField fullWidth label="Sender" value={senderSearch} onChange={(event) => setSenderSearch(event.target.value)} placeholder="name@example.com" />
+        </Grid>
+        <Grid item xs={12} sm={4} md={3}>
+          <TextField fullWidth label="Subject contains" value={subjectSearch} onChange={(event) => setSubjectSearch(event.target.value)} placeholder="invoice, approval" />
+        </Grid>
+        <Grid item xs={12} sm={4} md={3}>
+          <TextField fullWidth label="Body contains" value={bodySearch} onChange={(event) => setBodySearch(event.target.value)} placeholder="words inside email" />
+        </Grid>
+        <Grid item xs={12} sm={6} md={2}>
+          <TextField fullWidth label="From date" type="date" value={dateFrom} InputLabelProps={{ shrink: true }} onChange={(event) => setDateFrom(event.target.value)} />
+        </Grid>
+        <Grid item xs={12} sm={6} md={2}>
+          <TextField fullWidth label="To date" type="date" value={dateTo} InputLabelProps={{ shrink: true }} onChange={(event) => setDateTo(event.target.value)} />
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <TextField fullWidth label="Advanced mail query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="in:inbox from:name@example.com newer_than:7d" />
+        </Grid>
+        <Grid item xs={12} md={2}>
+          <TextField fullWidth label="Save as" value={savedSearchName} onChange={(event) => setSavedSearchName(event.target.value)} placeholder="Invoices" />
+        </Grid>
+        <Grid item xs={12} md={2}>
+          <Stack direction="row" spacing={1}>
+            <Button fullWidth variant="contained" startIcon={<SearchIcon />} onClick={searchWithFields}>Search</Button>
+            <Button variant="outlined" startIcon={<SaveIcon />} onClick={saveCurrentSearch}>Save</Button>
+            <Button variant="outlined" onClick={clearFieldSearch}>Clear</Button>
+          </Stack>
+        </Grid>
+      </Grid>
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+        {queryOperators.map((operator) => (
+          <Chip key={operator} label={operator} variant="outlined" onClick={() => appendOperator(operator)} sx={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }} />
+        ))}
+      </Stack>
+    </Stack>
+  );
+
   return (
     <>
       <PageHeader
@@ -258,22 +337,26 @@ export function EmailsPage() {
         </Box>
       </Drawer>
       <Grid container spacing={2.5}>
-        <Grid item xs={12} md={4} sx={{ display: { xs: 'none', md: 'block' } }}>
+        <Grid item xs={12} sx={{ display: { xs: 'none', md: 'block' } }}>
           <Card className="premium-panel">
             <CardContent>
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
                 <Box>
-                  <Typography variant="h6">Gmail Search</Typography>
-                  <Typography color="text.secondary" variant="body2">Build precise inbox queries with Gmail operators.</Typography>
+                  <Typography variant="h6">Email Search</Typography>
+                  <Typography color="text.secondary" variant="body2">Filter by account, sender, subject, body text, date, or advanced mail operators.</Typography>
                 </Box>
                 <Chip icon={<FilterAltIcon />} label="Filters" color="primary" variant="outlined" />
               </Stack>
-              {filterContent}
+              {desktopFilterContent}
             </CardContent>
           </Card>
-          {summary && <Alert sx={{ mt: 2 }} severity="info">{summary}</Alert>}
         </Grid>
-        <Grid item xs={12} md={8}>
+        {summary && (
+          <Grid item xs={12}>
+            <Alert severity="info">{summary}</Alert>
+          </Grid>
+        )}
+        <Grid item xs={12}>
           <Card className="premium-panel">
             {loading && <LinearProgress />}
             <CardContent>
