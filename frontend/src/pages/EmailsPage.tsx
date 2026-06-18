@@ -46,6 +46,7 @@ export function EmailsPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get('query') || 'in:inbox';
+  const initialAccountId = searchParams.get('accountId') || 'all';
   const [query, setQuery] = useState(initialQuery);
   const [senderSearch, setSenderSearch] = useState('');
   const [subjectSearch, setSubjectSearch] = useState('');
@@ -56,7 +57,7 @@ export function EmailsPage() {
   const [savedSearches, setSavedSearches] = useState<{ name: string; query: string }[]>([]);
   const [filterOpen, setFilterOpen] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const [accountId, setAccountId] = useState('all');
+  const [accountId, setAccountId] = useState(initialAccountId);
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [summary, setSummary] = useState('');
@@ -79,9 +80,13 @@ export function EmailsPage() {
 
   useEffect(() => {
     const nextQuery = searchParams.get('query');
+    const nextAccountId = searchParams.get('accountId');
     if (nextQuery && nextQuery !== query) {
       setQuery(nextQuery);
       load(nextQuery);
+    }
+    if (nextAccountId && nextAccountId !== accountId) {
+      setAccountId(nextAccountId);
     }
   }, [searchParams]);
 

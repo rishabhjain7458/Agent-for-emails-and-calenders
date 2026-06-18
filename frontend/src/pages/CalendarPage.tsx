@@ -13,8 +13,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import LayersIcon from '@mui/icons-material/Layers';
-import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import { PageHeader } from '../components/PageHeader';
 import { createEvent, deleteEvent, getConnectedAccounts, getEvents } from '../api/endpoints';
 import { useAuth } from '../contexts/AuthContext';
@@ -67,10 +65,6 @@ function eventTitle(event: CalendarEvent) {
   return event.summary ?? event.subject ?? '(No title)';
 }
 
-function providerLabel(provider?: 'google' | 'microsoft') {
-  return provider === 'microsoft' ? 'Outlook' : 'Gmail';
-}
-
 function inferEventType(event: CalendarEvent) {
   const providerType = event.eventType;
   const title = eventTitle(event).toLowerCase();
@@ -93,7 +87,6 @@ export function CalendarPage() {
   const { user } = useAuth();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
-  const [selectedAccountId, setSelectedAccountId] = useState('all');
   const [createAccountId, setCreateAccountId] = useState('primary');
   const [form, setForm] = useState(initialForm);
   const [conflict, setConflict] = useState<any>(null);
@@ -142,36 +135,6 @@ export function CalendarPage() {
     return accountColors.get(eventAccountKey(event)) ?? '#2557d6';
   }
 
-  function accountColor(accountId: string) {
-    return accountColors.get(accountId) ?? '#2557d6';
-  }
-
-  const visibleEvents = useMemo(() => {
-    if (selectedAccountId === 'all') return events;
-    const selected = accountOptions.find((account) => account.id === selectedAccountId);
-    return events.filter((event) => eventAccountKey(event) === selectedAccountId || (selected?.email && event.accountEmail === selected.email));
-  }, [accountOptions, events, selectedAccountId]);
-
-  const accountStats = useMemo(() => {
-    const now = Date.now();
-    const sortedEvents = events
-      .map((event) => ({ event, starts: new Date(event.start?.dateTime ?? event.start?.date ?? '') }))
-      .filter((item) => !Number.isNaN(item.starts.getTime()))
-      .sort((a, b) => a.starts.getTime() - b.starts.getTime());
-
-    return accountOptions.map((account) => {
-      const items = sortedEvents.filter(({ event }) => eventAccountKey(event) === account.id || event.accountEmail === account.email);
-      const next = items.find(({ starts }) => starts.getTime() >= now);
-      return {
-        ...account,
-        color: accountColor(account.id),
-        total: items.length,
-        upcoming: items.filter(({ starts }) => starts.getTime() >= now).length,
-        next: next?.starts
-      };
-    });
-  }, [accountOptions, accountColors, events]);
-
   function typeColorForEvent(event: CalendarEvent) {
     return eventTypeStyles[inferEventType(event)]?.color ?? eventTypeStyles.meeting.color;
   }
@@ -180,7 +143,7 @@ export function CalendarPage() {
     return eventTypeStyles[inferEventType(event)]?.label ?? eventTypeStyles.meeting.label;
   }
 
-  const calendarEvents = useMemo(() => visibleEvents.map((event) => ({
+  const calendarEvents = useMemo(() => events.map((event) => ({
     id: event.id,
     title: eventTitle(event),
     start: event.start?.dateTime ?? event.start?.date,
@@ -189,13 +152,13 @@ export function CalendarPage() {
     borderColor: typeColorForEvent(event),
     textColor: '#fff',
     extendedProps: { description: event.description, accountEmail: event.accountEmail, providerEvent: event, typeLabel: typeLabelForEvent(event), typeColor: typeColorForEvent(event) }
-  })), [visibleEvents, accountColors]);
+  })), [events, accountColors]);
 
-  const agendaEvents = useMemo(() => visibleEvents
+  const agendaEvents = useMemo(() => events
     .map((event) => ({ event, starts: new Date(event.start?.dateTime ?? event.start?.date ?? '') }))
     .filter((item) => !Number.isNaN(item.starts.getTime()))
     .sort((a, b) => a.starts.getTime() - b.starts.getTime())
-    .slice(0, isMobile ? 12 : 10), [visibleEvents, isMobile]);
+    .slice(0, isMobile ? 12 : 10), [events, isMobile]);
 
   const groupedAgenda = useMemo(() => ({
     today: agendaEvents.filter(({ starts }) => starts.toDateString() === new Date().toDateString()),
@@ -298,69 +261,6 @@ export function CalendarPage() {
     calendarRef.current?.getApi().changeView(nextView);
   }
 
-  function selectAccountSpace(accountId: string) {
-    setSelectedAccountId(accountId);
-    if (accountId !== 'all') setCreateAccountId(accountId);
-  }
-
-  function AccountTile({ account }: { account: typeof accountStats[number] }) {
-    const selected = selectedAccountId === account.id;
-    const nextLabel = account.next
-      ? account.next.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
-      : 'No upcoming event';
-
-    return (
-      <Box
-        component="button"
-        type="button"
-        onClick={() => selectAccountSpace(account.id)}
-        sx={{
-          bgcolor: selected ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.8)',
-          border: '1px solid',
-          borderColor: selected ? account.color : 'divider',
-          borderRadius: 2,
-          boxShadow: selected ? `0 18px 34px ${account.color}24` : '0 8px 20px rgba(24, 35, 56, 0.055)',
-          color: 'text.primary',
-          cursor: 'pointer',
-          minHeight: 116,
-          p: 1.5,
-          position: 'relative',
-          textAlign: 'left',
-          transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
-          width: '100%',
-          '&:hover': { transform: { sm: 'translateY(-2px)' }, boxShadow: `0 18px 34px ${account.color}1f`, borderColor: account.color },
-          '&::before': {
-            bgcolor: account.color,
-            borderRadius: '8px 8px 0 0',
-            content: '""',
-            height: 4,
-            left: 0,
-            position: 'absolute',
-            right: 0,
-            top: 0
-          }
-        }}
-      >
-        <Stack spacing={1}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-            <Box sx={{ bgcolor: `${account.color}18`, borderRadius: 1.5, color: account.color, display: 'grid', flex: '0 0 auto', height: 34, placeItems: 'center', width: 34 }}>
-              <MailOutlineIcon fontSize="small" />
-            </Box>
-            <Chip size="small" label={providerLabel(account.provider)} variant="outlined" sx={{ borderColor: account.color, color: account.color }} />
-          </Stack>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="body2" sx={{ fontWeight: 850 }} noWrap>{account.email}</Typography>
-            <Typography variant="caption" color="text.secondary" noWrap>{account.isPrimary ? 'Primary account' : account.name}</Typography>
-          </Box>
-          <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-            <Typography variant="caption" color="text.secondary">{account.upcoming} upcoming</Typography>
-            <Typography variant="caption" sx={{ color: account.color, fontWeight: 850 }}>{nextLabel}</Typography>
-          </Stack>
-        </Stack>
-      </Box>
-    );
-  }
-
   function AgendaGroup({ title, items }: { title: string; items: typeof agendaEvents }) {
     return (
       <Box>
@@ -392,66 +292,6 @@ export function CalendarPage() {
       {error && <Alert sx={{ mb: 2 }} severity="warning">{error}</Alert>}
       {loading && <Alert sx={{ mb: 2 }} severity="info">Loading calendar events...</Alert>}
       <Grid container spacing={2.5}>
-        <Grid item xs={12}>
-          <Card className="premium-panel">
-            <CardContent>
-              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} justifyContent="space-between" sx={{ mb: 2 }}>
-                <Box>
-                  <Typography variant="h6">Calendar Spaces</Typography>
-                  <Typography color="text.secondary" variant="body2">Combined by default. Tap an account space to focus its events without losing the shared view.</Typography>
-                </Box>
-                <Button variant={selectedAccountId === 'all' ? 'contained' : 'outlined'} startIcon={<LayersIcon />} onClick={() => setSelectedAccountId('all')}>
-                  Combined
-                </Button>
-              </Stack>
-              <Grid container spacing={1.5}>
-                <Grid item xs={12} sm={6} lg={3}>
-                  <Box
-                    component="button"
-                    type="button"
-                    onClick={() => setSelectedAccountId('all')}
-                    sx={{
-                      bgcolor: selectedAccountId === 'all' ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.82)',
-                      border: '1px solid',
-                      borderColor: selectedAccountId === 'all' ? 'primary.main' : 'divider',
-                      borderRadius: 2,
-                      boxShadow: selectedAccountId === 'all' ? '0 18px 34px rgba(37, 87, 214, 0.18)' : '0 8px 20px rgba(24, 35, 56, 0.055)',
-                      color: 'text.primary',
-                      cursor: 'pointer',
-                      minHeight: 116,
-                      p: 1.5,
-                      textAlign: 'left',
-                      width: '100%',
-                      '&:hover': { transform: { sm: 'translateY(-2px)' }, boxShadow: '0 18px 34px rgba(37, 87, 214, 0.16)', borderColor: 'primary.main' }
-                    }}
-                  >
-                    <Stack spacing={1}>
-                      <Stack direction="row" alignItems="center" justifyContent="space-between">
-                        <Box sx={{ bgcolor: 'primary.light', borderRadius: 1.5, color: 'primary.main', display: 'grid', height: 34, placeItems: 'center', width: 34 }}>
-                          <LayersIcon fontSize="small" />
-                        </Box>
-                        <Chip size="small" label={`${accountOptions.length} accounts`} color="primary" variant="outlined" />
-                      </Stack>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 850 }}>Combined calendar</Typography>
-                        <Typography variant="caption" color="text.secondary">All connected calendars in one view</Typography>
-                      </Box>
-                      <Stack direction="row" spacing={1} justifyContent="space-between">
-                        <Typography variant="caption" color="text.secondary">{events.length} loaded</Typography>
-                        <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 850 }}>{calendarEvents.length} visible</Typography>
-                      </Stack>
-                    </Stack>
-                  </Box>
-                </Grid>
-                {accountStats.map((account) => (
-                  <Grid item xs={12} sm={6} lg={3} key={account.id}>
-                    <AccountTile account={account} />
-                  </Grid>
-                ))}
-              </Grid>
-            </CardContent>
-          </Card>
-        </Grid>
         <Grid item xs={12}>
           <Card className="premium-panel">
             <CardContent>
@@ -514,9 +354,7 @@ export function CalendarPage() {
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent="space-between" spacing={1.25} sx={{ mb: 2 }}>
                 <Box>
                   <Typography variant="h6">Schedule</Typography>
-                  <Typography color="text.secondary" variant="body2">
-                    {selectedAccountId === 'all' ? `${visibleEvents.length} combined events` : `${visibleEvents.length} events for ${accountOptions.find((account) => account.id === selectedAccountId)?.email ?? 'selected account'}`}
-                  </Typography>
+                  <Typography color="text.secondary" variant="body2">{events.length} combined events across connected accounts</Typography>
                 </Box>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }}>
                   <ToggleButtonGroup
@@ -541,7 +379,7 @@ export function CalendarPage() {
                     <ToggleButton value="timeGridWeek">Week</ToggleButton>
                     <ToggleButton value="timeGridDay">Day</ToggleButton>
                   </ToggleButtonGroup>
-                  <Chip icon={<EventAvailableIcon />} label={selectedAccountId === 'all' ? 'Combined live calendar' : 'Focused account'} color="primary" variant="outlined" sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }} />
+                  <Chip icon={<EventAvailableIcon />} label="Combined live calendar" color="primary" variant="outlined" sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }} />
                 </Stack>
               </Stack>
               <FullCalendar
@@ -593,13 +431,9 @@ export function CalendarPage() {
                     key={account.id}
                     size="small"
                     label={account.label}
-                    variant={selectedAccountId === account.id ? 'filled' : 'outlined'}
-                    onClick={() => selectAccountSpace(account.id)}
+                    variant="outlined"
                     sx={{
-                      bgcolor: selectedAccountId === account.id ? accountColors.get(account.id) : undefined,
                       borderColor: accountColors.get(account.id),
-                      color: selectedAccountId === account.id ? '#fff' : undefined,
-                      cursor: 'pointer',
                       '&::before': {
                         bgcolor: accountColors.get(account.id),
                         borderRadius: '50%',

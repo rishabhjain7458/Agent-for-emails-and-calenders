@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, Grid, LinearProgress, Stack, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import MailIcon from '@mui/icons-material/Mail';
@@ -11,10 +11,14 @@ import ScheduleIcon from '@mui/icons-material/Schedule';
 import BoltIcon from '@mui/icons-material/Bolt';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import LayersIcon from '@mui/icons-material/Layers';
 import { PageHeader } from '../components/PageHeader';
 import { StatCard } from '../components/StatCard';
-import { completeTask, getEmails, getEvents, getTasks } from '../api/endpoints';
-import type { CalendarEvent, EmailMessage, Task } from '../types';
+import { completeTask, getConnectedAccounts, getEmails, getEvents, getTasks } from '../api/endpoints';
+import { useAuth } from '../contexts/AuthContext';
+import type { CalendarEvent, ConnectedAccount, EmailMessage, Task } from '../types';
+
+const accountPalette = ['#2557d6', '#0f9f8f', '#b86b00', '#8b5cf6', '#e0476b', '#168053'];
 
 function eventStart(event: CalendarEvent) {
   const value = event.start?.dateTime ?? event.start?.date;
@@ -65,19 +69,29 @@ function nextMeeting(events: CalendarEvent[]) {
     .sort((a, b) => a.starts.getTime() - b.starts.getTime())[0]?.event;
 }
 
+function itemAccountKey(item: { accountId?: string; accountEmail?: string; account_id?: string; account_email?: string }) {
+  return item.accountId ?? item.account_id ?? item.accountEmail ?? item.account_email ?? 'primary';
+}
+
+function providerLabel(provider?: 'google' | 'microsoft') {
+  return provider === 'microsoft' ? 'Outlook' : 'Gmail';
+}
+
 export function DashboardPage() {
+  const { user } = useAuth();
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   async function loadDashboard() {
     setLoading(true);
-    const results = await Promise.allSettled([getEmails('in:inbox is:unread'), getEvents(), getTasks()]);
+    const results = await Promise.allSettled([getEmails('in:inbox is:unread'), getEvents(), getTasks(), getConnectedAccounts()]);
 
     const nextErrors: string[] = [];
-    const [mailResult, calendarResult, taskResult] = results;
+    const [mailResult, calendarResult, taskResult, accountResult] = results;
 
     if (mailResult.status === 'fulfilled') setEmails(mailResult.value);
     else nextErrors.push('Unread emails could not be loaded.');
@@ -87,6 +101,9 @@ export function DashboardPage() {
 
     if (taskResult.status === 'fulfilled') setTasks(taskResult.value);
     else nextErrors.push('Pending tasks could not be loaded.');
+
+    if (accountResult.status === 'fulfilled') setAccounts(accountResult.value);
+    else nextErrors.push('Connected accounts could not be loaded.');
 
     setErrors(nextErrors);
     setLoading(false);
@@ -107,6 +124,33 @@ export function DashboardPage() {
   });
   const upcomingTasks = pendingTasks.filter((task) => !overdue.some((item) => item.id === task.id) && !dueToday.some((item) => item.id === task.id));
   const meeting = nextMeeting(events);
+  const accountOptions = useMemo(() => [
+    { id: 'primary', email: user?.email ?? 'Primary account', provider: user?.provider ?? 'google', label: `${user?.email ?? 'Primary account'} (primary)`, name: user?.name ?? 'Primary account', isPrimary: true },
+    ...accounts.map((account) => ({ id: account.id, email: account.email, provider: account.provider, label: account.email, name: account.name ?? account.email, isPrimary: false }))
+  ], [accounts, user?.email, user?.name, user?.provider]);
+
+  const accountColors = useMemo(() => {
+    const entries = accountOptions.map((account, index) => [account.id, accountPalette[index % accountPalette.length]] as const);
+    const byEmail = accountOptions.map((account, index) => [account.email, accountPalette[index % accountPalette.length]] as const);
+    return new Map([...entries, ...byEmail]);
+  }, [accountOptions]);
+
+  const accountSpaces = useMemo(() => accountOptions.map((account) => {
+    const keyMatches = (item: { accountId?: string; accountEmail?: string; account_id?: string; account_email?: string }) => itemAccountKey(item) === account.id || item.accountEmail === account.email || item.account_email === account.email;
+    const accountEvents = events.filter(keyMatches);
+    const accountEmails = emails.filter(keyMatches);
+    const accountTasks = pendingTasks.filter(keyMatches);
+    const nextEvent = nextMeeting(accountEvents);
+    return {
+      ...account,
+      color: accountColors.get(account.id) ?? '#2557d6',
+      emails: accountEmails.length,
+      events: accountEvents.length,
+      tasks: accountTasks.length,
+      nextEvent
+    };
+  }), [accountColors, accountOptions, emails, events, pendingTasks]);
+
   const briefingItems = [
     `${priorityEmails.length} priority unread email${priorityEmails.length === 1 ? '' : 's'}`,
     meeting ? nextMeetingText(events) : 'No upcoming meeting loaded',
@@ -133,6 +177,81 @@ export function DashboardPage() {
         <Grid item xs={12} md={4}><StatCard label="Unread Emails" value={emails.length} helper={`${emails.slice(0, 3).filter((email) => !/no-reply|newsletter|promotions/i.test(email.sender)).length} from likely important senders`} icon={<MailIcon fontSize="small" />} /></Grid>
         <Grid item xs={12} md={4}><StatCard label="Upcoming Meetings" value={events.length} helper={nextMeetingText(events)} icon={<EventIcon fontSize="small" />} accent="#0f9f8f" /></Grid>
         <Grid item xs={12} md={4}><StatCard label="Pending Tasks" value={tasks.filter((task) => task.status !== 'completed').length} helper={`${overdueTasks(tasks).length} overdue tasks`} icon={<CheckCircleIcon fontSize="small" />} accent="#b86b00" /></Grid>
+        <Grid item xs={12}>
+          <Card className="premium-panel">
+            <CardContent>
+              <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.5} sx={{ mb: 2 }}>
+                <Box>
+                  <Typography variant="h6">Account Spaces</Typography>
+                  <Typography color="text.secondary" variant="body2">One clean space for each connected account. Calendar stays combined across all accounts.</Typography>
+                </Box>
+                <Button href="/calendar" variant="contained" startIcon={<LayersIcon />}>Open Combined Calendar</Button>
+              </Stack>
+              <Grid container spacing={1.5}>
+                {accountSpaces.map((account) => (
+                  <Grid item xs={12} sm={6} lg={3} key={account.id}>
+                    <Box
+                      sx={{
+                        bgcolor: '#fff',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        boxShadow: '0 12px 28px rgba(24, 35, 56, 0.07)',
+                        height: '100%',
+                        overflow: 'hidden',
+                        p: 1.5,
+                        position: 'relative',
+                        '&::before': {
+                          bgcolor: account.color,
+                          content: '""',
+                          height: 4,
+                          left: 0,
+                          position: 'absolute',
+                          right: 0,
+                          top: 0
+                        }
+                      }}
+                    >
+                      <Stack spacing={1.4}>
+                        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                          <Box sx={{ bgcolor: `${account.color}18`, borderRadius: 1.5, color: account.color, display: 'grid', height: 38, placeItems: 'center', width: 38 }}>
+                            <MailIcon fontSize="small" />
+                          </Box>
+                          <Chip size="small" label={providerLabel(account.provider)} variant="outlined" sx={{ borderColor: account.color, color: account.color }} />
+                        </Stack>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 850 }} noWrap>{account.email}</Typography>
+                          <Typography variant="caption" color="text.secondary" noWrap>{account.isPrimary ? 'Primary account' : account.name}</Typography>
+                        </Box>
+                        <Grid container spacing={1}>
+                          <Grid item xs={4}>
+                            <Typography variant="h6" sx={{ color: account.color }}>{account.emails}</Typography>
+                            <Typography variant="caption" color="text.secondary">Unread</Typography>
+                          </Grid>
+                          <Grid item xs={4}>
+                            <Typography variant="h6" sx={{ color: account.color }}>{account.events}</Typography>
+                            <Typography variant="caption" color="text.secondary">Events</Typography>
+                          </Grid>
+                          <Grid item xs={4}>
+                            <Typography variant="h6" sx={{ color: account.color }}>{account.tasks}</Typography>
+                            <Typography variant="caption" color="text.secondary">Tasks</Typography>
+                          </Grid>
+                        </Grid>
+                        <Typography variant="caption" color="text.secondary" sx={{ minHeight: 20 }}>
+                          {account.nextEvent ? `Next: ${formatMeetingTime(account.nextEvent)}` : 'No upcoming meeting'}
+                        </Typography>
+                        <Stack direction="row" spacing={1}>
+                          <Button size="small" href={`/emails?accountId=${encodeURIComponent(account.id)}`}>Mail</Button>
+                          <Button size="small" href="/calendar">Calendar</Button>
+                        </Stack>
+                      </Stack>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
         <Grid item xs={12} lg={7}>
           <Card className="premium-panel" sx={{ height: '100%' }}>
             <CardContent>
