@@ -8,10 +8,7 @@ import { HttpError } from '../utils/http.js';
 export const zohoScopes = [
   'ZohoMail.accounts.READ',
   'ZohoMail.folders.READ',
-  'ZohoMail.messages.READ',
-  'ZohoMail.messages.CREATE',
-  'ZohoMail.messages.UPDATE',
-  'ZohoMail.messages.DELETE'
+  'ZohoMail.messages.ALL'
 ];
 
 type ZohoTokenResponse = {
