@@ -18,6 +18,10 @@ import { useSpace } from '../contexts/SpaceContext';
 
 type CardFormType = 'social' | 'news' | 'custom_link';
 
+function accountProviderLabel(provider: ConnectedAccount['provider']) {
+  return provider === 'microsoft' ? 'Outlook' : provider === 'imap' ? 'IMAP Mail' : provider === 'zoho' ? 'Zoho Mail' : 'Gmail';
+}
+
 export function SettingsPage() {
   const { refreshSpaces } = useSpace();
   const [geminiApiKey, setGeminiApiKey] = useState('');
@@ -98,6 +102,7 @@ export function SettingsPage() {
       smtpSecure: smtpPort === '465'
     });
     setAccounts(await getConnectedAccounts());
+    await refreshSpaces();
     setImapEmail('');
     setImapPassword('');
     setImapName('');
@@ -199,20 +204,29 @@ export function SettingsPage() {
                     <Button variant="contained" startIcon={<LinkIcon />} onClick={connectZohoImap}>Connect Zoho IMAP</Button>
                   </Stack>
                 </Box>
+                <Box>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>Manage connected accounts</Typography>
+                      <Typography variant="caption" color="text.secondary">Your primary login account is managed by logout. Extra inboxes can be disconnected here.</Typography>
+                    </Box>
+                    <Chip size="small" label={`${accounts.length} connected`} variant="outlined" />
+                  </Stack>
+                </Box>
                 <Stack divider={<Divider flexItem />} spacing={0}>
                   {accounts.map((account) => (
-                    <Box key={account.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, py: 1.25 }}>
+                    <Box key={account.id} sx={{ bgcolor: '#fff', border: '1px solid', borderColor: 'divider', borderRadius: 2, display: 'flex', alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.25, mb: 1, p: 1.25 }}>
                       <Box sx={{ minWidth: 0 }}>
                         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                           <Typography sx={{ fontWeight: 800, overflowWrap: 'anywhere' }}>{account.email}</Typography>
-                          <Chip size="small" label={account.provider === 'microsoft' ? 'Outlook' : account.provider === 'imap' ? 'IMAP Mail' : account.provider === 'zoho' ? 'Zoho Mail' : 'Gmail'} variant="outlined" />
+                          <Chip size="small" label={accountProviderLabel(account.provider)} variant="outlined" />
                         </Stack>
                         {account.name && <Typography variant="body2" color="text.secondary">{account.name}</Typography>}
                       </Box>
-                      <Button color="error" variant="text" startIcon={<DeleteIcon />} onClick={() => removeAccount(account.id)}>Disconnect</Button>
+                      <Button color="error" variant="outlined" startIcon={<DeleteIcon />} onClick={() => removeAccount(account.id)} sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}>Disconnect account</Button>
                     </Box>
                   ))}
-                  {accounts.length === 0 && <Alert severity="info">No extra inboxes connected yet.</Alert>}
+                  {accounts.length === 0 && <Alert severity="info">No extra inboxes connected yet. Connect Gmail, Outlook, Zoho OAuth, or Zoho IMAP above.</Alert>}
                 </Stack>
               </Stack>
             </CardContent>
