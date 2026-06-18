@@ -70,3 +70,14 @@ export type AssistantConversation = {
   created_at: string;
   updated_at: string;
 };
+
+export type DashboardCard = {
+  id: string;
+  cardType: 'social' | 'news' | 'custom_link';
+  platform?: 'instagram' | 'facebook' | string | null;
+  label: string;
+  url: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};

@@ -13,19 +13,18 @@ import FacebookIcon from '@mui/icons-material/Facebook';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import NewspaperIcon from '@mui/icons-material/Newspaper';
 import { PageHeader } from '../components/PageHeader';
-import { completeTask, getEmails, getEvents, getTasks } from '../api/endpoints';
+import { completeTask, getDashboardCards, getEmails, getEvents, getTasks, updateDashboardCardOrder } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
-import type { CalendarEvent, EmailMessage, Task } from '../types';
-import { loadSocialAccounts, type SocialAccount } from '../utils/socialAccounts';
+import type { CalendarEvent, DashboardCard as LinkDashboardCard, EmailMessage, Task } from '../types';
 
 const accountPalette = ['#2557d6', '#0f9f8f', '#b86b00', '#8b5cf6', '#e0476b', '#168053'];
-const dashboardCardOrderKey = 'o-connect-dashboard-card-order';
 
-type DashboardCard =
+type MixedDashboardCard =
   | { id: string; kind: 'combined' }
   | { id: string; kind: 'space'; account: ReturnType<typeof useSpace>['spaces'][number] & { color: string; emails: number; tasks: number } }
-  | { id: string; kind: 'social'; account: SocialAccount };
+  | { id: string; kind: 'link'; account: LinkDashboardCard };
 
 function eventStart(event: CalendarEvent) {
   const value = event.start?.dateTime ?? event.start?.date;
@@ -76,19 +75,6 @@ function metricLabel(value: number, singular: string, plural = `${singular}s`) {
   return `${value} ${value === 1 ? singular : plural}`;
 }
 
-function loadDashboardCardOrder() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(dashboardCardOrderKey) ?? '[]');
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveDashboardCardOrder(order: string[]) {
-  localStorage.setItem(dashboardCardOrderKey, JSON.stringify(order));
-}
-
 function mergeCardOrder(ids: string[], order: string[]) {
   const uniqueOrder = order.filter((id, index) => ids.includes(id) && order.indexOf(id) === index);
   return [...uniqueOrder, ...ids.filter((id) => !uniqueOrder.includes(id))];
@@ -101,8 +87,8 @@ export function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
-  const [cardOrder, setCardOrder] = useState<string[]>(() => loadDashboardCardOrder());
+  const [linkCards, setLinkCards] = useState<LinkDashboardCard[]>([]);
+  const [cardOrder, setCardOrder] = useState<string[]>([]);
 
   async function loadDashboard() {
     setLoading(true);
@@ -125,7 +111,10 @@ export function DashboardPage() {
 
   useEffect(() => {
     loadDashboard();
-    setSocialAccounts(loadSocialAccounts());
+    getDashboardCards().then((result) => {
+      setLinkCards(result.cards);
+      setCardOrder(result.cardOrder);
+    });
   }, []);
 
   const pendingTasks = tasks.filter((task) => task.status !== 'completed');
@@ -153,17 +142,17 @@ export function DashboardPage() {
     };
   }), [accountColors, emails, events, pendingTasks, spaces]);
 
-  const dashboardCards = useMemo<DashboardCard[]>(() => [
+  const dashboardCards = useMemo<MixedDashboardCard[]>(() => [
     { id: 'combined', kind: 'combined' },
     ...accountSpaces.map((account) => ({ id: `space:${account.id}`, kind: 'space' as const, account })),
-    ...socialAccounts.map((account) => ({ id: `social:${account.id}`, kind: 'social' as const, account }))
-  ], [accountSpaces, socialAccounts]);
+    ...linkCards.map((account) => ({ id: `custom:${account.id}`, kind: 'link' as const, account }))
+  ], [accountSpaces, linkCards]);
 
   useEffect(() => {
     const ids = dashboardCards.map((card) => card.id);
     setCardOrder((current) => {
-      const next = mergeCardOrder(ids, current.length ? current : loadDashboardCardOrder());
-      saveDashboardCardOrder(next);
+      const next = mergeCardOrder(ids, current);
+      if (next.join('|') !== current.join('|')) updateDashboardCardOrder(next).catch(() => undefined);
       return next;
     });
   }, [dashboardCards]);
@@ -213,7 +202,7 @@ export function DashboardPage() {
     const next = [...ids];
     [next[currentIndex], next[nextIndex]] = [next[nextIndex], next[currentIndex]];
     setCardOrder(next);
-    saveDashboardCardOrder(next);
+    updateDashboardCardOrder(next).catch(() => undefined);
   }
 
   return (
@@ -281,8 +270,13 @@ export function DashboardPage() {
                     );
                   }
 
-                  if (card.kind === 'social') {
+                  if (card.kind === 'link') {
                     const instagram = card.account.platform === 'instagram';
+                    const facebook = card.account.platform === 'facebook';
+                    const news = card.account.cardType === 'news';
+                    const accent = instagram ? '#c026d3' : facebook ? '#2563eb' : news ? '#a16207' : '#2557d6';
+                    const accentBg = instagram ? '#fdf2f8' : facebook ? '#eff6ff' : news ? '#fefce8' : '#f8faff';
+                    const cardLabel = news ? 'News' : instagram ? 'Instagram' : facebook ? 'Facebook' : 'Custom link';
                     return (
                       <Box
                         key={card.id}
@@ -296,15 +290,15 @@ export function DashboardPage() {
                           minHeight: 164,
                           p: 1.5,
                           transition: 'transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
-                          '&:hover': { borderColor: instagram ? '#c026d3' : '#2563eb', boxShadow: '0 16px 32px rgba(24,35,56,0.09)', transform: { sm: 'translateY(-2px)' } }
+                          '&:hover': { borderColor: accent, boxShadow: '0 16px 32px rgba(24,35,56,0.09)', transform: { sm: 'translateY(-2px)' } }
                         }}
                       >
                         <Stack spacing={1.25} sx={{ height: '100%' }}>
                           <Box component="a" href={card.account.url} target="_blank" rel="noreferrer" sx={{ color: 'inherit', textDecoration: 'none' }}>
                             <Stack spacing={1.25}>
                               <Stack direction="row" alignItems="center" justifyContent="space-between">
-                                <Box sx={{ bgcolor: instagram ? '#fdf2f8' : '#eff6ff', borderRadius: 1.5, color: instagram ? '#c026d3' : '#2563eb', display: 'grid', height: 42, placeItems: 'center', width: 42 }}>
-                                  {instagram ? <InstagramIcon /> : <FacebookIcon />}
+                                <Box sx={{ bgcolor: accentBg, borderRadius: 1.5, color: accent, display: 'grid', height: 42, placeItems: 'center', width: 42 }}>
+                                  {instagram ? <InstagramIcon /> : facebook ? <FacebookIcon /> : news ? <NewspaperIcon /> : <OpenInNewIcon />}
                                 </Box>
                                 <Stack direction="row" spacing={0.75} alignItems="center">
                                   <Chip size="small" label={`#${index + 1}`} sx={{ fontWeight: 850 }} />
@@ -313,7 +307,7 @@ export function DashboardPage() {
                               </Stack>
                               <Box sx={{ minWidth: 0 }}>
                                 <Typography sx={{ fontWeight: 900 }} noWrap>{card.account.label}</Typography>
-                                <Typography variant="caption" color="text.secondary" noWrap>{instagram ? 'Instagram' : 'Facebook'}</Typography>
+                                <Typography variant="caption" color="text.secondary" noWrap>{cardLabel}</Typography>
                               </Box>
                             </Stack>
                           </Box>

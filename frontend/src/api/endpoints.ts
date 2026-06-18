@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { AssistantConversation, CalendarEvent, ConnectedAccount, EmailMessage, Task, User } from '../types';
+import type { AssistantConversation, CalendarEvent, ConnectedAccount, DashboardCard, EmailMessage, Task, User } from '../types';
 
 export async function getMe() {
   const { data } = await api.get<{ data: User }>('/auth/me');
@@ -133,4 +133,24 @@ export async function getSettings() {
 export async function updateSettings(payload: Record<string, unknown>) {
   const { data } = await api.put('/settings', payload);
   return data.data;
+}
+
+export async function getDashboardCards() {
+  const { data } = await api.get<{ data: { cards: DashboardCard[]; cardOrder: string[] } }>('/dashboard-cards');
+  return data.data;
+}
+
+export async function createDashboardCard(payload: { cardType: DashboardCard['cardType']; platform?: string | null; label: string; url: string; metadata?: Record<string, unknown> }) {
+  const { data } = await api.post<{ data: DashboardCard }>('/dashboard-cards', payload);
+  return data.data;
+}
+
+export async function deleteDashboardCard(id: string) {
+  const { data } = await api.delete(`/dashboard-cards/${id}`);
+  return data.data;
+}
+
+export async function updateDashboardCardOrder(cardOrder: string[]) {
+  const { data } = await api.put<{ data: { cardOrder: string[] } }>('/dashboard-cards/order', { cardOrder });
+  return data.data.cardOrder;
 }

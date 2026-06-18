@@ -9,10 +9,13 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import NewspaperIcon from '@mui/icons-material/Newspaper';
 import { PageHeader } from '../components/PageHeader';
-import { disconnectAccount, getConnectedAccounts, getConnectAccountUrl, getSettings, updateSettings } from '../api/endpoints';
-import type { ConnectedAccount } from '../types';
-import { loadSocialAccounts, normalizeSocialUrl, saveSocialAccounts, type SocialAccount, type SocialPlatform } from '../utils/socialAccounts';
+import { createDashboardCard, deleteDashboardCard, disconnectAccount, getConnectedAccounts, getConnectAccountUrl, getDashboardCards, getSettings, updateSettings } from '../api/endpoints';
+import type { ConnectedAccount, DashboardCard } from '../types';
+import { normalizeSocialUrl, type SocialPlatform } from '../utils/socialAccounts';
+
+type CardFormType = 'social' | 'news' | 'custom_link';
 
 export function SettingsPage() {
   const [geminiApiKey, setGeminiApiKey] = useState('');
@@ -20,10 +23,11 @@ export function SettingsPage() {
   const [ignorePromotions, setIgnorePromotions] = useState(true);
   const [notice, setNotice] = useState('');
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
-  const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
+  const [dashboardCards, setDashboardCards] = useState<DashboardCard[]>([]);
+  const [cardType, setCardType] = useState<CardFormType>('social');
   const [socialPlatform, setSocialPlatform] = useState<SocialPlatform>('instagram');
-  const [socialLabel, setSocialLabel] = useState('');
-  const [socialUrl, setSocialUrl] = useState('');
+  const [cardLabel, setCardLabel] = useState('');
+  const [cardUrl, setCardUrl] = useState('');
 
   useEffect(() => {
     getSettings().then((settings) => {
@@ -32,7 +36,7 @@ export function SettingsPage() {
       setIgnorePromotions(settings.email_preferences?.ignorePromotions ?? true);
     });
     getConnectedAccounts().then(setAccounts);
-    setSocialAccounts(loadSocialAccounts());
+    getDashboardCards().then((result) => setDashboardCards(result.cards));
     const connected = new URLSearchParams(window.location.search).get('connected');
     if (connected) {
       setNotice(`${connected === 'microsoft' ? 'Outlook' : 'Gmail'} account connected.`);
@@ -68,35 +72,42 @@ export function SettingsPage() {
     setNotice('Connected account removed.');
   }
 
-  function addSocialAccount() {
-    const url = normalizeSocialUrl(socialPlatform, socialUrl);
+  async function addDashboardCard() {
+    const url = cardType === 'social' ? normalizeSocialUrl(socialPlatform, cardUrl) : cardUrl.trim();
     if (!url) {
-      setNotice('Add a username or profile link first.');
+      setNotice('Add a URL or username first.');
       return;
     }
-    const nextAccount: SocialAccount = {
-      id: crypto.randomUUID(),
-      platform: socialPlatform,
-      label: socialLabel.trim() || (socialPlatform === 'instagram' ? 'Instagram account' : 'Facebook account'),
+    await createDashboardCard({
+      cardType,
+      platform: cardType === 'social' ? socialPlatform : cardType,
+      label: cardLabel.trim() || (cardType === 'news' ? 'News website' : cardType === 'custom_link' ? 'Custom link' : socialPlatform === 'instagram' ? 'Instagram account' : 'Facebook account'),
       url
-    };
-    const next = [...socialAccounts, nextAccount];
-    setSocialAccounts(next);
-    saveSocialAccounts(next);
-    setSocialLabel('');
-    setSocialUrl('');
-    setNotice('Social account card added.');
+    });
+    setDashboardCards((await getDashboardCards()).cards);
+    setCardLabel('');
+    setCardUrl('');
+    setNotice('Dashboard card added.');
   }
 
-  function removeSocialAccount(id: string) {
-    const next = socialAccounts.filter((account) => account.id !== id);
-    setSocialAccounts(next);
-    saveSocialAccounts(next);
-    setNotice('Social account card removed.');
+  async function removeDashboardCard(id: string) {
+    await deleteDashboardCard(id);
+    setDashboardCards((await getDashboardCards()).cards);
+    setNotice('Dashboard card removed.');
   }
 
-  function socialIcon(platform: SocialPlatform) {
-    return platform === 'instagram' ? <InstagramIcon /> : <FacebookIcon />;
+  function cardIcon(card: DashboardCard) {
+    if (card.cardType === 'news') return <NewspaperIcon />;
+    if (card.platform === 'instagram') return <InstagramIcon />;
+    if (card.platform === 'facebook') return <FacebookIcon />;
+    return <LinkIcon />;
+  }
+
+  function cardColor(card: DashboardCard) {
+    if (card.cardType === 'news') return { bg: '#fefce8', fg: '#a16207' };
+    if (card.platform === 'instagram') return { bg: '#fdf2f8', fg: '#c026d3' };
+    if (card.platform === 'facebook') return { bg: '#eff6ff', fg: '#2563eb' };
+    return { bg: '#f8faff', fg: '#2557d6' };
   }
 
   return (
@@ -160,51 +171,66 @@ export function SettingsPage() {
               <Stack spacing={2}>
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.5}>
                   <Box>
-                    <Typography variant="h6">Social Media Cards</Typography>
-                    <Typography color="text.secondary" variant="body2">Add Facebook and Instagram profiles. Reorder them directly on the Dashboard.</Typography>
+                    <Typography variant="h6">Dashboard Link Cards</Typography>
+                    <Typography color="text.secondary" variant="body2">Add social, news, or custom links. Reorder them directly on the Dashboard.</Typography>
                   </Box>
-                  <Chip icon={<LinkIcon />} label={`${socialAccounts.length} saved`} variant="outlined" />
+                  <Chip icon={<LinkIcon />} label={`${dashboardCards.length} saved`} variant="outlined" />
                 </Stack>
                 <Grid container spacing={1.25} alignItems="flex-start">
                   <Grid item xs={12} sm={3}>
-                    <TextField fullWidth select label="Platform" value={socialPlatform} onChange={(event) => setSocialPlatform(event.target.value as SocialPlatform)}>
-                      <MenuItem value="instagram">Instagram</MenuItem>
-                      <MenuItem value="facebook">Facebook</MenuItem>
+                    <TextField fullWidth select label="Card type" value={cardType} onChange={(event) => setCardType(event.target.value as CardFormType)}>
+                      <MenuItem value="social">Social</MenuItem>
+                      <MenuItem value="news">News</MenuItem>
+                      <MenuItem value="custom_link">Custom link</MenuItem>
                     </TextField>
                   </Grid>
                   <Grid item xs={12} sm={3}>
-                    <TextField fullWidth label="Card name" value={socialLabel} onChange={(event) => setSocialLabel(event.target.value)} placeholder="Brand page, personal, client" />
+                    {cardType === 'social' ? (
+                      <TextField fullWidth select label="Platform" value={socialPlatform} onChange={(event) => setSocialPlatform(event.target.value as SocialPlatform)}>
+                        <MenuItem value="instagram">Instagram</MenuItem>
+                        <MenuItem value="facebook">Facebook</MenuItem>
+                      </TextField>
+                    ) : (
+                      <TextField fullWidth label="Card name" value={cardLabel} onChange={(event) => setCardLabel(event.target.value)} placeholder={cardType === 'news' ? 'BBC News, TechCrunch' : 'Client portal'} />
+                    )}
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <TextField fullWidth label="Username or profile URL" value={socialUrl} onChange={(event) => setSocialUrl(event.target.value)} placeholder="@username or https://..." />
+                    <TextField fullWidth label={cardType === 'social' ? 'Username or profile URL' : 'Website URL'} value={cardUrl} onChange={(event) => setCardUrl(event.target.value)} placeholder={cardType === 'social' ? '@username or https://...' : 'https://example.com'} />
                   </Grid>
                   <Grid item xs={12} sm={2}>
-                    <Button fullWidth variant="contained" startIcon={<LinkIcon />} onClick={addSocialAccount} sx={{ minHeight: 54 }}>Add</Button>
+                    <Button fullWidth variant="contained" startIcon={<LinkIcon />} onClick={addDashboardCard} sx={{ minHeight: 54 }}>Add</Button>
                   </Grid>
+                  {cardType === 'social' && (
+                    <Grid item xs={12} sm={3}>
+                      <TextField fullWidth label="Card name" value={cardLabel} onChange={(event) => setCardLabel(event.target.value)} placeholder="Brand page, personal, client" />
+                    </Grid>
+                  )}
                 </Grid>
                 <Grid container spacing={1.5}>
-                  {socialAccounts.map((account) => (
-                    <Grid item xs={12} md={6} lg={4} key={account.id}>
+                  {dashboardCards.map((card) => {
+                    const colors = cardColor(card);
+                    return (
+                    <Grid item xs={12} md={6} lg={4} key={card.id}>
                       <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: '#fff', p: 1.5 }}>
                         <Stack direction="row" spacing={1.25} alignItems="center">
-                          <Box sx={{ bgcolor: account.platform === 'instagram' ? '#fdf2f8' : '#eff6ff', borderRadius: 1.5, color: account.platform === 'instagram' ? '#c026d3' : '#2563eb', display: 'grid', flex: '0 0 auto', height: 42, placeItems: 'center', width: 42 }}>
-                            {socialIcon(account.platform)}
+                          <Box sx={{ bgcolor: colors.bg, borderRadius: 1.5, color: colors.fg, display: 'grid', flex: '0 0 auto', height: 42, placeItems: 'center', width: 42 }}>
+                            {cardIcon(card)}
                           </Box>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography sx={{ fontWeight: 850 }} noWrap>{account.label}</Typography>
-                            <Typography variant="caption" color="text.secondary" noWrap>{account.url}</Typography>
+                            <Typography sx={{ fontWeight: 850 }} noWrap>{card.label}</Typography>
+                            <Typography variant="caption" color="text.secondary" noWrap>{card.url}</Typography>
                           </Box>
                         </Stack>
                         <Stack direction="row" spacing={1} sx={{ mt: 1.25 }} flexWrap="wrap" useFlexGap>
-                          <Button fullWidth variant="outlined" href={account.url} target="_blank" rel="noreferrer" startIcon={<OpenInNewIcon />}>Open</Button>
-                          <Button color="error" variant="text" startIcon={<DeleteIcon />} onClick={() => removeSocialAccount(account.id)}>Remove</Button>
+                          <Button fullWidth variant="outlined" href={card.url} target="_blank" rel="noreferrer" startIcon={<OpenInNewIcon />}>Open</Button>
+                          <Button color="error" variant="text" startIcon={<DeleteIcon />} onClick={() => removeDashboardCard(card.id)}>Remove</Button>
                         </Stack>
                       </Box>
                     </Grid>
-                  ))}
-                  {socialAccounts.length === 0 && (
+                  );})}
+                  {dashboardCards.length === 0 && (
                     <Grid item xs={12}>
-                      <Alert severity="info">No social media cards added yet.</Alert>
+                      <Alert severity="info">No dashboard link cards added yet.</Alert>
                     </Grid>
                   )}
                 </Grid>

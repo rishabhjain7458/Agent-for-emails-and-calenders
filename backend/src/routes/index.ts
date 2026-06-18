@@ -6,6 +6,7 @@ import { calendarRoutes } from './calendarRoutes.js';
 import { taskRoutes } from './taskRoutes.js';
 import { assistantRoutes } from './assistantRoutes.js';
 import { settingsRoutes } from './settingsRoutes.js';
+import { dashboardCardRoutes } from './dashboardCardRoutes.js';
 
 export const apiRoutes = Router();
 
@@ -15,3 +16,4 @@ apiRoutes.use('/calendar', requireAuth, calendarRoutes);
 apiRoutes.use('/tasks', requireAuth, taskRoutes);
 apiRoutes.use('/assistant', requireAuth, assistantRoutes);
 apiRoutes.use('/settings', requireAuth, settingsRoutes);
+apiRoutes.use('/dashboard-cards', requireAuth, dashboardCardRoutes);
