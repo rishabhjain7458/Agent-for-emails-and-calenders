@@ -238,16 +238,16 @@ export function DashboardPage() {
                           borderRadius: 2,
                           boxShadow: isCombined ? '0 18px 36px rgba(37,87,214,0.22)' : 'none',
                           color: isCombined ? '#fff' : 'text.primary',
-                          flex: '0 0 270px',
-                          minHeight: 164,
-                          p: 1.5,
+                          flex: '0 0 244px',
+                          minHeight: 128,
+                          p: 1.15,
                           transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
                           '&:hover': { transform: { sm: 'translateY(-2px)' }, borderColor: 'primary.main' }
                         }}
                       >
-                        <Stack spacing={1.25} sx={{ height: '100%' }}>
+                        <Stack spacing={0.85} sx={{ height: '100%' }}>
                           <Box component="button" type="button" onClick={() => setActiveSpaceId('combined')} sx={{ all: 'unset', cursor: 'pointer', display: 'block' }}>
-                            <Stack spacing={1.25}>
+                            <Stack spacing={0.85}>
                               <Stack direction="row" justifyContent="space-between" alignItems="center">
                                 <LayersIcon />
                                 {isCombined && <Chip size="small" label="Active" sx={{ bgcolor: '#fff', color: 'primary.main', fontWeight: 800 }} />}
@@ -261,9 +261,9 @@ export function DashboardPage() {
                               </Typography>
                             </Stack>
                           </Box>
-                          <Stack direction="row" spacing={1} sx={{ mt: 'auto' }}>
-                            <Button size="small" variant={isCombined ? 'contained' : 'outlined'} disabled={isFirst} startIcon={<ArrowBackIcon />} onClick={() => moveDashboardCard(card.id, -1)}>Left</Button>
-                            <Button size="small" variant={isCombined ? 'contained' : 'outlined'} disabled={isLast} endIcon={<ArrowForwardIcon />} onClick={() => moveDashboardCard(card.id, 1)}>Right</Button>
+                          <Stack direction="row" spacing={0.75} sx={{ mt: 'auto' }}>
+                            <Button size="small" variant={isCombined ? 'contained' : 'outlined'} disabled={isFirst} startIcon={<ArrowBackIcon />} onClick={() => moveDashboardCard(card.id, -1)} sx={{ minHeight: 32 }}>Left</Button>
+                            <Button size="small" variant={isCombined ? 'contained' : 'outlined'} disabled={isLast} endIcon={<ArrowForwardIcon />} onClick={() => moveDashboardCard(card.id, 1)} sx={{ minHeight: 32 }}>Right</Button>
                           </Stack>
                         </Stack>
                       </Box>
@@ -286,18 +286,18 @@ export function DashboardPage() {
                           borderColor: 'divider',
                           borderRadius: 2,
                           color: 'inherit',
-                          flex: '0 0 270px',
-                          minHeight: 164,
-                          p: 1.5,
+                          flex: '0 0 244px',
+                          minHeight: 128,
+                          p: 1.15,
                           transition: 'transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
                           '&:hover': { borderColor: accent, boxShadow: '0 16px 32px rgba(24,35,56,0.09)', transform: { sm: 'translateY(-2px)' } }
                         }}
                       >
-                        <Stack spacing={1.25} sx={{ height: '100%' }}>
+                        <Stack spacing={0.85} sx={{ height: '100%' }}>
                           <Box component="a" href={card.account.url} target="_blank" rel="noreferrer" sx={{ color: 'inherit', textDecoration: 'none' }}>
-                            <Stack spacing={1.25}>
+                            <Stack spacing={0.85}>
                               <Stack direction="row" alignItems="center" justifyContent="space-between">
-                                <Box sx={{ bgcolor: accentBg, borderRadius: 1.5, color: accent, display: 'grid', height: 42, placeItems: 'center', width: 42 }}>
+                                <Box sx={{ bgcolor: accentBg, borderRadius: 1.5, color: accent, display: 'grid', height: 36, placeItems: 'center', width: 36 }}>
                                   {instagram ? <InstagramIcon /> : facebook ? <FacebookIcon /> : news ? <NewspaperIcon /> : <OpenInNewIcon />}
                                 </Box>
                                 <Stack direction="row" spacing={0.75} alignItems="center">
@@ -311,9 +311,9 @@ export function DashboardPage() {
                               </Box>
                             </Stack>
                           </Box>
-                          <Stack direction="row" spacing={1} sx={{ mt: 'auto' }}>
-                            <Button size="small" variant="outlined" disabled={isFirst} startIcon={<ArrowBackIcon />} onClick={() => moveDashboardCard(card.id, -1)}>Left</Button>
-                            <Button size="small" variant="outlined" disabled={isLast} endIcon={<ArrowForwardIcon />} onClick={() => moveDashboardCard(card.id, 1)}>Right</Button>
+                          <Stack direction="row" spacing={0.75} sx={{ mt: 'auto' }}>
+                            <Button size="small" variant="outlined" disabled={isFirst} startIcon={<ArrowBackIcon />} onClick={() => moveDashboardCard(card.id, -1)} sx={{ minHeight: 32 }}>Left</Button>
+                            <Button size="small" variant="outlined" disabled={isLast} endIcon={<ArrowForwardIcon />} onClick={() => moveDashboardCard(card.id, 1)} sx={{ minHeight: 32 }}>Right</Button>
                           </Stack>
                         </Stack>
                       </Box>
@@ -332,10 +332,10 @@ export function DashboardPage() {
                         borderRadius: 2,
                         boxShadow: active ? `0 18px 36px ${account.color}22` : 'none',
                         color: 'text.primary',
-                        flex: '0 0 286px',
-                        minHeight: 164,
+                        flex: '0 0 264px',
+                        minHeight: 128,
                         overflow: 'hidden',
-                        p: 1.5,
+                        p: 1.15,
                         position: 'relative',
                         textAlign: 'left',
                         transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
@@ -349,9 +349,9 @@ export function DashboardPage() {
                         }
                       }}
                     >
-                      <Stack spacing={1.25} sx={{ pl: 0.5, height: '100%' }}>
+                      <Stack spacing={0.85} sx={{ pl: 0.5, height: '100%' }}>
                         <Box component="button" type="button" onClick={() => setActiveSpaceId(account.id)} sx={{ all: 'unset', cursor: 'pointer', display: 'block' }}>
-                          <Stack spacing={1.25}>
+                          <Stack spacing={0.85}>
                             <Stack direction="row" justifyContent="space-between" alignItems="center">
                               <Chip size="small" label={providerLabel(account.provider)} variant="outlined" sx={{ borderColor: account.color, color: account.color, fontWeight: 800 }} />
                               <Stack direction="row" spacing={0.75} alignItems="center">
@@ -368,9 +368,9 @@ export function DashboardPage() {
                             </Typography>
                           </Stack>
                         </Box>
-                        <Stack direction="row" spacing={1} sx={{ mt: 'auto' }}>
-                          <Button size="small" variant="outlined" disabled={isFirst} startIcon={<ArrowBackIcon />} onClick={() => moveDashboardCard(card.id, -1)}>Left</Button>
-                          <Button size="small" variant="outlined" disabled={isLast} endIcon={<ArrowForwardIcon />} onClick={() => moveDashboardCard(card.id, 1)}>Right</Button>
+                        <Stack direction="row" spacing={0.75} sx={{ mt: 'auto' }}>
+                          <Button size="small" variant="outlined" disabled={isFirst} startIcon={<ArrowBackIcon />} onClick={() => moveDashboardCard(card.id, -1)} sx={{ minHeight: 32 }}>Left</Button>
+                          <Button size="small" variant="outlined" disabled={isLast} endIcon={<ArrowForwardIcon />} onClick={() => moveDashboardCard(card.id, 1)} sx={{ minHeight: 32 }}>Right</Button>
                         </Stack>
                       </Stack>
                     </Box>

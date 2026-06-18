@@ -45,12 +45,12 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 8,
-          minHeight: 40,
+          minHeight: 38,
           transition: 'transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease',
           '&:hover': { transform: 'translateY(-1px)' },
           '&:active': { transform: 'translateY(0)' }
         },
-        contained: { boxShadow: '0 10px 22px rgba(37, 87, 214, 0.2)' },
+        contained: { boxShadow: '0 8px 18px rgba(37, 87, 214, 0.18)' },
         outlined: {
           backgroundColor: '#ffffff',
           '&:hover': { backgroundColor: '#f8fbff' }
@@ -61,12 +61,12 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 8,
-          border: '1px solid rgba(210, 220, 235, 0.9)',
-          boxShadow: '0 18px 42px rgba(24, 35, 56, 0.075)',
+          border: '1px solid rgba(214, 223, 236, 0.92)',
+          boxShadow: '0 14px 34px rgba(24, 35, 56, 0.06)',
           transition: 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
           '&:hover': {
             borderColor: '#cdd9ea',
-            boxShadow: '0 22px 52px rgba(24, 35, 56, 0.105)'
+            boxShadow: '0 18px 42px rgba(24, 35, 56, 0.085)'
           }
         }
       }
@@ -74,8 +74,8 @@ export const theme = createTheme({
     MuiCardContent: {
       styleOverrides: {
         root: {
-          padding: 20,
-          '&:last-child': { paddingBottom: 20 }
+          padding: 18,
+          '&:last-child': { paddingBottom: 18 }
         }
       }
     },
@@ -101,7 +101,7 @@ export const theme = createTheme({
     },
     MuiChip: {
       styleOverrides: {
-        root: { borderRadius: 6, fontWeight: 650 }
+        root: { borderRadius: 6, fontWeight: 700 }
       }
     },
     MuiListItemButton: {
