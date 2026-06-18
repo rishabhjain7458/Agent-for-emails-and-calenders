@@ -11,6 +11,18 @@ import { env } from '../config/env.js';
 import { send } from '../utils/http.js';
 import type { AuthUser } from '../types.js';
 
+type ImapConnectionInput = {
+  email: string;
+  password: string;
+  name?: string;
+  imapHost?: string;
+  imapPort?: number;
+  imapSecure?: boolean;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpSecure?: boolean;
+};
+
 type ConnectState = {
   mode: 'connect';
   provider: 'google' | 'microsoft' | 'zoho';
@@ -75,6 +87,17 @@ function visibleConnectedAccounts(user: AuthUser, accounts: any[]) {
     seen.add(key);
     return true;
   });
+}
+
+function imapConfig(input: ImapConnectionInput) {
+  return {
+    imapHost: input.imapHost || 'imappro.zoho.in',
+    imapPort: Number(input.imapPort ?? 993),
+    imapSecure: input.imapSecure ?? true,
+    smtpHost: input.smtpHost || 'smtp.zoho.in',
+    smtpPort: Number(input.smtpPort ?? 465),
+    smtpSecure: input.smtpSecure ?? true
+  };
 }
 
 export function googleLogin(req: Request, res: Response) {
@@ -232,6 +255,27 @@ export function me(req: Request, res: Response) {
 export async function connectedAccounts(req: Request, res: Response, next: NextFunction) {
   try {
     send(res, visibleConnectedAccounts(req.user!, await listConnectedAccounts(req.user!.tenantId, req.user!.id)));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function connectImapAccount(req: Request, res: Response, next: NextFunction) {
+  try {
+    const input = req.body as ImapConnectionInput;
+    const email = input.email.trim().toLowerCase();
+    const account = await upsertConnectedAccount({
+      tenantId: req.user!.tenantId,
+      userId: req.user!.id,
+      provider: 'imap',
+      providerAccountId: email,
+      email,
+      name: input.name?.trim() || email,
+      accessToken: JSON.stringify(imapConfig(input)),
+      refreshToken: input.password,
+      tokenExpiry: null
+    });
+    send(res, account, 201);
   } catch (error) {
     next(error);
   }

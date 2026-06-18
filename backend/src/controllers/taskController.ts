@@ -24,7 +24,7 @@ import { listAccountContexts, resolveAccountContext, type AccountContext } from 
 import { HttpError, send } from '../utils/http.js';
 
 async function syncTasksForAccount(req: Request, account: AccountContext) {
-  if (account.provider === 'zoho') return;
+  if (account.provider === 'zoho' || account.provider === 'imap') return;
   const providerTasks = account.provider === 'microsoft'
     ? account.isPrimary
       ? await listMicrosoftTasks(req.user!.id)
@@ -75,7 +75,7 @@ export async function index(req: Request, res: Response, next: NextFunction) {
 export async function create(req: Request, res: Response, next: NextFunction) {
   try {
     const account = await resolveAccountContext(req.user!, req.body.accountId);
-    if (account.provider === 'zoho') throw new HttpError(400, 'Zoho Mail spaces do not support tasks yet. Choose a Gmail or Outlook space.');
+    if (account.provider === 'zoho' || account.provider === 'imap') throw new HttpError(400, 'Mail-only spaces do not support tasks yet. Choose a Gmail or Outlook space.');
     const providerTask = account.provider === 'microsoft'
       ? account.isPrimary
         ? await createMicrosoftTask(req.user!.id, req.body.title, req.body.dueDate)
@@ -102,7 +102,7 @@ export async function complete(req: Request, res: Response, next: NextFunction) 
     if (task?.google_task_id) {
       const provider = task.provider ?? req.user!.provider;
       const accountId = task.account_id ?? 'primary';
-      if (provider === 'zoho') {
+      if (provider === 'zoho' || provider === 'imap') {
         // Zoho Mail tasks are not synced, so only the local task record changes.
       } else if (provider === 'microsoft') {
         if (task.google_task_list_id) {
@@ -127,7 +127,7 @@ export async function remove(req: Request, res: Response, next: NextFunction) {
     if (task?.google_task_id) {
       const provider = task.provider ?? req.user!.provider;
       const accountId = task.account_id ?? 'primary';
-      if (provider === 'zoho') {
+      if (provider === 'zoho' || provider === 'imap') {
         // Zoho Mail tasks are not synced, so only the local task record changes.
       } else if (provider === 'microsoft') {
         if (task.google_task_list_id) {

@@ -44,7 +44,7 @@ export async function events(req: Request, res: Response, next: NextFunction) {
       : [await resolveAccountContext(req.user!, accountId)];
 
     const grouped = await Promise.all(accounts.map(async (account) => {
-      if (account.provider === 'zoho') return [];
+      if (account.provider === 'zoho' || account.provider === 'imap') return [];
       const eventsForAccount = account.provider === 'microsoft'
         ? account.isPrimary
           ? await listMicrosoftEvents(req.user!.id, req.query.timeMin as string, req.query.timeMax as string)
@@ -69,7 +69,7 @@ export async function events(req: Request, res: Response, next: NextFunction) {
 export async function create(req: Request, res: Response, next: NextFunction) {
   try {
     const account = await resolveAccountContext(req.user!, req.body.accountId);
-    if (account.provider === 'zoho') throw new HttpError(400, 'Zoho Mail spaces do not support calendar events yet. Choose a Gmail or Outlook space.');
+    if (account.provider === 'zoho' || account.provider === 'imap') throw new HttpError(400, 'Mail-only spaces do not support calendar events yet. Choose a Gmail or Outlook space.');
     const result = account.provider === 'microsoft'
       ? account.isPrimary
         ? await createMicrosoftEvent(req.user!.id, req.body)
@@ -88,7 +88,7 @@ export async function remove(req: Request, res: Response, next: NextFunction) {
     const connectedId = splitConnectedEventId(req.params.id);
     if (connectedId) {
       const account = await resolveAccountContext(req.user!, connectedId.accountId);
-      if (account.provider === 'zoho') throw new HttpError(400, 'Zoho Mail spaces do not support calendar events yet.');
+      if (account.provider === 'zoho' || account.provider === 'imap') throw new HttpError(400, 'Mail-only spaces do not support calendar events yet.');
       if (account.provider === 'microsoft') await deleteMicrosoftEventForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, connectedId.eventId);
       else await deleteEventForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, connectedId.eventId);
       send(res, { deleted: true });

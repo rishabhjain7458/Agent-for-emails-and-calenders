@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { archiveEmail, archiveEmailForConnectedAccount, deleteEmail, deleteEmailForConnectedAccount, getEmail, getEmailAttachment, getEmailAttachmentForConnectedAccount, getEmailForConnectedAccount, getThread, listEmails, listEmailsForConnectedAccount, sendReply } from '../services/emailService.js';
 import { archiveMicrosoftEmail, archiveMicrosoftEmailForConnectedAccount, deleteMicrosoftEmail, deleteMicrosoftEmailForConnectedAccount, getMicrosoftAttachment, getMicrosoftAttachmentForConnectedAccount, getMicrosoftEmail, getMicrosoftEmailForConnectedAccount, listMicrosoftEmails, listMicrosoftEmailsForConnectedAccount, sendMicrosoftReply } from '../services/microsoftEmailService.js';
 import { archiveZohoEmail, archiveZohoEmailForConnectedAccount, deleteZohoEmail, deleteZohoEmailForConnectedAccount, getZohoAttachment, getZohoAttachmentForConnectedAccount, getZohoEmail, getZohoEmailForConnectedAccount, listZohoEmails, listZohoEmailsForConnectedAccount, sendZohoReply, sendZohoReplyForConnectedAccount } from '../services/zohoEmailService.js';
+import { archiveImapEmailForConnectedAccount, deleteImapEmailForConnectedAccount, getImapAttachmentForConnectedAccount, getImapEmailForConnectedAccount, listImapEmailsForConnectedAccount, sendImapReplyForConnectedAccount } from '../services/imapEmailService.js';
 import { generateEmailReply, generateEmailSummary, generateSingleEmailSummary, refineEmailReply } from '../services/geminiService.js';
 import { saveDraft } from '../repositories/draftRepository.js';
 import { getConnectedAccount } from '../repositories/connectedAccountRepository.js';
@@ -36,6 +37,9 @@ async function getEmailForRequest(req: Request, id: string) {
     if (account?.provider === 'zoho') {
       return getZohoEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, account.email, account.provider_account_id, connectedId.messageId);
     }
+    if (account?.provider === 'imap') {
+      return getImapEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId);
+    }
   }
 
   if (req.user!.provider === 'microsoft') return getMicrosoftEmail(req.user!.id, id);
@@ -50,6 +54,7 @@ async function archiveEmailForRequest(req: Request, id: string) {
     if (account?.provider === 'microsoft') return archiveMicrosoftEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId);
     if (account?.provider === 'google') return archiveEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId);
     if (account?.provider === 'zoho') return archiveZohoEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, account.provider_account_id, connectedId.messageId);
+    if (account?.provider === 'imap') return archiveImapEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId);
   }
 
   if (req.user!.provider === 'microsoft') return archiveMicrosoftEmail(req.user!.id, id);
@@ -64,6 +69,7 @@ async function deleteEmailForRequest(req: Request, id: string) {
     if (account?.provider === 'microsoft') return deleteMicrosoftEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId);
     if (account?.provider === 'google') return deleteEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId);
     if (account?.provider === 'zoho') return deleteZohoEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, account.provider_account_id, connectedId.messageId);
+    if (account?.provider === 'imap') return deleteImapEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId);
   }
 
   if (req.user!.provider === 'microsoft') return deleteMicrosoftEmail(req.user!.id, id);
@@ -78,6 +84,7 @@ async function getAttachmentForRequest(req: Request, id: string, attachmentId: s
     if (account?.provider === 'microsoft') return getMicrosoftAttachmentForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId, attachmentId);
     if (account?.provider === 'google') return getEmailAttachmentForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId, attachmentId);
     if (account?.provider === 'zoho') return getZohoAttachmentForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, account.provider_account_id, connectedId.messageId, attachmentId);
+    if (account?.provider === 'imap') return getImapAttachmentForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId, attachmentId);
   }
 
   if (req.user!.provider === 'microsoft') return getMicrosoftAttachment(req.user!.id, id, attachmentId);
@@ -118,6 +125,8 @@ export async function inbox(req: Request, res: Response, next: NextFunction) {
           ? await listMicrosoftEmailsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, account.email, query, limit)
           : account.provider === 'zoho'
             ? await listZohoEmailsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, account.email, account.providerAccountId!, query, limit)
+          : account.provider === 'imap'
+            ? await listImapEmailsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, query, limit)
           : await listEmailsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, account.email, query, limit);
         return result.messages;
       })());
@@ -179,6 +188,8 @@ export async function summary(req: Request, res: Response, next: NextFunction) {
         ? await listMicrosoftEmailsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, account.email, query, 20)
         : account.provider === 'zoho'
           ? await listZohoEmailsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, account.email, account.providerAccountId!, query, 20)
+        : account.provider === 'imap'
+          ? await listImapEmailsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, query, 20)
         : await listEmailsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, account.email, query, 20);
       return result.messages;
     }));
@@ -261,6 +272,10 @@ export async function sendEmailReply(req: Request, res: Response, next: NextFunc
       }
       if (account?.provider === 'zoho') {
         send(res, await sendZohoReplyForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, account.provider_account_id, req.body));
+        return;
+      }
+      if (account?.provider === 'imap') {
+        send(res, await sendImapReplyForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, req.body));
         return;
       }
     }

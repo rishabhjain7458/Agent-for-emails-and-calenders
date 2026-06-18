@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './ProtectedRoute';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { LoginPage } from '../pages/LoginPage';
@@ -12,28 +12,24 @@ import { AssistantPage } from '../pages/AssistantPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { ErrorPage } from '../pages/ErrorPage';
 
-export const router = createBrowserRouter([
-  { path: '/login', element: <LoginPage />, errorElement: <ErrorPage /> },
-  { path: '/auth/callback', element: <AuthCallbackPage />, errorElement: <ErrorPage /> },
-  {
-    element: <ProtectedRoute />,
-    errorElement: <ErrorPage />,
-    children: [
-      {
-        element: <DashboardLayout />,
-        children: [
-          { path: '/', element: <Navigate to="/dashboard" replace /> },
-          { path: '/dashboard', element: <DashboardPage /> },
-          { path: '/emails', element: <EmailsPage /> },
-          { path: '/emails/:id', element: <EmailDetailPage /> },
-          { path: '/calendar', element: <CalendarPage /> },
-          { path: '/tasks', element: <TasksPage /> },
-          { path: '/assistant', element: <AssistantPage /> },
-          { path: '/settings', element: <SettingsPage /> },
-          { path: '*', element: <ErrorPage /> }
-        ]
-      }
-    ]
-  },
-  { path: '*', element: <ErrorPage /> }
-]);
+export function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route element={<ProtectedRoute />}>
+        <Route element={<DashboardLayout />}>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/emails" element={<EmailsPage />} />
+          <Route path="/emails/:id" element={<EmailDetailPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/tasks" element={<TasksPage />} />
+          <Route path="/assistant" element={<AssistantPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Route>
+      </Route>
+      <Route path="*" element={<ErrorPage />} />
+    </Routes>
+  );
+}

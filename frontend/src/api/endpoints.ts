@@ -25,6 +25,21 @@ export async function getConnectAccountUrl(provider: 'google' | 'microsoft' | 'z
   return data.data.url;
 }
 
+export async function connectImapAccount(payload: {
+  email: string;
+  password: string;
+  name?: string;
+  imapHost?: string;
+  imapPort?: number;
+  imapSecure?: boolean;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpSecure?: boolean;
+}) {
+  const { data } = await api.post('/auth/imap/connect', payload);
+  return data.data;
+}
+
 export async function disconnectAccount(id: string) {
   const { data } = await api.delete(`/auth/connected-accounts/${id}`);
   return data.data;

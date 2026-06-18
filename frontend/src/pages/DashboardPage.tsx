@@ -67,8 +67,8 @@ function itemAccountKey(item: { accountId?: string; accountEmail?: string; accou
   return item.accountId ?? item.account_id ?? item.accountEmail ?? item.account_email ?? 'primary';
 }
 
-function providerLabel(provider?: 'google' | 'microsoft' | 'zoho') {
-  return provider === 'microsoft' ? 'Outlook' : provider === 'zoho' ? 'Zoho Mail' : 'Gmail';
+function providerLabel(provider?: 'google' | 'microsoft' | 'zoho' | 'imap') {
+  return provider === 'microsoft' ? 'Outlook' : provider === 'imap' ? 'IMAP Mail' : provider === 'zoho' ? 'Zoho Mail' : 'Gmail';
 }
 
 function metricLabel(value: number, singular: string, plural = `${singular}s`) {

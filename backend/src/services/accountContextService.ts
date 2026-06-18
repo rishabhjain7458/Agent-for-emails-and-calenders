@@ -4,7 +4,7 @@ import type { AuthUser } from '../types.js';
 
 export type AccountContext = {
   accountId: string;
-  provider: 'google' | 'microsoft' | 'zoho';
+  provider: 'google' | 'microsoft' | 'zoho' | 'imap';
   email: string;
   name?: string | null;
   providerAccountId?: string | null;
@@ -89,7 +89,7 @@ export function formatAccountChoicePrompt(accounts: AccountContext[], action: st
     `Which account should I use for ${action}?`,
     '',
     'Available accounts:',
-    ...accounts.map((account, index) => `${index + 1}. ${account.email} (${account.provider === 'microsoft' ? 'Outlook' : account.provider === 'zoho' ? 'Zoho Mail' : 'Gmail'}${account.isPrimary ? ', primary' : ''})`),
+    ...accounts.map((account, index) => `${index + 1}. ${account.email} (${account.provider === 'microsoft' ? 'Outlook' : account.provider === 'imap' ? 'IMAP Mail' : account.provider === 'zoho' ? 'Zoho Mail' : 'Gmail'}${account.isPrimary ? ', primary' : ''})`),
     '',
     'Reply with the number or email address, for example: 1 or Use name@example.com.'
   ].join('\n');

@@ -11,7 +11,7 @@ import FacebookIcon from '@mui/icons-material/Facebook';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import { PageHeader } from '../components/PageHeader';
-import { createDashboardCard, deleteDashboardCard, disconnectAccount, getConnectedAccounts, getConnectAccountUrl, getDashboardCards, getSettings, updateSettings } from '../api/endpoints';
+import { connectImapAccount, createDashboardCard, deleteDashboardCard, disconnectAccount, getConnectedAccounts, getConnectAccountUrl, getDashboardCards, getSettings, updateSettings } from '../api/endpoints';
 import type { ConnectedAccount, DashboardCard } from '../types';
 import { normalizeSocialUrl, type SocialPlatform } from '../utils/socialAccounts';
 
@@ -28,6 +28,11 @@ export function SettingsPage() {
   const [socialPlatform, setSocialPlatform] = useState<SocialPlatform>('instagram');
   const [cardLabel, setCardLabel] = useState('');
   const [cardUrl, setCardUrl] = useState('');
+  const [imapEmail, setImapEmail] = useState('');
+  const [imapPassword, setImapPassword] = useState('');
+  const [imapName, setImapName] = useState('');
+  const [imapHost, setImapHost] = useState('imappro.zoho.in');
+  const [smtpHost, setSmtpHost] = useState('smtp.zoho.in');
 
   useEffect(() => {
     getSettings().then((settings) => {
@@ -70,6 +75,29 @@ export function SettingsPage() {
     await disconnectAccount(id);
     setAccounts(await getConnectedAccounts());
     setNotice('Connected account removed.');
+  }
+
+  async function connectZohoImap() {
+    if (!imapEmail.trim() || !imapPassword.trim()) {
+      setNotice('Add your Zoho email and app password first.');
+      return;
+    }
+    await connectImapAccount({
+      email: imapEmail,
+      password: imapPassword,
+      name: imapName,
+      imapHost,
+      imapPort: 993,
+      imapSecure: true,
+      smtpHost,
+      smtpPort: 465,
+      smtpSecure: true
+    });
+    setAccounts(await getConnectedAccounts());
+    setImapEmail('');
+    setImapPassword('');
+    setImapName('');
+    setNotice('Zoho mailbox connected through IMAP.');
   }
 
   async function addDashboardCard() {
@@ -145,15 +173,31 @@ export function SettingsPage() {
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                   <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('google')}>Connect Gmail</Button>
                   <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('microsoft')}>Connect Outlook</Button>
-                  <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('zoho')}>Connect Zoho Mail</Button>
+                  <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('zoho')}>Connect Zoho OAuth</Button>
                 </Stack>
+                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: '#f8faff', p: 1.5 }}>
+                  <Stack spacing={1.25}>
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>Zoho via IMAP</Typography>
+                      <Typography variant="caption" color="text.secondary">Use a Zoho app password. OAuth remains available above.</Typography>
+                    </Box>
+                    <TextField size="small" label="Zoho email" value={imapEmail} onChange={(event) => setImapEmail(event.target.value)} />
+                    <TextField size="small" label="App password" type="password" value={imapPassword} onChange={(event) => setImapPassword(event.target.value)} />
+                    <TextField size="small" label="Display name" value={imapName} onChange={(event) => setImapName(event.target.value)} placeholder="Optional" />
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                      <TextField size="small" label="IMAP host" value={imapHost} onChange={(event) => setImapHost(event.target.value)} />
+                      <TextField size="small" label="SMTP host" value={smtpHost} onChange={(event) => setSmtpHost(event.target.value)} />
+                    </Stack>
+                    <Button variant="contained" startIcon={<LinkIcon />} onClick={connectZohoImap}>Connect Zoho IMAP</Button>
+                  </Stack>
+                </Box>
                 <Stack divider={<Divider flexItem />} spacing={0}>
                   {accounts.map((account) => (
                     <Box key={account.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, py: 1.25 }}>
                       <Box sx={{ minWidth: 0 }}>
                         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                           <Typography sx={{ fontWeight: 800, overflowWrap: 'anywhere' }}>{account.email}</Typography>
-                          <Chip size="small" label={account.provider === 'microsoft' ? 'Outlook' : account.provider === 'zoho' ? 'Zoho Mail' : 'Gmail'} variant="outlined" />
+                          <Chip size="small" label={account.provider === 'microsoft' ? 'Outlook' : account.provider === 'imap' ? 'IMAP Mail' : account.provider === 'zoho' ? 'Zoho Mail' : 'Gmail'} variant="outlined" />
                         </Stack>
                         {account.name && <Typography variant="body2" color="text.secondary">{account.name}</Typography>}
                       </Box>
