@@ -8,7 +8,7 @@ export async function chat(req: Request, res: Response, next: NextFunction) {
     const existingConversation = req.body.conversationId
       ? await getConversation(req.user!.tenantId, req.user!.id, req.body.conversationId)
       : null;
-    const handled = await handleAssistantMessage(req.user!, req.body.message, existingConversation?.messages ?? []);
+    const handled = await handleAssistantMessage(req.user!, req.body.message, existingConversation?.messages ?? [], req.body.accountId);
     const assistantContent = typeof handled.result === 'string' ? handled.result : JSON.stringify(handled.result, null, 2);
     const conversation = await appendConversationMessages({
       tenantId: req.user!.tenantId,

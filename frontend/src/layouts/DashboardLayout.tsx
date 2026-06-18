@@ -13,6 +13,7 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  MenuItem,
   Stack,
   TextField,
   Toolbar,
@@ -31,10 +32,11 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import LayersIcon from '@mui/icons-material/Layers';
 import { useAuth } from '../contexts/AuthContext';
+import { useSpace } from '../contexts/SpaceContext';
 
 const drawerWidth = 276;
 const collapsedDrawerWidth = 78;
@@ -52,6 +54,7 @@ export function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') !== 'false');
   const [sidebarHover, setSidebarHover] = useState(false);
   const { user, logout } = useAuth();
+  const { activeSpaceId, activeSpace, isCombined, setActiveSpaceId, spaces } = useSpace();
   const location = useLocation();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -195,14 +198,24 @@ export function DashboardLayout() {
             }}
           />
           {!isMobile && (
-            <Chip
+            <TextField
+              select
               size="small"
-              icon={<AutoAwesomeIcon />}
-              label={`${user?.provider === 'microsoft' ? 'Outlook' : 'Google'} connected`}
-              color="secondary"
-              variant="outlined"
-            />
+              label="Space"
+              value={activeSpaceId}
+              onChange={(event) => setActiveSpaceId(event.target.value)}
+              sx={{ minWidth: 260, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#ffffff' } }}
+              InputProps={{ startAdornment: <InputAdornment position="start"><LayersIcon fontSize="small" /></InputAdornment> }}
+            >
+              <MenuItem value="combined">Combined workspace</MenuItem>
+              {spaces.map((space) => (
+                <MenuItem key={space.id} value={space.id}>
+                  {space.email}
+                </MenuItem>
+              ))}
+            </TextField>
           )}
+          {isMobile && <Chip size="small" label={isCombined ? 'Combined' : activeSpace?.email ?? 'Space'} color="secondary" variant="outlined" />}
           <Avatar sx={{ width: { xs: 32, sm: 36 }, height: { xs: 32, sm: 36 }, bgcolor: 'primary.main' }}>{user?.name?.[0] ?? 'U'}</Avatar>
           {!isMobile && <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 220 }}>{user?.email}</Typography>}
           <Tooltip title="Logout">

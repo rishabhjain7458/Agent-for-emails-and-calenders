@@ -14,9 +14,9 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { PageHeader } from '../components/PageHeader';
-import { createEvent, deleteEvent, getConnectedAccounts, getEvents } from '../api/endpoints';
-import { useAuth } from '../contexts/AuthContext';
-import type { CalendarEvent, ConnectedAccount } from '../types';
+import { createEvent, deleteEvent, getEvents } from '../api/endpoints';
+import { useSpace } from '../contexts/SpaceContext';
+import type { CalendarEvent } from '../types';
 
 const initialForm = { title: '', date: '', startTime: '', endTime: '', timezone: 'Asia/Kolkata', description: '', attendees: '' };
 
@@ -84,10 +84,8 @@ export function CalendarPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const calendarRef = useRef<FullCalendar | null>(null);
-  const { user } = useAuth();
+  const { activeSpaceId, activeSpace, isCombined, spaces } = useSpace();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
-  const [createAccountId, setCreateAccountId] = useState('primary');
   const [form, setForm] = useState(initialForm);
   const [conflict, setConflict] = useState<any>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -107,10 +105,6 @@ export function CalendarPage() {
   }
 
   useEffect(() => {
-    getConnectedAccounts().then(setAccounts);
-  }, []);
-
-  useEffect(() => {
     load();
   }, []);
 
@@ -120,10 +114,7 @@ export function CalendarPage() {
     calendarRef.current?.getApi().changeView(nextView);
   }, [isMobile]);
 
-  const accountOptions = useMemo(() => [
-    { id: 'primary', email: user?.email ?? 'Primary account', provider: user?.provider ?? 'google', label: `${user?.email ?? 'Primary account'} (primary)`, name: user?.name ?? 'Primary account', isPrimary: true },
-    ...accounts.map((account) => ({ id: account.id, email: account.email, provider: account.provider, label: account.email, name: account.name ?? account.email, isPrimary: false }))
-  ], [accounts, user?.email, user?.name, user?.provider]);
+  const accountOptions = spaces;
 
   const accountColors = useMemo(() => {
     const entries = accountOptions.map((account, index) => [account.id, accountPalette[index % accountPalette.length]] as const);
@@ -218,7 +209,7 @@ export function CalendarPage() {
     setError('');
     setNotice('');
     try {
-      const payload = { ...form, attendees: form.attendees.split(',').map((item) => item.trim()).filter(Boolean), force, accountId: createAccountId };
+      const payload = { ...form, attendees: form.attendees.split(',').map((item) => item.trim()).filter(Boolean), force, accountId: isCombined ? 'primary' : activeSpaceId };
       const result: any = await createEvent(payload);
       if (result.requiresConfirmation) {
         setConflict(result);
@@ -304,13 +295,9 @@ export function CalendarPage() {
               </Stack>
               <Grid container spacing={1.5} alignItems="flex-start">
                 <Grid item xs={12} md={3}>
-                  <TextField fullWidth select label="Create in account" value={createAccountId} onChange={(event) => setCreateAccountId(event.target.value)}>
-                    {accountOptions.map((account) => (
-                      <MenuItem key={account.id} value={account.id}>
-                        {account.label}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+                  <Alert severity="info" sx={{ height: '100%', alignItems: 'center' }}>
+                    Create in: {isCombined ? 'Primary account' : activeSpace?.email ?? 'Selected space'}
+                  </Alert>
                 </Grid>
                 <Grid item xs={12} md={3}>
                   <TextField fullWidth label="Meeting title" value={form.title} onChange={(event) => updateForm('title', event.target.value)} placeholder="Project discussion" />

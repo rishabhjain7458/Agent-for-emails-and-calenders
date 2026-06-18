@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import { RouterProvider } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { SpaceProvider } from './contexts/SpaceContext';
 import { router } from './router/router';
 import { theme } from './theme/theme';
 import './styles.css';
@@ -12,7 +13,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
-        <RouterProvider router={router} />
+        <SpaceProvider>
+          <RouterProvider router={router} />
+        </SpaceProvider>
       </AuthProvider>
     </ThemeProvider>
   </React.StrictMode>

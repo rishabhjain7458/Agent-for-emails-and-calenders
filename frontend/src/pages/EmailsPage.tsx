@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
-import { Alert, Box, Button, Card, CardContent, Chip, Divider, Drawer, Grid, LinearProgress, MenuItem, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Chip, Divider, Drawer, Grid, LinearProgress, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SearchIcon from '@mui/icons-material/Search';
@@ -8,9 +8,9 @@ import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import SaveIcon from '@mui/icons-material/Save';
 import { PageHeader } from '../components/PageHeader';
-import { archiveEmail, deleteEmail, getConnectedAccounts, getEmails, getEmailSummary } from '../api/endpoints';
-import { useAuth } from '../contexts/AuthContext';
-import type { ConnectedAccount, EmailMessage } from '../types';
+import { archiveEmail, deleteEmail, getEmails, getEmailSummary } from '../api/endpoints';
+import { useSpace } from '../contexts/SpaceContext';
+import type { EmailMessage } from '../types';
 
 const savedSearchKey = 'o-connect-email-saved-searches';
 
@@ -43,10 +43,9 @@ const queryOperators = [
 export function EmailsPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { user } = useAuth();
+  const { activeSpaceId, activeSpace, isCombined, setActiveSpaceId } = useSpace();
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get('query') || 'in:inbox';
-  const initialAccountId = searchParams.get('accountId') || 'all';
   const [query, setQuery] = useState(initialQuery);
   const [senderSearch, setSenderSearch] = useState('');
   const [subjectSearch, setSubjectSearch] = useState('');
@@ -57,8 +56,6 @@ export function EmailsPage() {
   const [savedSearches, setSavedSearches] = useState<{ name: string; query: string }[]>([]);
   const [filterOpen, setFilterOpen] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const [accountId, setAccountId] = useState(initialAccountId);
-  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [summary, setSummary] = useState('');
   const [loading, setLoading] = useState(false);
@@ -66,14 +63,13 @@ export function EmailsPage() {
   async function load(q = query) {
     setLoading(true);
     try {
-      setEmails(await getEmails(q, accountId));
+      setEmails(await getEmails(q, isCombined ? 'all' : activeSpaceId));
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    getConnectedAccounts().then(setAccounts);
     setSavedSearches(JSON.parse(localStorage.getItem(savedSearchKey) ?? '[]'));
     load(initialQuery);
   }, []);
@@ -85,19 +81,14 @@ export function EmailsPage() {
       setQuery(nextQuery);
       load(nextQuery);
     }
-    if (nextAccountId && nextAccountId !== accountId) {
-      setAccountId(nextAccountId);
+    if (nextAccountId) {
+      setActiveSpaceId(nextAccountId === 'all' ? 'combined' : nextAccountId);
     }
   }, [searchParams]);
 
   useEffect(() => {
     load(query);
-  }, [accountId]);
-
-  const accountOptions = [
-    { id: 'primary', email: user?.email ?? 'Primary account', label: `${user?.email ?? 'Primary account'} (primary)` },
-    ...accounts.map((account) => ({ id: account.id, email: account.email, label: account.email }))
-  ];
+  }, [activeSpaceId, isCombined]);
 
   function applyFilter(nextQuery: string) {
     setQuery(nextQuery);
@@ -200,14 +191,7 @@ export function EmailsPage() {
           </Stack>
         </Box>
       )}
-      <TextField select label="Search account" value={accountId} onChange={(event) => setAccountId(event.target.value)}>
-        <MenuItem value="all">All accounts</MenuItem>
-        {accountOptions.map((account) => (
-          <MenuItem key={account.id} value={account.id}>
-            {account.label}
-          </MenuItem>
-        ))}
-      </TextField>
+      <Alert severity="info">Space: {isCombined ? 'Combined workspace' : activeSpace?.email ?? 'Selected account'}</Alert>
       <Box>
         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Search by text</Typography>
         <Stack spacing={1.25}>
@@ -277,14 +261,7 @@ export function EmailsPage() {
       )}
       <Grid container spacing={1.5} alignItems="flex-start">
         <Grid item xs={12} md={3}>
-          <TextField fullWidth select label="Search account" value={accountId} onChange={(event) => setAccountId(event.target.value)}>
-            <MenuItem value="all">All accounts</MenuItem>
-            {accountOptions.map((account) => (
-              <MenuItem key={account.id} value={account.id}>
-                {account.label}
-              </MenuItem>
-            ))}
-          </TextField>
+          <Alert severity="info" sx={{ height: '100%', alignItems: 'center' }}>Space: {isCombined ? 'Combined' : activeSpace?.email ?? 'Selected account'}</Alert>
         </Grid>
         <Grid item xs={12} sm={4} md={3}>
           <TextField fullWidth label="Sender" value={senderSearch} onChange={(event) => setSenderSearch(event.target.value)} placeholder="name@example.com" />

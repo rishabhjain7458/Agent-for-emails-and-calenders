@@ -13,6 +13,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { PageHeader } from '../components/PageHeader';
 import { chat, getAssistantConversation, getAssistantConversations } from '../api/endpoints';
+import { useSpace } from '../contexts/SpaceContext';
 import type { AssistantConversation } from '../types';
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
@@ -199,6 +200,7 @@ function AssistantMessageContent({ content }: { content: string }) {
 
 export function AssistantPage() {
   const [searchParams] = useSearchParams();
+  const { activeSpaceId, activeSpace, isCombined } = useSpace();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [conversationId, setConversationId] = useState<string | undefined>();
@@ -302,7 +304,7 @@ export function AssistantPage() {
     setMessages((current) => [...current, { role: 'user', content: prompt }]);
     setLoading(true);
     try {
-      const response = await chat(prompt, conversationId);
+      const response = await chat(prompt, conversationId, activeSpaceId);
       setConversationId(response.conversation?.id);
       setMessages((current) => [...current, { role: 'assistant', content: typeof response.result === 'string' ? response.result : JSON.stringify(response.result, null, 2) }]);
       loadConversations();
@@ -392,10 +394,15 @@ export function AssistantPage() {
                 <Avatar sx={{ bgcolor: 'primary.main', boxShadow: '0 12px 26px rgba(37, 87, 214, 0.24)' }}><SmartToyIcon /></Avatar>
                 <Box>
                   <Typography variant="h6">Workspace Copilot</Typography>
-                  <Typography variant="body2" color="text.secondary">Mail, calendar, and tasks in one conversation.</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {isCombined ? 'Using every connected space.' : `Using ${activeSpace?.email ?? 'selected space'}.`}
+                  </Typography>
                 </Box>
               </Stack>
-              <Chip size="small" icon={<AutoAwesomeIcon />} label={conversationId ? 'Conversation saved' : 'New chat'} color={conversationId ? 'success' : 'default'} variant="outlined" sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }} />
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ justifyContent: { xs: 'flex-start', sm: 'flex-end' } }}>
+                <Chip size="small" icon={<AutoAwesomeIcon />} label={conversationId ? 'Conversation saved' : 'New chat'} color={conversationId ? 'success' : 'default'} variant="outlined" />
+                <Chip size="small" label={isCombined ? 'Combined workspace' : activeSpace?.email ?? 'Selected space'} color={isCombined ? 'default' : 'primary'} variant={isCombined ? 'outlined' : 'filled'} />
+              </Stack>
             </Stack>
             <Box className="scroll-thin" sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, p: { xs: 1.25, sm: 2 }, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: '#f8faff', minHeight: { xs: 300, sm: 340 }, maxHeight: { xs: 'none', md: 620 }, overflowY: 'auto' }}>
               {messages.length === 0 && (
@@ -425,7 +432,7 @@ export function AssistantPage() {
                 fullWidth
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder="Summarize unread work emails or create a meeting tomorrow at 2 PM"
+                placeholder={isCombined ? 'Ask across all spaces or create a primary-calendar meeting' : `Ask inside ${activeSpace?.email ?? 'this space'}`}
                 onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); } }}
                 helperText={speechMessage}
               />

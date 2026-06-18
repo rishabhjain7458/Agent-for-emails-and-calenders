@@ -6,17 +6,14 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import { PageHeader } from '../components/PageHeader';
-import { completeTask, createTask, getConnectedAccounts, getTasks, removeTask } from '../api/endpoints';
-import { useAuth } from '../contexts/AuthContext';
-import type { ConnectedAccount, Task } from '../types';
+import { completeTask, createTask, getTasks, removeTask } from '../api/endpoints';
+import { useSpace } from '../contexts/SpaceContext';
+import type { Task } from '../types';
 
 export function TasksPage() {
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { activeSpaceId, activeSpace, isCombined } = useSpace();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
-  const [selectedAccountId, setSelectedAccountId] = useState('all');
-  const [createAccountId, setCreateAccountId] = useState('primary');
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
@@ -30,7 +27,7 @@ export function TasksPage() {
     setLoading(true);
     setError('');
     try {
-      setTasks(await getTasks(selectedAccountId));
+      setTasks(await getTasks(isCombined ? 'all' : activeSpaceId));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Tasks could not be loaded.');
     } finally {
@@ -39,26 +36,17 @@ export function TasksPage() {
   }
 
   useEffect(() => {
-    getConnectedAccounts().then(setAccounts);
-  }, []);
-
-  useEffect(() => {
     const nextTitle = searchParams.get('title');
     if (nextTitle) setTitle(nextTitle);
   }, [searchParams]);
 
   useEffect(() => {
     load();
-  }, [selectedAccountId]);
-
-  const accountOptions = [
-    { id: 'primary', email: user?.email ?? 'Primary account', provider: user?.provider ?? 'google', label: `${user?.email ?? 'Primary account'} (primary)` },
-    ...accounts.map((account) => ({ id: account.id, email: account.email, provider: account.provider, label: account.email }))
-  ];
+  }, [activeSpaceId, isCombined]);
 
   async function submit() {
     if (!title.trim()) return;
-    await createTask({ title, dueDate, accountId: createAccountId });
+    await createTask({ title, dueDate, accountId: isCombined ? 'primary' : activeSpaceId });
     setTitle('');
     setDueDate('');
     load();
@@ -121,12 +109,10 @@ export function TasksPage() {
                   </Box>
                   <Chip size="small" icon={<PlaylistAddCheckIcon />} label="New" color="primary" variant="outlined" />
                 </Stack>
-                <TextField select label="Create in account" value={createAccountId} onChange={(event) => setCreateAccountId(event.target.value)}>
-                  {accountOptions.map((account) => (
-                    <MenuItem key={account.id} value={account.id}>
-                      {account.label}
-                    </MenuItem>
-                  ))}
+                <TextField select label="Create in space" value={isCombined ? 'primary' : activeSpaceId}>
+                  <MenuItem value={isCombined ? 'primary' : activeSpaceId}>
+                    {isCombined ? 'Primary account' : activeSpace?.email ?? 'Selected space'}
+                  </MenuItem>
                 </TextField>
                 <TextField label="Title" value={title} onChange={(event) => setTitle(event.target.value)} />
                 <TextField label="Due Date" type="date" value={dueDate} InputLabelProps={{ shrink: true }} onChange={(event) => setDueDate(event.target.value)} />
@@ -144,14 +130,7 @@ export function TasksPage() {
                   <Typography color="text.secondary" variant="body2">{loading ? 'Loading tasks...' : `${pendingTasks.length} pending, ${completedTasks.length} completed`}</Typography>
                 </Box>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }}>
-                  <TextField select size="small" label="View account" value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)} sx={{ minWidth: { sm: 220 } }}>
-                    <MenuItem value="all">All accounts</MenuItem>
-                    {accountOptions.map((account) => (
-                      <MenuItem key={account.id} value={account.id}>
-                        {account.label}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+                  <Chip label={isCombined ? 'Combined tasks' : activeSpace?.email ?? 'Selected space'} color="primary" variant="outlined" />
                   <CheckCircleIcon color="primary" />
                 </Stack>
               </Stack>

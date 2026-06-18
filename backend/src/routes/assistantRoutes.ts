@@ -9,5 +9,6 @@ assistantRoutes.get('/conversations', index);
 assistantRoutes.get('/conversations/:id', show);
 assistantRoutes.post('/chat', validateBody(Joi.object({
   message: Joi.string().required(),
-  conversationId: Joi.string().optional()
+  conversationId: Joi.string().optional(),
+  accountId: Joi.string().optional()
 })), chat);

@@ -105,8 +105,8 @@ export async function removeTask(id: string) {
   return data.data;
 }
 
-export async function chat(message: string, conversationId?: string) {
-  const { data } = await api.post('/assistant/chat', { message, conversationId });
+export async function chat(message: string, conversationId?: string, accountId?: string) {
+  const { data } = await api.post('/assistant/chat', { message, conversationId, accountId });
   return data.data;
 }
 

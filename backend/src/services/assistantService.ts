@@ -167,6 +167,11 @@ async function searchEmails(user: AuthUser, query: string, account: AccountConte
   return { ...primary, messages: primaryMessages };
 }
 
+async function searchEmailsAcrossAccounts(user: AuthUser, query: string, accounts: AccountContext[]) {
+  const results = await Promise.all(accounts.map((account) => searchEmails(user, query, account)));
+  return results.flatMap((result) => result.messages);
+}
+
 function findPendingAccountRequest(history: AssistantHistoryMessage[] = []) {
   const lastAssistantIndex = [...history].reverse().findIndex((entry) => entry.role === 'assistant');
   if (lastAssistantIndex < 0) return null;
@@ -238,7 +243,23 @@ async function listCalendarForAccount(user: AuthUser, account: AccountContext, p
     : listEventsForConnectedAccount(user.tenantId, user.id, account.accountId, account.email, params.timeMin, params.timeMax);
 }
 
-async function processAssistantMessage(user: AuthUser, message: string, forcedAccount?: AccountContext) {
+async function resolveAssistantScope(user: AuthUser, accountId?: string | null) {
+  if (!accountId) return { combined: false, account: undefined as AccountContext | undefined };
+  const normalized = accountId.trim().toLowerCase();
+  if (!normalized || normalized === 'combined' || normalized === 'all') {
+    return { combined: true, account: undefined as AccountContext | undefined };
+  }
+
+  const accounts = await listAccountContexts(user);
+  const account = accounts.find((candidate) => (
+    candidate.accountId === accountId ||
+    candidate.email.toLowerCase() === normalized ||
+    (normalized === 'primary' && candidate.isPrimary)
+  ));
+  return { combined: false, account };
+}
+
+async function processAssistantMessage(user: AuthUser, message: string, forcedAccount?: AccountContext, combinedScope = false) {
   const tenantId = user.tenantId;
   const userId = user.id;
   const intent = await classifyIntent(tenantId, userId, message);
@@ -250,7 +271,7 @@ async function processAssistantMessage(user: AuthUser, message: string, forcedAc
   const accounts = accountIntents.includes(intent.intent) ? await listAccountContexts(user) : [];
   const selectedAccount = forcedAccount ?? (accounts.length ? await resolveMentionedAccount(user, message) : undefined);
 
-  if (!forcedAccount && accounts.length > 1 && !selectedAccount) {
+  if (!forcedAccount && !combinedScope && accounts.length > 1 && !selectedAccount) {
     const action = intent.intent.startsWith('calendar')
       ? 'calendar'
       : intent.intent.startsWith('task')
@@ -285,17 +306,29 @@ async function processAssistantMessage(user: AuthUser, message: string, forcedAc
       };
     }
     case 'calendar_check':
+      if (combinedScope) {
+        const eventsByAccount = await Promise.all(accounts.map((item) => listCalendarForAccount(user, item, params)));
+        return { intent, result: eventsByAccount.flat() };
+      }
       return { intent, result: await listCalendarForAccount(user, account!, params) };
     case 'calendar_delete':
       await deleteEvent(userId, params.eventId);
       return { intent, result: 'Calendar event deleted.' };
     case 'email_search': {
       const query = normalizeInboxQuery(String(params.query ?? ''), message);
+      if (combinedScope) {
+        const messages = await searchEmailsAcrossAccounts(user, query, accounts);
+        return { intent, result: formatEmailSearch(messages, query) };
+      }
       const emails = await searchEmails(user, query, account!);
       return { intent, result: formatEmailSearch(emails.messages, query) };
     }
     case 'email_summary': {
       const query = normalizeInboxQuery(String(params.query ?? 'newer_than:14d'), message);
+      if (combinedScope) {
+        const messages = await searchEmailsAcrossAccounts(user, query, accounts);
+        return { intent, result: await generateEmailSummary(tenantId, userId, messages) };
+      }
       const emails = await searchEmails(user, query, account!);
       return { intent, result: await generateEmailSummary(tenantId, userId, emails.messages) };
     }
@@ -325,15 +358,19 @@ async function processAssistantMessage(user: AuthUser, message: string, forcedAc
       };
     }
     case 'task_list':
-      return { intent, result: formatTaskList(await listTasks(tenantId, account?.accountId)) };
+      return { intent, result: formatTaskList(await listTasks(tenantId, combinedScope ? undefined : account?.accountId)) };
     default:
       return { intent, result: await answerGeneralQuestion(tenantId, userId, message) };
   }
 }
 
-export async function handleAssistantMessage(user: AuthUser, message: string, history: AssistantHistoryMessage[] = []) {
+export async function handleAssistantMessage(user: AuthUser, message: string, history: AssistantHistoryMessage[] = [], accountId?: string | null) {
+  const scope = await resolveAssistantScope(user, accountId);
   const pendingOriginalRequest = findPendingAccountRequest(history);
   if (pendingOriginalRequest) {
+    if (scope.account || scope.combined) {
+      return processAssistantMessage(user, pendingOriginalRequest, scope.account, scope.combined);
+    }
     const accounts = await listAccountContexts(user);
     const selectedAccount = resolveAccountSelection(accounts, message);
     if (!selectedAccount) {
@@ -354,8 +391,8 @@ export async function handleAssistantMessage(user: AuthUser, message: string, hi
     const resumedMessage = isStandaloneRequest(message)
       ? message
       : `${pendingClarification.originalRequest}\n${message}`;
-    return processAssistantMessage(user, resumedMessage, selectedAccount);
+    return processAssistantMessage(user, resumedMessage, scope.account ?? selectedAccount, scope.combined);
   }
 
-  return processAssistantMessage(user, message);
+  return processAssistantMessage(user, message, scope.account, scope.combined);
 }
