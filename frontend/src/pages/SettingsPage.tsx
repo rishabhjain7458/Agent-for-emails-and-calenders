@@ -17,6 +17,7 @@ import { normalizeSocialUrl, type SocialPlatform } from '../utils/socialAccounts
 import { useSpace } from '../contexts/SpaceContext';
 
 type CardFormType = 'social' | 'news' | 'custom_link';
+type ZohoSmtpPreset = 'india' | 'global' | 'europe' | 'custom';
 
 function accountProviderLabel(provider: ConnectedAccount['provider']) {
   return provider === 'microsoft' ? 'Outlook' : provider === 'imap' ? 'IMAP Mail' : provider === 'zoho' ? 'Zoho Mail' : 'Gmail';
@@ -40,6 +41,7 @@ export function SettingsPage() {
   const [imapHost, setImapHost] = useState('imappro.zoho.in');
   const [smtpHost, setSmtpHost] = useState('smtp.zoho.in');
   const [smtpPort, setSmtpPort] = useState('465');
+  const [smtpPreset, setSmtpPreset] = useState<ZohoSmtpPreset>('india');
 
   useEffect(() => {
     getSettings().then((settings) => {
@@ -107,6 +109,24 @@ export function SettingsPage() {
     setImapPassword('');
     setImapName('');
     setNotice('Zoho mailbox connected through IMAP.');
+  }
+
+  function applySmtpPreset(nextPreset: ZohoSmtpPreset) {
+    setSmtpPreset(nextPreset);
+    if (nextPreset === 'india') {
+      setImapHost('imappro.zoho.in');
+      setSmtpHost('smtp.zoho.in');
+      return;
+    }
+    if (nextPreset === 'global') {
+      setImapHost('imappro.zoho.com');
+      setSmtpHost('smtp.zoho.com');
+      return;
+    }
+    if (nextPreset === 'europe') {
+      setImapHost('imappro.zoho.eu');
+      setSmtpHost('smtp.zoho.eu');
+    }
   }
 
   async function addDashboardCard() {
@@ -193,9 +213,15 @@ export function SettingsPage() {
                     <TextField size="small" label="Zoho email" value={imapEmail} onChange={(event) => setImapEmail(event.target.value)} />
                     <TextField size="small" label="App password" type="password" value={imapPassword} onChange={(event) => setImapPassword(event.target.value)} />
                     <TextField size="small" label="Display name" value={imapName} onChange={(event) => setImapName(event.target.value)} placeholder="Optional" />
+                    <TextField size="small" select label="Zoho server region" value={smtpPreset} onChange={(event) => applySmtpPreset(event.target.value as ZohoSmtpPreset)}>
+                      <MenuItem value="india">India (.in)</MenuItem>
+                      <MenuItem value="global">Global (.com)</MenuItem>
+                      <MenuItem value="europe">Europe (.eu)</MenuItem>
+                      <MenuItem value="custom">Custom hosts</MenuItem>
+                    </TextField>
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                      <TextField size="small" label="IMAP host" value={imapHost} onChange={(event) => setImapHost(event.target.value)} />
-                      <TextField size="small" label="SMTP host" value={smtpHost} onChange={(event) => setSmtpHost(event.target.value)} />
+                      <TextField size="small" label="IMAP host" value={imapHost} onChange={(event) => { setSmtpPreset('custom'); setImapHost(event.target.value); }} />
+                      <TextField size="small" label="SMTP host" value={smtpHost} onChange={(event) => { setSmtpPreset('custom'); setSmtpHost(event.target.value); }} />
                     </Stack>
                     <TextField size="small" select label="SMTP port" value={smtpPort} onChange={(event) => setSmtpPort(event.target.value)}>
                       <MenuItem value="465">465 SSL</MenuItem>

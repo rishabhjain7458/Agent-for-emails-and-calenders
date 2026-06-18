@@ -66,7 +66,7 @@ export async function refineReply(id: string, payload: { draft: string; instruct
 }
 
 export async function sendReply(payload: { messageId?: string; threadId: string; to: string; subject: string; body: string }) {
-  const { data } = await api.post('/emails/send-reply', payload);
+  const { data } = await api.post('/emails/send-reply', payload, { timeout: 25_000 });
   return data.data;
 }
 

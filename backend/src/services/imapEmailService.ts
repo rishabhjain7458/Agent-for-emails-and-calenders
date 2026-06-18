@@ -110,6 +110,35 @@ function compact(value?: string | null, limit = 220) {
   return normalized.length > limit ? `${normalized.slice(0, limit - 1).trim()}...` : normalized;
 }
 
+function uniqueSmtpCandidates(config: ImapConfig) {
+  const configured = { host: config.smtpHost, port: config.smtpPort, secure: config.smtpSecure };
+  const alternatePort = configured.port === 465
+    ? { port: 587, secure: false }
+    : { port: 465, secure: true };
+  const hostCandidates = [
+    configured.host,
+    configured.host.replace(/^smtp\./i, 'smtppro.'),
+    'smtp.zoho.in',
+    'smtppro.zoho.in',
+    'smtp.zoho.com',
+    'smtppro.zoho.com',
+    'smtp.zoho.eu',
+    'smtppro.zoho.eu'
+  ].filter(Boolean);
+  const portCandidates = [
+    { port: configured.port, secure: configured.secure },
+    alternatePort
+  ];
+
+  return hostCandidates.flatMap((host) => portCandidates.map((port) => ({
+    host,
+    port: port.port,
+    secure: port.secure
+  }))).filter((candidate, index, all) => (
+    all.findIndex((item) => item.host === candidate.host && item.port === candidate.port) === index
+  ));
+}
+
 function matches(message: EmailMessage, parsed: ReturnType<typeof parseQuery>) {
   const sender = message.sender.toLowerCase();
   const subject = message.subject.toLowerCase();
@@ -245,51 +274,56 @@ export async function deleteImapEmailForConnectedAccount(tenantId: string, userI
 
 export async function sendImapReplyForConnectedAccount(tenantId: string, userId: string, accountId: string, input: { to: string; subject: string; body: string }) {
   const account = await getImapAccount(tenantId, userId, accountId);
-  const hostCandidates = Array.from(new Set([
-    account.config.smtpHost,
-    account.config.smtpHost.replace(/^smtp\./i, 'smtppro.'),
-    'smtp.zoho.in',
-    'smtppro.zoho.in',
-    'smtp.zoho.com',
-    'smtppro.zoho.com'
-  ].filter(Boolean)));
-  const configuredPort = { port: account.config.smtpPort, secure: account.config.smtpSecure };
-  const portCandidates = [
-    configuredPort,
-    { port: 465, secure: true },
-    { port: 587, secure: false }
-  ].filter((candidate, index, all) => all.findIndex((item) => item.port === candidate.port && item.secure === candidate.secure) === index);
-  const failures: string[] = [];
+  const candidates = uniqueSmtpCandidates(account.config);
 
-  for (const host of hostCandidates) {
-    for (const candidate of portCandidates) {
-      const transport = nodemailer.createTransport({
-        host,
-        port: candidate.port,
-        secure: candidate.secure,
-        requireTLS: !candidate.secure,
-        connectionTimeout: 12_000,
-        greetingTimeout: 12_000,
-        socketTimeout: 20_000,
-        auth: { user: account.email, pass: account.password }
-      });
+  const makeTransport = (candidate: { host: string; port: number; secure: boolean }) => nodemailer.createTransport({
+    host: candidate.host,
+    port: candidate.port,
+    secure: candidate.secure,
+    requireTLS: !candidate.secure,
+    tls: { servername: candidate.host },
+    connectionTimeout: 7_000,
+    greetingTimeout: 7_000,
+    socketTimeout: 10_000,
+    auth: { user: account.email, pass: account.password }
+  });
+  const withTimeout = async <T>(promise: Promise<T>, ms: number, label: string) => Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms);
+    })
+  ]);
 
-      try {
-        await transport.verify();
-        await transport.sendMail({
-          from: { address: account.email },
-          to: input.to,
-          subject: `Re: ${input.subject.replace(/^Re:\s*/i, '')}`,
-          text: input.body
-        });
-        return { sent: true, smtpHost: host, smtpPort: candidate.port };
-      } catch (error: any) {
-        failures.push(`${host}:${candidate.port} ${error?.code ?? ''} ${error?.responseCode ?? ''} ${error?.message ?? 'failed'}`.replace(/\s+/g, ' ').trim());
-      } finally {
-        transport.close();
-      }
+  const attempts = candidates.map(async (candidate) => {
+    const transport = makeTransport(candidate);
+    try {
+      await withTimeout(transport.verify(), 8_000, `${candidate.host}:${candidate.port} verify`);
+      return candidate;
+    } catch (error: any) {
+      const message = `${candidate.host}:${candidate.port} ${error?.code ?? ''} ${error?.responseCode ?? ''} ${error?.response ?? error?.message ?? 'failed'}`.replace(/\s+/g, ' ').trim();
+      throw new Error(message);
+    } finally {
+      transport.close();
     }
-  }
+  });
+  const verified = await Promise.any(attempts).catch((error: any) => {
+    const errors = error?.errors ?? [];
+    const detail = errors.slice(0, 4).map((item: any) => item?.message ?? String(item)).join(' | ');
+    throw new HttpError(502, `Could not connect to SMTP for ${account.email}. ${detail || error?.message || 'Check SMTP is enabled, use a Zoho app password, and try SMTP port 587 TLS.'}`);
+  });
 
-  throw new HttpError(502, `Could not send through Zoho SMTP. Tried ${failures.slice(0, 4).join(' | ')}. Check SMTP is enabled and use a Zoho app password.`);
+  const transport = makeTransport(verified);
+  try {
+    await withTimeout(transport.sendMail({
+      from: { address: account.email },
+      to: input.to,
+      subject: `Re: ${input.subject.replace(/^Re:\s*/i, '')}`,
+      text: input.body
+    }), 12_000, `${verified.host}:${verified.port} send`);
+    return { sent: true, smtpHost: verified.host, smtpPort: verified.port };
+  } catch (error: any) {
+    throw new HttpError(502, `SMTP connected but sending failed: ${error?.response ?? error?.message ?? 'Unknown SMTP error'}`);
+  } finally {
+    transport.close();
+  }
 }
