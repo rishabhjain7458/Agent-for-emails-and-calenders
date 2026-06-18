@@ -11,6 +11,8 @@ import InboxIcon from '@mui/icons-material/Inbox';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { PageHeader } from '../components/PageHeader';
 import { completeTask, getEmails, getEvents, getTasks } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
@@ -18,6 +20,12 @@ import type { CalendarEvent, EmailMessage, Task } from '../types';
 import { loadSocialAccounts, type SocialAccount } from '../utils/socialAccounts';
 
 const accountPalette = ['#2557d6', '#0f9f8f', '#b86b00', '#8b5cf6', '#e0476b', '#168053'];
+const dashboardCardOrderKey = 'o-connect-dashboard-card-order';
+
+type DashboardCard =
+  | { id: string; kind: 'combined' }
+  | { id: string; kind: 'space'; account: ReturnType<typeof useSpace>['spaces'][number] & { color: string; emails: number; tasks: number } }
+  | { id: string; kind: 'social'; account: SocialAccount };
 
 function eventStart(event: CalendarEvent) {
   const value = event.start?.dateTime ?? event.start?.date;
@@ -68,6 +76,24 @@ function metricLabel(value: number, singular: string, plural = `${singular}s`) {
   return `${value} ${value === 1 ? singular : plural}`;
 }
 
+function loadDashboardCardOrder() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(dashboardCardOrderKey) ?? '[]');
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDashboardCardOrder(order: string[]) {
+  localStorage.setItem(dashboardCardOrderKey, JSON.stringify(order));
+}
+
+function mergeCardOrder(ids: string[], order: string[]) {
+  const uniqueOrder = order.filter((id, index) => ids.includes(id) && order.indexOf(id) === index);
+  return [...uniqueOrder, ...ids.filter((id) => !uniqueOrder.includes(id))];
+}
+
 export function DashboardPage() {
   const { activeSpaceId, setActiveSpaceId, isCombined, spaces } = useSpace();
   const [emails, setEmails] = useState<EmailMessage[]>([]);
@@ -76,6 +102,7 @@ export function DashboardPage() {
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
+  const [cardOrder, setCardOrder] = useState<string[]>(() => loadDashboardCardOrder());
 
   async function loadDashboard() {
     setLoading(true);
@@ -126,6 +153,26 @@ export function DashboardPage() {
     };
   }), [accountColors, emails, events, pendingTasks, spaces]);
 
+  const dashboardCards = useMemo<DashboardCard[]>(() => [
+    { id: 'combined', kind: 'combined' },
+    ...accountSpaces.map((account) => ({ id: `space:${account.id}`, kind: 'space' as const, account })),
+    ...socialAccounts.map((account) => ({ id: `social:${account.id}`, kind: 'social' as const, account }))
+  ], [accountSpaces, socialAccounts]);
+
+  useEffect(() => {
+    const ids = dashboardCards.map((card) => card.id);
+    setCardOrder((current) => {
+      const next = mergeCardOrder(ids, current.length ? current : loadDashboardCardOrder());
+      saveDashboardCardOrder(next);
+      return next;
+    });
+  }, [dashboardCards]);
+
+  const orderedDashboardCards = useMemo(() => {
+    const order = mergeCardOrder(dashboardCards.map((card) => card.id), cardOrder);
+    return [...dashboardCards].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  }, [cardOrder, dashboardCards]);
+
   const selectedSpace = isCombined ? null : accountSpaces.find((account) => account.id === activeSpaceId) ?? accountSpaces[0];
   const selectedSpaceColor = selectedSpace?.color ?? '#2557d6';
   const scopedEmails = selectedSpace
@@ -158,6 +205,17 @@ export function DashboardPage() {
     loadDashboard();
   }
 
+  function moveDashboardCard(id: string, direction: -1 | 1) {
+    const ids = orderedDashboardCards.map((card) => card.id);
+    const currentIndex = ids.indexOf(id);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= ids.length) return;
+    const next = [...ids];
+    [next[currentIndex], next[nextIndex]] = [next[nextIndex], next[currentIndex]];
+    setCardOrder(next);
+    saveDashboardCardOrder(next);
+  }
+
   return (
     <>
       <PageHeader
@@ -173,53 +231,106 @@ export function DashboardPage() {
           <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
             <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} alignItems={{ xs: 'stretch', lg: 'center' }}>
               <Box sx={{ minWidth: { lg: 260 } }}>
-                <Typography variant="h5" sx={{ fontWeight: 900 }}>Spaces</Typography>
-                <Typography color="text.secondary" variant="body2">Choose once. Every page follows it.</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 900 }}>Cards</Typography>
+                <Typography color="text.secondary" variant="body2">Email spaces and social profiles in one sequence.</Typography>
               </Box>
               <Box className="scroll-thin" sx={{ display: 'flex', gap: 1.25, overflowX: 'auto', pb: 0.5 }}>
-                <Box
-                  component="button"
-                  type="button"
-                  onClick={() => setActiveSpaceId('combined')}
-                  sx={{
-                    bgcolor: isCombined ? 'primary.main' : '#ffffff',
-                    border: '1px solid',
-                    borderColor: isCombined ? 'primary.main' : 'divider',
-                    borderRadius: 2,
-                    boxShadow: isCombined ? '0 18px 36px rgba(37,87,214,0.22)' : 'none',
-                    color: isCombined ? '#fff' : 'text.primary',
-                    cursor: 'pointer',
-                    flex: '0 0 250px',
-                    minHeight: 132,
-                    p: 1.5,
-                    textAlign: 'left',
-                    transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
-                    '&:hover': { transform: { sm: 'translateY(-2px)' }, borderColor: 'primary.main' }
-                  }}
-                >
-                  <Stack spacing={1.25}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <LayersIcon />
-                      {isCombined && <Chip size="small" label="Active" sx={{ bgcolor: '#fff', color: 'primary.main', fontWeight: 800 }} />}
-                    </Stack>
-                    <Box>
-                      <Typography sx={{ fontWeight: 900 }}>Combined</Typography>
-                      <Typography variant="caption" sx={{ opacity: 0.78 }}>All spaces together</Typography>
-                    </Box>
-                    <Typography variant="body2" sx={{ fontWeight: 850 }}>
-                      {metricLabel(emails.length, 'email')} · {metricLabel(pendingTasks.length, 'task')}
-                    </Typography>
-                  </Stack>
-                </Box>
+                {orderedDashboardCards.map((card, index) => {
+                  const isFirst = index === 0;
+                  const isLast = index === orderedDashboardCards.length - 1;
+                  if (card.kind === 'combined') {
+                    return (
+                      <Box
+                        key={card.id}
+                        sx={{
+                          bgcolor: isCombined ? 'primary.main' : '#ffffff',
+                          border: '1px solid',
+                          borderColor: isCombined ? 'primary.main' : 'divider',
+                          borderRadius: 2,
+                          boxShadow: isCombined ? '0 18px 36px rgba(37,87,214,0.22)' : 'none',
+                          color: isCombined ? '#fff' : 'text.primary',
+                          flex: '0 0 270px',
+                          minHeight: 164,
+                          p: 1.5,
+                          transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
+                          '&:hover': { transform: { sm: 'translateY(-2px)' }, borderColor: 'primary.main' }
+                        }}
+                      >
+                        <Stack spacing={1.25} sx={{ height: '100%' }}>
+                          <Box component="button" type="button" onClick={() => setActiveSpaceId('combined')} sx={{ all: 'unset', cursor: 'pointer', display: 'block' }}>
+                            <Stack spacing={1.25}>
+                              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                <LayersIcon />
+                                {isCombined && <Chip size="small" label="Active" sx={{ bgcolor: '#fff', color: 'primary.main', fontWeight: 800 }} />}
+                              </Stack>
+                              <Box>
+                                <Typography sx={{ fontWeight: 900 }}>Combined</Typography>
+                                <Typography variant="caption" sx={{ opacity: 0.78 }}>All spaces together</Typography>
+                              </Box>
+                              <Typography variant="body2" sx={{ fontWeight: 850 }}>
+                                {metricLabel(emails.length, 'email')} · {metricLabel(pendingTasks.length, 'task')}
+                              </Typography>
+                            </Stack>
+                          </Box>
+                          <Stack direction="row" spacing={1} sx={{ mt: 'auto' }}>
+                            <Button size="small" variant={isCombined ? 'contained' : 'outlined'} disabled={isFirst} startIcon={<ArrowBackIcon />} onClick={() => moveDashboardCard(card.id, -1)}>Left</Button>
+                            <Button size="small" variant={isCombined ? 'contained' : 'outlined'} disabled={isLast} endIcon={<ArrowForwardIcon />} onClick={() => moveDashboardCard(card.id, 1)}>Right</Button>
+                          </Stack>
+                        </Stack>
+                      </Box>
+                    );
+                  }
 
-                {accountSpaces.map((account) => {
+                  if (card.kind === 'social') {
+                    const instagram = card.account.platform === 'instagram';
+                    return (
+                      <Box
+                        key={card.id}
+                        sx={{
+                          bgcolor: '#fff',
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          borderRadius: 2,
+                          color: 'inherit',
+                          flex: '0 0 270px',
+                          minHeight: 164,
+                          p: 1.5,
+                          transition: 'transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
+                          '&:hover': { borderColor: instagram ? '#c026d3' : '#2563eb', boxShadow: '0 16px 32px rgba(24,35,56,0.09)', transform: { sm: 'translateY(-2px)' } }
+                        }}
+                      >
+                        <Stack spacing={1.25} sx={{ height: '100%' }}>
+                          <Box component="a" href={card.account.url} target="_blank" rel="noreferrer" sx={{ color: 'inherit', textDecoration: 'none' }}>
+                            <Stack spacing={1.25}>
+                              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                                <Box sx={{ bgcolor: instagram ? '#fdf2f8' : '#eff6ff', borderRadius: 1.5, color: instagram ? '#c026d3' : '#2563eb', display: 'grid', height: 42, placeItems: 'center', width: 42 }}>
+                                  {instagram ? <InstagramIcon /> : <FacebookIcon />}
+                                </Box>
+                                <Stack direction="row" spacing={0.75} alignItems="center">
+                                  <Chip size="small" label={`#${index + 1}`} sx={{ fontWeight: 850 }} />
+                                  <OpenInNewIcon fontSize="small" color="action" />
+                                </Stack>
+                              </Stack>
+                              <Box sx={{ minWidth: 0 }}>
+                                <Typography sx={{ fontWeight: 900 }} noWrap>{card.account.label}</Typography>
+                                <Typography variant="caption" color="text.secondary" noWrap>{instagram ? 'Instagram' : 'Facebook'}</Typography>
+                              </Box>
+                            </Stack>
+                          </Box>
+                          <Stack direction="row" spacing={1} sx={{ mt: 'auto' }}>
+                            <Button size="small" variant="outlined" disabled={isFirst} startIcon={<ArrowBackIcon />} onClick={() => moveDashboardCard(card.id, -1)}>Left</Button>
+                            <Button size="small" variant="outlined" disabled={isLast} endIcon={<ArrowForwardIcon />} onClick={() => moveDashboardCard(card.id, 1)}>Right</Button>
+                          </Stack>
+                        </Stack>
+                      </Box>
+                    );
+                  }
+
+                  const account = card.account;
                   const active = activeSpaceId === account.id;
                   return (
                     <Box
-                      component="button"
-                      key={account.id}
-                      type="button"
-                      onClick={() => setActiveSpaceId(account.id)}
+                      key={card.id}
                       sx={{
                         bgcolor: active ? `${account.color}10` : '#ffffff',
                         border: '1px solid',
@@ -227,9 +338,8 @@ export function DashboardPage() {
                         borderRadius: 2,
                         boxShadow: active ? `0 18px 36px ${account.color}22` : 'none',
                         color: 'text.primary',
-                        cursor: 'pointer',
                         flex: '0 0 286px',
-                        minHeight: 132,
+                        minHeight: 164,
                         overflow: 'hidden',
                         p: 1.5,
                         position: 'relative',
@@ -245,18 +355,29 @@ export function DashboardPage() {
                         }
                       }}
                     >
-                      <Stack spacing={1.25} sx={{ pl: 0.5 }}>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center">
-                          <Chip size="small" label={providerLabel(account.provider)} variant="outlined" sx={{ borderColor: account.color, color: account.color, fontWeight: 800 }} />
-                          {active && <Chip size="small" label="Active" sx={{ bgcolor: account.color, color: '#fff', fontWeight: 800 }} />}
-                        </Stack>
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography sx={{ fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.email}</Typography>
-                          <Typography variant="caption" color="text.secondary">{account.isPrimary ? 'Primary account' : account.name}</Typography>
+                      <Stack spacing={1.25} sx={{ pl: 0.5, height: '100%' }}>
+                        <Box component="button" type="button" onClick={() => setActiveSpaceId(account.id)} sx={{ all: 'unset', cursor: 'pointer', display: 'block' }}>
+                          <Stack spacing={1.25}>
+                            <Stack direction="row" justifyContent="space-between" alignItems="center">
+                              <Chip size="small" label={providerLabel(account.provider)} variant="outlined" sx={{ borderColor: account.color, color: account.color, fontWeight: 800 }} />
+                              <Stack direction="row" spacing={0.75} alignItems="center">
+                                <Chip size="small" label={`#${index + 1}`} sx={{ fontWeight: 850 }} />
+                                {active && <Chip size="small" label="Active" sx={{ bgcolor: account.color, color: '#fff', fontWeight: 800 }} />}
+                              </Stack>
+                            </Stack>
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography sx={{ fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.email}</Typography>
+                              <Typography variant="caption" color="text.secondary">{account.isPrimary ? 'Primary account' : account.name}</Typography>
+                            </Box>
+                            <Typography variant="body2" sx={{ color: account.color, fontWeight: 900 }}>
+                              {metricLabel(account.emails, 'email')} · {metricLabel(account.tasks, 'task')}
+                            </Typography>
+                          </Stack>
                         </Box>
-                        <Typography variant="body2" sx={{ color: account.color, fontWeight: 900 }}>
-                          {metricLabel(account.emails, 'email')} · {metricLabel(account.tasks, 'task')}
-                        </Typography>
+                        <Stack direction="row" spacing={1} sx={{ mt: 'auto' }}>
+                          <Button size="small" variant="outlined" disabled={isFirst} startIcon={<ArrowBackIcon />} onClick={() => moveDashboardCard(card.id, -1)}>Left</Button>
+                          <Button size="small" variant="outlined" disabled={isLast} endIcon={<ArrowForwardIcon />} onClick={() => moveDashboardCard(card.id, 1)}>Right</Button>
+                        </Stack>
                       </Stack>
                     </Box>
                   );
@@ -374,68 +495,6 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="premium-panel">
-          <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
-            <Stack spacing={1.5}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 900 }}>Social Media</Typography>
-                  <Typography color="text.secondary" variant="body2">Quick access to connected profile cards.</Typography>
-                </Box>
-                <Button href="/settings" variant="outlined" size="small" startIcon={<AddIcon />}>Manage</Button>
-              </Stack>
-              <Box className="scroll-thin" sx={{ display: 'flex', gap: 1.25, overflowX: 'auto', pb: 0.5 }}>
-                {socialAccounts.map((account, index) => {
-                  const instagram = account.platform === 'instagram';
-                  return (
-                    <Box
-                      key={account.id}
-                      component="a"
-                      href={account.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      sx={{
-                        bgcolor: '#fff',
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 2,
-                        color: 'inherit',
-                        flex: '0 0 230px',
-                        p: 1.5,
-                        textDecoration: 'none',
-                        transition: 'transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
-                        '&:hover': { borderColor: instagram ? '#c026d3' : '#2563eb', boxShadow: '0 16px 32px rgba(24,35,56,0.09)', transform: { sm: 'translateY(-2px)' } }
-                      }}
-                    >
-                      <Stack spacing={1.25}>
-                        <Stack direction="row" alignItems="center" justifyContent="space-between">
-                          <Box sx={{ bgcolor: instagram ? '#fdf2f8' : '#eff6ff', borderRadius: 1.5, color: instagram ? '#c026d3' : '#2563eb', display: 'grid', height: 42, placeItems: 'center', width: 42 }}>
-                            {instagram ? <InstagramIcon /> : <FacebookIcon />}
-                          </Box>
-                          <Stack direction="row" spacing={0.75} alignItems="center">
-                            <Chip size="small" label={`#${index + 1}`} sx={{ fontWeight: 850 }} />
-                            <OpenInNewIcon fontSize="small" color="action" />
-                          </Stack>
-                        </Stack>
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography sx={{ fontWeight: 900 }} noWrap>{account.label}</Typography>
-                          <Typography variant="caption" color="text.secondary" noWrap>{account.platform === 'instagram' ? 'Instagram' : 'Facebook'}</Typography>
-                        </Box>
-                      </Stack>
-                    </Box>
-                  );
-                })}
-                {socialAccounts.length === 0 && (
-                  <Box sx={{ bgcolor: '#fff', border: '1px dashed', borderColor: 'divider', borderRadius: 2, flex: '1 1 260px', p: 2 }}>
-                    <Typography sx={{ fontWeight: 850 }}>No social cards yet</Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Add Instagram or Facebook profiles from Settings.</Typography>
-                    <Button href="/settings" variant="contained" size="small" startIcon={<AddIcon />}>Add social card</Button>
-                  </Box>
-                )}
-              </Box>
-            </Stack>
-          </CardContent>
-        </Card>
       </Stack>
     </>
   );
