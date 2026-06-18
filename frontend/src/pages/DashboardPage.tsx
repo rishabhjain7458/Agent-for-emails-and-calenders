@@ -12,6 +12,7 @@ import BoltIcon from '@mui/icons-material/Bolt';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import LayersIcon from '@mui/icons-material/Layers';
+import InboxIcon from '@mui/icons-material/Inbox';
 import { PageHeader } from '../components/PageHeader';
 import { StatCard } from '../components/StatCard';
 import { completeTask, getConnectedAccounts, getEmails, getEvents, getTasks } from '../api/endpoints';
@@ -83,6 +84,7 @@ export function DashboardPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
+  const [selectedSpaceId, setSelectedSpaceId] = useState('primary');
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -151,6 +153,22 @@ export function DashboardPage() {
     };
   }), [accountColors, accountOptions, emails, events, pendingTasks]);
 
+  const selectedSpace = accountSpaces.find((account) => account.id === selectedSpaceId) ?? accountSpaces[0];
+  const selectedSpaceEmails = selectedSpace
+    ? emails.filter((email) => itemAccountKey(email) === selectedSpace.id || email.accountEmail === selectedSpace.email).filter(isLikelyImportantSender).slice(0, 5)
+    : [];
+  const selectedSpaceEvents = selectedSpace
+    ? events
+      .filter((event) => itemAccountKey(event) === selectedSpace.id || event.accountEmail === selectedSpace.email)
+      .map((event) => ({ event, starts: eventStart(event) }))
+      .filter((item): item is { event: CalendarEvent; starts: Date } => item.starts instanceof Date)
+      .sort((a, b) => a.starts.getTime() - b.starts.getTime())
+      .slice(0, 5)
+    : [];
+  const selectedSpaceTasks = selectedSpace
+    ? pendingTasks.filter((task) => itemAccountKey(task) === selectedSpace.id || task.account_email === selectedSpace.email).slice(0, 5)
+    : [];
+
   const briefingItems = [
     `${priorityEmails.length} priority unread email${priorityEmails.length === 1 ? '' : 's'}`,
     meeting ? nextMeetingText(events) : 'No upcoming meeting loaded',
@@ -183,24 +201,34 @@ export function DashboardPage() {
               <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.5} sx={{ mb: 2 }}>
                 <Box>
                   <Typography variant="h6">Account Spaces</Typography>
-                  <Typography color="text.secondary" variant="body2">One clean space for each connected account. Calendar stays combined across all accounts.</Typography>
+                  <Typography color="text.secondary" variant="body2">Select an account workspace. Each space shows its own mail, meetings, and tasks here; calendar remains combined.</Typography>
                 </Box>
                 <Button href="/calendar" variant="contained" startIcon={<LayersIcon />}>Open Combined Calendar</Button>
               </Stack>
               <Grid container spacing={1.5}>
                 {accountSpaces.map((account) => (
-                  <Grid item xs={12} sm={6} lg={3} key={account.id}>
+                  <Grid item xs={12} md={6} xl={4} key={account.id}>
                     <Box
+                      component="button"
+                      type="button"
+                      onClick={() => setSelectedSpaceId(account.id)}
                       sx={{
-                        bgcolor: '#fff',
+                        bgcolor: selectedSpace?.id === account.id ? 'rgba(255,255,255,0.98)' : '#fff',
                         border: '1px solid',
-                        borderColor: 'divider',
+                        borderColor: selectedSpace?.id === account.id ? account.color : 'divider',
                         borderRadius: 2,
-                        boxShadow: '0 12px 28px rgba(24, 35, 56, 0.07)',
+                        boxShadow: selectedSpace?.id === account.id ? `0 20px 42px ${account.color}22` : '0 12px 28px rgba(24, 35, 56, 0.07)',
+                        color: 'text.primary',
+                        cursor: 'pointer',
                         height: '100%',
+                        minHeight: 190,
                         overflow: 'hidden',
-                        p: 1.5,
+                        p: 2,
                         position: 'relative',
+                        textAlign: 'left',
+                        transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
+                        width: '100%',
+                        '&:hover': { borderColor: account.color, boxShadow: `0 20px 42px ${account.color}1f`, transform: { sm: 'translateY(-2px)' } },
                         '&::before': {
                           bgcolor: account.color,
                           content: '""',
@@ -212,38 +240,37 @@ export function DashboardPage() {
                         }
                       }}
                     >
-                      <Stack spacing={1.4}>
+                      <Stack spacing={1.75} sx={{ height: '100%' }}>
                         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-                          <Box sx={{ bgcolor: `${account.color}18`, borderRadius: 1.5, color: account.color, display: 'grid', height: 38, placeItems: 'center', width: 38 }}>
+                          <Box sx={{ bgcolor: `${account.color}18`, borderRadius: 1.5, color: account.color, display: 'grid', height: 44, placeItems: 'center', width: 44 }}>
                             <MailIcon fontSize="small" />
                           </Box>
-                          <Chip size="small" label={providerLabel(account.provider)} variant="outlined" sx={{ borderColor: account.color, color: account.color }} />
+                          <Stack direction="row" spacing={1}>
+                            {selectedSpace?.id === account.id && <Chip size="small" label="Active" sx={{ bgcolor: account.color, color: '#fff' }} />}
+                            <Chip size="small" label={providerLabel(account.provider)} variant="outlined" sx={{ borderColor: account.color, color: account.color }} />
+                          </Stack>
                         </Stack>
                         <Box sx={{ minWidth: 0 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 850 }} noWrap>{account.email}</Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 900, overflowWrap: 'anywhere' }}>{account.email}</Typography>
                           <Typography variant="caption" color="text.secondary" noWrap>{account.isPrimary ? 'Primary account' : account.name}</Typography>
                         </Box>
                         <Grid container spacing={1}>
                           <Grid item xs={4}>
-                            <Typography variant="h6" sx={{ color: account.color }}>{account.emails}</Typography>
+                            <Typography variant="h4" sx={{ color: account.color, fontWeight: 900 }}>{account.emails}</Typography>
                             <Typography variant="caption" color="text.secondary">Unread</Typography>
                           </Grid>
                           <Grid item xs={4}>
-                            <Typography variant="h6" sx={{ color: account.color }}>{account.events}</Typography>
+                            <Typography variant="h4" sx={{ color: account.color, fontWeight: 900 }}>{account.events}</Typography>
                             <Typography variant="caption" color="text.secondary">Events</Typography>
                           </Grid>
                           <Grid item xs={4}>
-                            <Typography variant="h6" sx={{ color: account.color }}>{account.tasks}</Typography>
+                            <Typography variant="h4" sx={{ color: account.color, fontWeight: 900 }}>{account.tasks}</Typography>
                             <Typography variant="caption" color="text.secondary">Tasks</Typography>
                           </Grid>
                         </Grid>
                         <Typography variant="caption" color="text.secondary" sx={{ minHeight: 20 }}>
                           {account.nextEvent ? `Next: ${formatMeetingTime(account.nextEvent)}` : 'No upcoming meeting'}
                         </Typography>
-                        <Stack direction="row" spacing={1}>
-                          <Button size="small" href={`/emails?accountId=${encodeURIComponent(account.id)}`}>Mail</Button>
-                          <Button size="small" href="/calendar">Calendar</Button>
-                        </Stack>
                       </Stack>
                     </Box>
                   </Grid>
@@ -252,6 +279,80 @@ export function DashboardPage() {
             </CardContent>
           </Card>
         </Grid>
+        {selectedSpace && (
+          <Grid item xs={12}>
+            <Card className="premium-panel" sx={{ borderColor: selectedSpace.color }}>
+              <CardContent>
+                <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.5} sx={{ mb: 2 }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ overflowWrap: 'anywhere' }}>{selectedSpace.email}</Typography>
+                    <Typography color="text.secondary" variant="body2">Workspace for {providerLabel(selectedSpace.provider)} mail, account-specific meetings, and tasks.</Typography>
+                  </Box>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                    <Button variant="outlined" href={`/emails?accountId=${encodeURIComponent(selectedSpace.id)}`} startIcon={<InboxIcon />}>Open Space Inbox</Button>
+                    <Button variant="contained" href="/calendar" startIcon={<LayersIcon />}>Combined Calendar</Button>
+                  </Stack>
+                </Stack>
+                <Grid container spacing={1.5}>
+                  <Grid item xs={12} lg={4}>
+                    <Box sx={{ bgcolor: '#fff', border: '1px solid', borderColor: 'divider', borderRadius: 2, height: '100%', p: 1.5 }}>
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                        <MailIcon sx={{ color: selectedSpace.color }} />
+                        <Typography variant="subtitle1" sx={{ fontWeight: 850 }}>Space Inbox</Typography>
+                      </Stack>
+                      <Stack divider={<Divider flexItem />} spacing={0}>
+                        {selectedSpaceEmails.map((email) => (
+                          <Box key={email.id} sx={{ py: 1.1 }}>
+                            <Typography sx={{ fontWeight: 800, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{email.subject}</Typography>
+                            <Typography variant="caption" color="text.secondary" noWrap>{email.sender}</Typography>
+                          </Box>
+                        ))}
+                        {selectedSpaceEmails.length === 0 && <Alert severity="info">No priority unread mail in this space.</Alert>}
+                      </Stack>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} lg={4}>
+                    <Box sx={{ bgcolor: '#fff', border: '1px solid', borderColor: 'divider', borderRadius: 2, height: '100%', p: 1.5 }}>
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                        <EventIcon sx={{ color: selectedSpace.color }} />
+                        <Typography variant="subtitle1" sx={{ fontWeight: 850 }}>Space Calendar</Typography>
+                      </Stack>
+                      <Stack divider={<Divider flexItem />} spacing={0}>
+                        {selectedSpaceEvents.map(({ event }) => (
+                          <Box key={event.id} sx={{ py: 1.1 }}>
+                            <Typography sx={{ fontWeight: 800, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{event.summary ?? event.subject ?? '(No title)'}</Typography>
+                            <Typography variant="caption" color="text.secondary">{formatMeetingTime(event)}</Typography>
+                          </Box>
+                        ))}
+                        {selectedSpaceEvents.length === 0 && <Alert severity="info">No meetings loaded for this space.</Alert>}
+                      </Stack>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} lg={4}>
+                    <Box sx={{ bgcolor: '#fff', border: '1px solid', borderColor: 'divider', borderRadius: 2, height: '100%', p: 1.5 }}>
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                        <TaskAltIcon sx={{ color: selectedSpace.color }} />
+                        <Typography variant="subtitle1" sx={{ fontWeight: 850 }}>Space Tasks</Typography>
+                      </Stack>
+                      <Stack divider={<Divider flexItem />} spacing={0}>
+                        {selectedSpaceTasks.map((task) => (
+                          <Box key={task.id} sx={{ alignItems: 'flex-start', display: 'flex', gap: 1, py: 1.1 }}>
+                            <Checkbox size="small" onChange={() => quickComplete(task)} />
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography sx={{ fontWeight: 800, overflowWrap: 'anywhere' }}>{task.title}</Typography>
+                              <Typography variant="caption" color="text.secondary">{formatDueDate(task.due_date)}</Typography>
+                            </Box>
+                          </Box>
+                        ))}
+                        {selectedSpaceTasks.length === 0 && <Alert severity="success">No pending tasks in this space.</Alert>}
+                      </Stack>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
         <Grid item xs={12} lg={7}>
           <Card className="premium-panel" sx={{ height: '100%' }}>
             <CardContent>
