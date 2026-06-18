@@ -14,10 +14,12 @@ import { PageHeader } from '../components/PageHeader';
 import { connectImapAccount, createDashboardCard, deleteDashboardCard, disconnectAccount, getConnectedAccounts, getConnectAccountUrl, getDashboardCards, getSettings, updateSettings } from '../api/endpoints';
 import type { ConnectedAccount, DashboardCard } from '../types';
 import { normalizeSocialUrl, type SocialPlatform } from '../utils/socialAccounts';
+import { useSpace } from '../contexts/SpaceContext';
 
 type CardFormType = 'social' | 'news' | 'custom_link';
 
 export function SettingsPage() {
+  const { refreshSpaces } = useSpace();
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [timezone, setTimezone] = useState('UTC');
   const [ignorePromotions, setIgnorePromotions] = useState(true);
@@ -74,6 +76,7 @@ export function SettingsPage() {
   async function removeAccount(id: string) {
     await disconnectAccount(id);
     setAccounts(await getConnectedAccounts());
+    await refreshSpaces();
     setNotice('Connected account removed.');
   }
 
@@ -201,7 +204,7 @@ export function SettingsPage() {
                         </Stack>
                         {account.name && <Typography variant="body2" color="text.secondary">{account.name}</Typography>}
                       </Box>
-                      <Button color="error" variant="text" startIcon={<DeleteIcon />} onClick={() => removeAccount(account.id)}>Remove</Button>
+                      <Button color="error" variant="text" startIcon={<DeleteIcon />} onClick={() => removeAccount(account.id)}>Disconnect</Button>
                     </Box>
                   ))}
                   {accounts.length === 0 && <Alert severity="info">No extra inboxes connected yet.</Alert>}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Box, Button, ButtonGroup, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField, Typography } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ArchiveIcon from '@mui/icons-material/Archive';
@@ -31,6 +31,10 @@ const replyRefinementPrompts = [
   'Add a clear next step',
   'Remove unnecessary details'
 ];
+
+function actionErrorMessage(err: any, fallback: string) {
+  return err?.response?.data?.error?.message ?? err?.response?.data?.message ?? err?.message ?? fallback;
+}
 
 function stripHtmlFallback(value?: string) {
   if (!value) return '';
@@ -247,11 +251,14 @@ function RichEmailBody({ html, text }: { html?: string; text?: string }) {
 
 export function EmailDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [email, setEmail] = useState<EmailMessage | null>(null);
   const [draft, setDraft] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [originalOpen, setOriginalOpen] = useState(false);
   const [notice, setNotice] = useState('');
+  const [error, setError] = useState('');
+  const [actionBusy, setActionBusy] = useState('');
   const [refineInstruction, setRefineInstruction] = useState('');
   const [refineMessages, setRefineMessages] = useState<ReplyRefinementMessage[]>([]);
   const [refining, setRefining] = useState(false);
@@ -284,9 +291,47 @@ export function EmailDetailPage() {
 
   async function sendApprovedReply() {
     if (!email) return;
-    await sendReply({ messageId: email.id, threadId: email.threadId, to: email.sender, subject: email.subject, body: draft });
-    setConfirmOpen(false);
-    setNotice('Reply sent.');
+    setActionBusy('send');
+    setError('');
+    try {
+      await sendReply({ messageId: email.id, threadId: email.threadId, to: email.sender, subject: email.subject, body: draft });
+      setConfirmOpen(false);
+      setNotice('Reply sent.');
+    } catch (err: any) {
+      setError(actionErrorMessage(err, 'Could not send the reply.'));
+    } finally {
+      setActionBusy('');
+    }
+  }
+
+  async function archiveCurrentEmail() {
+    if (!email) return;
+    setActionBusy('archive');
+    setError('');
+    try {
+      await archiveEmail(email.id);
+      setNotice('Email archived.');
+      navigate('/emails', { replace: true });
+    } catch (err: any) {
+      setError(actionErrorMessage(err, 'Could not archive this email.'));
+    } finally {
+      setActionBusy('');
+    }
+  }
+
+  async function deleteCurrentEmail() {
+    if (!email) return;
+    setActionBusy('delete');
+    setError('');
+    try {
+      await deleteEmail(email.id);
+      setNotice('Email deleted.');
+      navigate('/emails', { replace: true });
+    } catch (err: any) {
+      setError(actionErrorMessage(err, 'Could not delete this email.'));
+    } finally {
+      setActionBusy('');
+    }
   }
 
   async function openAttachment(attachment: NonNullable<EmailMessage['attachments']>[number], preview = false) {
@@ -313,6 +358,7 @@ export function EmailDetailPage() {
       <PageHeader title={email.subject} subtitle={email.sender} />
       <Stack spacing={2.5}>
         {notice && <Alert severity="success">{notice}</Alert>}
+        {error && <Alert severity="error">{error}</Alert>}
         <Card className="premium-panel" sx={{ maxWidth: 980, mx: 'auto', width: '100%' }}>
           <CardContent>
             <Stack spacing={2.25}>
@@ -407,8 +453,8 @@ export function EmailDetailPage() {
         </Card>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ maxWidth: 980, mx: 'auto', width: '100%' }}>
           <Button variant="contained" startIcon={<AutoAwesomeIcon />} onClick={createDraft}>{draft ? 'Regenerate Reply' : 'Generate AI Reply'}</Button>
-          <Button variant="outlined" startIcon={<ArchiveIcon />} onClick={() => archiveEmail(email.id)}>Archive</Button>
-          <Button color="error" variant="outlined" startIcon={<DeleteIcon />} onClick={() => deleteEmail(email.id)}>Delete</Button>
+          <Button disabled={!!actionBusy} variant="outlined" startIcon={<ArchiveIcon />} onClick={archiveCurrentEmail}>{actionBusy === 'archive' ? 'Archiving...' : 'Archive'}</Button>
+          <Button disabled={!!actionBusy} color="error" variant="outlined" startIcon={<DeleteIcon />} onClick={deleteCurrentEmail}>{actionBusy === 'delete' ? 'Deleting...' : 'Delete'}</Button>
         </Stack>
         <Card className="premium-panel" sx={{ maxWidth: 980, mx: 'auto', width: '100%' }}>
           <CardContent>
@@ -495,7 +541,7 @@ export function EmailDetailPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={sendApprovedReply}>Send</Button>
+          <Button disabled={actionBusy === 'send'} variant="contained" onClick={sendApprovedReply}>{actionBusy === 'send' ? 'Sending...' : 'Send'}</Button>
         </DialogActions>
       </Dialog>
       <Dialog open={originalOpen} onClose={() => setOriginalOpen(false)} fullWidth maxWidth="md">

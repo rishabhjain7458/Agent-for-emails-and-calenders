@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { archiveEmail, archiveEmailForConnectedAccount, deleteEmail, deleteEmailForConnectedAccount, getEmail, getEmailAttachment, getEmailAttachmentForConnectedAccount, getEmailForConnectedAccount, getThread, listEmails, listEmailsForConnectedAccount, sendReply } from '../services/emailService.js';
+import { archiveEmail, archiveEmailForConnectedAccount, deleteEmail, deleteEmailForConnectedAccount, getEmail, getEmailAttachment, getEmailAttachmentForConnectedAccount, getEmailForConnectedAccount, getThread, listEmails, listEmailsForConnectedAccount, sendReply, sendReplyForConnectedAccount } from '../services/emailService.js';
 import { archiveMicrosoftEmail, archiveMicrosoftEmailForConnectedAccount, deleteMicrosoftEmail, deleteMicrosoftEmailForConnectedAccount, getMicrosoftAttachment, getMicrosoftAttachmentForConnectedAccount, getMicrosoftEmail, getMicrosoftEmailForConnectedAccount, listMicrosoftEmails, listMicrosoftEmailsForConnectedAccount, sendMicrosoftReply } from '../services/microsoftEmailService.js';
 import { archiveZohoEmail, archiveZohoEmailForConnectedAccount, deleteZohoEmail, deleteZohoEmailForConnectedAccount, getZohoAttachment, getZohoAttachmentForConnectedAccount, getZohoEmail, getZohoEmailForConnectedAccount, listZohoEmails, listZohoEmailsForConnectedAccount, sendZohoReply, sendZohoReplyForConnectedAccount } from '../services/zohoEmailService.js';
 import { archiveImapEmailForConnectedAccount, deleteImapEmailForConnectedAccount, getImapAttachmentForConnectedAccount, getImapEmailForConnectedAccount, listImapEmailsForConnectedAccount, sendImapReplyForConnectedAccount } from '../services/imapEmailService.js';
@@ -268,6 +268,10 @@ export async function sendEmailReply(req: Request, res: Response, next: NextFunc
       const account = await getConnectedAccount(req.user!.tenantId, req.user!.id, connectedId.accountId);
       if (account?.provider === 'microsoft') {
         send(res, await sendMicrosoftReply(req.user!.id, { ...req.body, threadId: connectedId.messageId }));
+        return;
+      }
+      if (account?.provider === 'google') {
+        send(res, await sendReplyForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, { ...req.body, threadId: connectedId.messageId }));
         return;
       }
       if (account?.provider === 'zoho') {

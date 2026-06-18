@@ -201,8 +201,7 @@ export async function deleteEmailForConnectedAccount(tenantId: string, userId: s
   await deleteEmailWithAuth(auth, messageId);
 }
 
-export async function sendReply(userId: string, input: { threadId: string; to: string; subject: string; body: string }) {
-  const auth = await getAuthorizedGoogleClient(userId);
+async function sendReplyWithAuth(auth: any, input: { threadId: string; to: string; subject: string; body: string }) {
   const gmail = google.gmail({ version: 'v1', auth });
   const raw = Buffer.from([
     `To: ${input.to}`,
@@ -216,4 +215,14 @@ export async function sendReply(userId: string, input: { threadId: string; to: s
     userId: 'me',
     requestBody: { raw, threadId: input.threadId }
   });
+}
+
+export async function sendReply(userId: string, input: { threadId: string; to: string; subject: string; body: string }) {
+  const auth = await getAuthorizedGoogleClient(userId);
+  return sendReplyWithAuth(auth, input);
+}
+
+export async function sendReplyForConnectedAccount(tenantId: string, userId: string, accountId: string, input: { threadId: string; to: string; subject: string; body: string }) {
+  const auth = await getAuthorizedGoogleClientForConnectedAccount(tenantId, userId, accountId);
+  return sendReplyWithAuth(auth, input);
 }

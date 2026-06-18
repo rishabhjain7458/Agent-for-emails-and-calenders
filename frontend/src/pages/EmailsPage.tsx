@@ -40,6 +40,10 @@ const queryOperators = [
   'larger:5M'
 ];
 
+function actionErrorMessage(err: any, fallback: string) {
+  return err?.response?.data?.error?.message ?? err?.response?.data?.message ?? err?.message ?? fallback;
+}
+
 export function EmailsPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -58,6 +62,7 @@ export function EmailsPage() {
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [summary, setSummary] = useState('');
+  const [actionError, setActionError] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function load(q = query) {
@@ -147,9 +152,15 @@ export function EmailsPage() {
 
   async function handleEmailSwipe(email: EmailMessage, deltaX: number) {
     if (Math.abs(deltaX) < 80) return;
+    setActionError('');
     setEmails((current) => current.filter((item) => item.id !== email.id));
-    if (deltaX > 0) await archiveEmail(email.id);
-    else await deleteEmail(email.id);
+    try {
+      if (deltaX > 0) await archiveEmail(email.id);
+      else await deleteEmail(email.id);
+    } catch (err: any) {
+      setEmails((current) => [email, ...current.filter((item) => item.id !== email.id)]);
+      setActionError(actionErrorMessage(err, 'Could not update that email.'));
+    }
   }
 
   const filterContent = (
@@ -336,6 +347,11 @@ export function EmailsPage() {
         {summary && (
           <Grid item xs={12}>
             <Alert severity="info">{summary}</Alert>
+          </Grid>
+        )}
+        {actionError && (
+          <Grid item xs={12}>
+            <Alert severity="error">{actionError}</Alert>
           </Grid>
         )}
         <Grid item xs={12}>

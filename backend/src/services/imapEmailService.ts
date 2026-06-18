@@ -63,6 +63,21 @@ async function withClient<T>(account: ImapAccount, handler: (client: ImapFlow) =
   }
 }
 
+async function findMailbox(client: ImapFlow, candidates: string[]) {
+  const mailboxes = await (client as any).list();
+  const flattened: string[] = [];
+  const collect = (items: any[] = []) => {
+    for (const item of items) {
+      const path = item.path ?? item.name;
+      if (path) flattened.push(String(path));
+      if (item.children) collect(item.children);
+    }
+  };
+  collect(mailboxes);
+  return flattened.find((mailbox) => candidates.some((candidate) => mailbox.toLowerCase() === candidate.toLowerCase()))
+    ?? flattened.find((mailbox) => candidates.some((candidate) => mailbox.toLowerCase().includes(candidate.toLowerCase())));
+}
+
 function parseQuery(query: string) {
   return {
     mailbox: /\bin:sent\b/i.test(query) ? 'Sent' : 'INBOX',
@@ -202,9 +217,11 @@ export async function archiveImapEmailForConnectedAccount(tenantId: string, user
   const account = await getImapAccount(tenantId, userId, accountId);
   const { mailbox, uid } = splitImapMessageId(messageId);
   await withClient(account, async (client) => {
+    const destination = await findMailbox(client, ['Archive', 'Archived', 'All Mail']);
     const lock = await client.getMailboxLock(mailbox);
     try {
-      await client.messageMove(uid, 'Archive', { uid: true });
+      if (destination) await client.messageMove(uid, destination, { uid: true });
+      else await client.messageFlagsRemove(uid, ['\\Seen'], { uid: true });
     } finally {
       lock.release();
     }
@@ -215,9 +232,11 @@ export async function deleteImapEmailForConnectedAccount(tenantId: string, userI
   const account = await getImapAccount(tenantId, userId, accountId);
   const { mailbox, uid } = splitImapMessageId(messageId);
   await withClient(account, async (client) => {
+    const destination = await findMailbox(client, ['Trash', 'Deleted Items', 'Deleted Messages', 'Bin']);
     const lock = await client.getMailboxLock(mailbox);
     try {
-      await client.messageDelete(uid, { uid: true });
+      if (destination) await client.messageMove(uid, destination, { uid: true });
+      else await client.messageDelete(uid, { uid: true });
     } finally {
       lock.release();
     }
@@ -232,6 +251,7 @@ export async function sendImapReplyForConnectedAccount(tenantId: string, userId:
     secure: account.config.smtpSecure,
     auth: { user: account.email, pass: account.password }
   });
+  await transport.verify();
   await transport.sendMail({
     from: account.email,
     to: input.to,
