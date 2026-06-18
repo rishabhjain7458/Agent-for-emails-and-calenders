@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Avatar,
@@ -71,6 +71,14 @@ export function DashboardLayout() {
     });
   }
 
+  function goTo(path: string) {
+    navigate(path);
+    setOpen(false);
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#ffffff', overflowX: 'hidden' }}>
       <Toolbar sx={{ px: drawerExpanded ? { xs: 2, sm: 3 } : 1.25, minHeight: { xs: 64, sm: 76 }, justifyContent: drawerExpanded ? 'space-between' : 'center' }}>
@@ -102,8 +110,6 @@ export function DashboardLayout() {
           const navButton = (
             <ListItemButton
               key={item.path}
-              component={RouterLink}
-              to={item.path}
               selected={selected}
               sx={{
                 borderRadius: 2,
@@ -131,7 +137,7 @@ export function DashboardLayout() {
                   width: 18
                 }
               }}
-              onClick={() => setOpen(false)}
+              onClick={() => goTo(item.path)}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
               {drawerExpanded && <ListItemText primary={item.label} />}
@@ -257,7 +263,7 @@ export function DashboardLayout() {
 
       <Box component="main" sx={{ flex: 1, pt: { xs: 9, sm: 10, md: 11 }, px: { xs: 1.25, sm: 2.5, md: 3.5, xl: 5 }, pb: { xs: 3, md: 5 }, minWidth: 0, transition: theme.transitions.create('padding', { duration: theme.transitions.duration.shorter }) }}>
         <Box className="page-shell" sx={{ maxWidth: 1480, mx: 'auto', width: '100%' }}>
-          <Outlet />
+          <Outlet key={location.pathname} />
         </Box>
       </Box>
     </Box>
