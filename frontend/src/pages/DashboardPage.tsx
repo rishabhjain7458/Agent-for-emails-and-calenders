@@ -385,7 +385,7 @@ export function DashboardPage() {
                 <Button href="/settings" variant="outlined" size="small" startIcon={<AddIcon />}>Manage</Button>
               </Stack>
               <Box className="scroll-thin" sx={{ display: 'flex', gap: 1.25, overflowX: 'auto', pb: 0.5 }}>
-                {socialAccounts.map((account) => {
+                {socialAccounts.map((account, index) => {
                   const instagram = account.platform === 'instagram';
                   return (
                     <Box
@@ -412,7 +412,10 @@ export function DashboardPage() {
                           <Box sx={{ bgcolor: instagram ? '#fdf2f8' : '#eff6ff', borderRadius: 1.5, color: instagram ? '#c026d3' : '#2563eb', display: 'grid', height: 42, placeItems: 'center', width: 42 }}>
                             {instagram ? <InstagramIcon /> : <FacebookIcon />}
                           </Box>
-                          <OpenInNewIcon fontSize="small" color="action" />
+                          <Stack direction="row" spacing={0.75} alignItems="center">
+                            <Chip size="small" label={`#${index + 1}`} sx={{ fontWeight: 850 }} />
+                            <OpenInNewIcon fontSize="small" color="action" />
+                          </Stack>
                         </Stack>
                         <Box sx={{ minWidth: 0 }}>
                           <Typography sx={{ fontWeight: 900 }} noWrap>{account.label}</Typography>

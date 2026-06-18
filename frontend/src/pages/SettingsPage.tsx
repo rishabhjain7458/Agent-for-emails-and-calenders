@@ -9,6 +9,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { PageHeader } from '../components/PageHeader';
 import { disconnectAccount, getConnectedAccounts, getConnectAccountUrl, getSettings, updateSettings } from '../api/endpoints';
 import type { ConnectedAccount } from '../types';
@@ -80,7 +82,7 @@ export function SettingsPage() {
       label: socialLabel.trim() || (socialPlatform === 'instagram' ? 'Instagram account' : 'Facebook account'),
       url
     };
-    const next = [nextAccount, ...socialAccounts];
+    const next = [...socialAccounts, nextAccount];
     setSocialAccounts(next);
     saveSocialAccounts(next);
     setSocialLabel('');
@@ -93,6 +95,17 @@ export function SettingsPage() {
     setSocialAccounts(next);
     saveSocialAccounts(next);
     setNotice('Social account card removed.');
+  }
+
+  function moveSocialAccount(id: string, direction: -1 | 1) {
+    const currentIndex = socialAccounts.findIndex((account) => account.id === id);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= socialAccounts.length) return;
+    const next = [...socialAccounts];
+    [next[currentIndex], next[nextIndex]] = [next[nextIndex], next[currentIndex]];
+    setSocialAccounts(next);
+    saveSocialAccounts(next);
+    setNotice('Social card sequence updated.');
   }
 
   function socialIcon(platform: SocialPlatform) {
@@ -161,7 +174,7 @@ export function SettingsPage() {
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.5}>
                   <Box>
                     <Typography variant="h6">Social Media Cards</Typography>
-                    <Typography color="text.secondary" variant="body2">Add Facebook and Instagram profiles. Cards open the account in a new tab.</Typography>
+                    <Typography color="text.secondary" variant="body2">Add Facebook and Instagram profiles. Drag-free sequence controls decide dashboard order.</Typography>
                   </Box>
                   <Chip icon={<LinkIcon />} label={`${socialAccounts.length} saved`} variant="outlined" />
                 </Stack>
@@ -183,7 +196,7 @@ export function SettingsPage() {
                   </Grid>
                 </Grid>
                 <Grid container spacing={1.5}>
-                  {socialAccounts.map((account) => (
+                  {socialAccounts.map((account, index) => (
                     <Grid item xs={12} md={6} lg={4} key={account.id}>
                       <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: '#fff', p: 1.5 }}>
                         <Stack direction="row" spacing={1.25} alignItems="center">
@@ -191,12 +204,17 @@ export function SettingsPage() {
                             {socialIcon(account.platform)}
                           </Box>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography sx={{ fontWeight: 850 }} noWrap>{account.label}</Typography>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <Chip size="small" label={`#${index + 1}`} sx={{ fontWeight: 850 }} />
+                              <Typography sx={{ fontWeight: 850 }} noWrap>{account.label}</Typography>
+                            </Stack>
                             <Typography variant="caption" color="text.secondary" noWrap>{account.url}</Typography>
                           </Box>
                         </Stack>
-                        <Stack direction="row" spacing={1} sx={{ mt: 1.25 }}>
+                        <Stack direction="row" spacing={1} sx={{ mt: 1.25 }} flexWrap="wrap" useFlexGap>
                           <Button fullWidth variant="outlined" href={account.url} target="_blank" rel="noreferrer" startIcon={<OpenInNewIcon />}>Open</Button>
+                          <Button variant="outlined" disabled={index === 0} startIcon={<ArrowUpwardIcon />} onClick={() => moveSocialAccount(account.id, -1)}>Up</Button>
+                          <Button variant="outlined" disabled={index === socialAccounts.length - 1} startIcon={<ArrowDownwardIcon />} onClick={() => moveSocialAccount(account.id, 1)}>Down</Button>
                           <Button color="error" variant="text" startIcon={<DeleteIcon />} onClick={() => removeSocialAccount(account.id)}>Remove</Button>
                         </Stack>
                       </Box>
