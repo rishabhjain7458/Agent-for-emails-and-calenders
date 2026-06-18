@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { archiveEmail, archiveEmailForConnectedAccount, deleteEmail, deleteEmailForConnectedAccount, getEmail, getEmailAttachment, getEmailAttachmentForConnectedAccount, getEmailForConnectedAccount, getThread, listEmails, listEmailsForConnectedAccount, sendReply } from '../services/emailService.js';
 import { archiveMicrosoftEmail, archiveMicrosoftEmailForConnectedAccount, deleteMicrosoftEmail, deleteMicrosoftEmailForConnectedAccount, getMicrosoftAttachment, getMicrosoftAttachmentForConnectedAccount, getMicrosoftEmail, getMicrosoftEmailForConnectedAccount, listMicrosoftEmails, listMicrosoftEmailsForConnectedAccount, sendMicrosoftReply } from '../services/microsoftEmailService.js';
+import { archiveZohoEmail, archiveZohoEmailForConnectedAccount, deleteZohoEmail, deleteZohoEmailForConnectedAccount, getZohoAttachment, getZohoAttachmentForConnectedAccount, getZohoEmail, getZohoEmailForConnectedAccount, listZohoEmails, listZohoEmailsForConnectedAccount, sendZohoReply, sendZohoReplyForConnectedAccount } from '../services/zohoEmailService.js';
 import { generateEmailReply, generateEmailSummary, generateSingleEmailSummary, refineEmailReply } from '../services/geminiService.js';
 import { saveDraft } from '../repositories/draftRepository.js';
 import { getConnectedAccount } from '../repositories/connectedAccountRepository.js';
@@ -32,11 +33,14 @@ async function getEmailForRequest(req: Request, id: string) {
     if (account?.provider === 'google') {
       return getEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, account.email, connectedId.messageId);
     }
+    if (account?.provider === 'zoho') {
+      return getZohoEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, account.email, account.provider_account_id, connectedId.messageId);
+    }
   }
 
-  return req.user!.provider === 'microsoft'
-    ? getMicrosoftEmail(req.user!.id, id)
-    : getEmail(req.user!.id, id);
+  if (req.user!.provider === 'microsoft') return getMicrosoftEmail(req.user!.id, id);
+  if (req.user!.provider === 'zoho') return getZohoEmail(req.user!.id, id);
+  return getEmail(req.user!.id, id);
 }
 
 async function archiveEmailForRequest(req: Request, id: string) {
@@ -45,11 +49,12 @@ async function archiveEmailForRequest(req: Request, id: string) {
     const account = await getConnectedAccount(req.user!.tenantId, req.user!.id, connectedId.accountId);
     if (account?.provider === 'microsoft') return archiveMicrosoftEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId);
     if (account?.provider === 'google') return archiveEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId);
+    if (account?.provider === 'zoho') return archiveZohoEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, account.provider_account_id, connectedId.messageId);
   }
 
-  return req.user!.provider === 'microsoft'
-    ? archiveMicrosoftEmail(req.user!.id, id)
-    : archiveEmail(req.user!.id, id);
+  if (req.user!.provider === 'microsoft') return archiveMicrosoftEmail(req.user!.id, id);
+  if (req.user!.provider === 'zoho') return archiveZohoEmail(req.user!.id, id);
+  return archiveEmail(req.user!.id, id);
 }
 
 async function deleteEmailForRequest(req: Request, id: string) {
@@ -58,11 +63,12 @@ async function deleteEmailForRequest(req: Request, id: string) {
     const account = await getConnectedAccount(req.user!.tenantId, req.user!.id, connectedId.accountId);
     if (account?.provider === 'microsoft') return deleteMicrosoftEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId);
     if (account?.provider === 'google') return deleteEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId);
+    if (account?.provider === 'zoho') return deleteZohoEmailForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, account.provider_account_id, connectedId.messageId);
   }
 
-  return req.user!.provider === 'microsoft'
-    ? deleteMicrosoftEmail(req.user!.id, id)
-    : deleteEmail(req.user!.id, id);
+  if (req.user!.provider === 'microsoft') return deleteMicrosoftEmail(req.user!.id, id);
+  if (req.user!.provider === 'zoho') return deleteZohoEmail(req.user!.id, id);
+  return deleteEmail(req.user!.id, id);
 }
 
 async function getAttachmentForRequest(req: Request, id: string, attachmentId: string) {
@@ -71,11 +77,12 @@ async function getAttachmentForRequest(req: Request, id: string, attachmentId: s
     const account = await getConnectedAccount(req.user!.tenantId, req.user!.id, connectedId.accountId);
     if (account?.provider === 'microsoft') return getMicrosoftAttachmentForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId, attachmentId);
     if (account?.provider === 'google') return getEmailAttachmentForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId, attachmentId);
+    if (account?.provider === 'zoho') return getZohoAttachmentForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, account.provider_account_id, connectedId.messageId, attachmentId);
   }
 
-  return req.user!.provider === 'microsoft'
-    ? getMicrosoftAttachment(req.user!.id, id, attachmentId)
-    : getEmailAttachment(req.user!.id, id, attachmentId);
+  if (req.user!.provider === 'microsoft') return getMicrosoftAttachment(req.user!.id, id, attachmentId);
+  if (req.user!.provider === 'zoho') return getZohoAttachment(req.user!.id, id, attachmentId);
+  return getEmailAttachment(req.user!.id, id, attachmentId);
 }
 
 export async function inbox(req: Request, res: Response, next: NextFunction) {
@@ -94,6 +101,8 @@ export async function inbox(req: Request, res: Response, next: NextFunction) {
       mailboxes.push((async () => {
         const result = req.user!.provider === 'microsoft'
           ? await listMicrosoftEmails(req.user!.id, query, limit)
+          : req.user!.provider === 'zoho'
+            ? await listZohoEmails(req.user!.id, query, limit)
           : await listEmails(req.user!.id, query, limit, req.query.pageToken as string | undefined);
         return result.messages.map((message: EmailMessage) => ({
           ...message,
@@ -107,6 +116,8 @@ export async function inbox(req: Request, res: Response, next: NextFunction) {
       mailboxes.push((async () => {
         const result = account.provider === 'microsoft'
           ? await listMicrosoftEmailsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, account.email, query, limit)
+          : account.provider === 'zoho'
+            ? await listZohoEmailsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, account.email, account.providerAccountId!, query, limit)
           : await listEmailsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, account.email, query, limit);
         return result.messages;
       })());
@@ -120,6 +131,10 @@ export async function inbox(req: Request, res: Response, next: NextFunction) {
 
     if (req.user!.provider === 'microsoft') {
       send(res, await listMicrosoftEmails(req.user!.id, query, limit));
+      return;
+    }
+    if (req.user!.provider === 'zoho') {
+      send(res, await listZohoEmails(req.user!.id, query, limit));
       return;
     }
     send(res, await listEmails(req.user!.id, query, limit, req.query.pageToken as string | undefined));
@@ -156,10 +171,14 @@ export async function summary(req: Request, res: Response, next: NextFunction) {
     const connectedAccounts = (await listAccountContexts(req.user!)).filter((account) => !account.isPrimary);
     const primary = req.user!.provider === 'microsoft'
       ? await listMicrosoftEmails(req.user!.id, query, 20)
-      : await listEmails(req.user!.id, query, 20);
+      : req.user!.provider === 'zoho'
+        ? await listZohoEmails(req.user!.id, query, 20)
+        : await listEmails(req.user!.id, query, 20);
     const connected = await Promise.all(connectedAccounts.map(async (account) => {
       const result = account.provider === 'microsoft'
         ? await listMicrosoftEmailsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, account.email, query, 20)
+        : account.provider === 'zoho'
+          ? await listZohoEmailsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, account.email, account.providerAccountId!, query, 20)
         : await listEmailsForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, account.email, query, 20);
       return result.messages;
     }));
@@ -205,6 +224,10 @@ export async function thread(req: Request, res: Response, next: NextFunction) {
       send(res, [await getMicrosoftEmail(req.user!.id, req.params.threadId)]);
       return;
     }
+    if (req.user!.provider === 'zoho') {
+      send(res, [await getZohoEmail(req.user!.id, req.params.threadId)]);
+      return;
+    }
     send(res, await getThread(req.user!.id, req.params.threadId));
   } catch (error) {
     next(error);
@@ -228,8 +251,26 @@ export async function saveEmailDraft(req: Request, res: Response, next: NextFunc
 
 export async function sendEmailReply(req: Request, res: Response, next: NextFunction) {
   try {
+    const sourceId = String(req.body.messageId ?? '');
+    const connectedId = sourceId ? splitConnectedMessageId(sourceId) : null;
+    if (connectedId) {
+      const account = await getConnectedAccount(req.user!.tenantId, req.user!.id, connectedId.accountId);
+      if (account?.provider === 'microsoft') {
+        send(res, await sendMicrosoftReply(req.user!.id, { ...req.body, threadId: connectedId.messageId }));
+        return;
+      }
+      if (account?.provider === 'zoho') {
+        send(res, await sendZohoReplyForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, account.provider_account_id, req.body));
+        return;
+      }
+    }
+
     if (req.user!.provider === 'microsoft') {
       send(res, await sendMicrosoftReply(req.user!.id, req.body));
+      return;
+    }
+    if (req.user!.provider === 'zoho') {
+      send(res, await sendZohoReply(req.user!.id, req.body));
       return;
     }
     send(res, await sendReply(req.user!.id, req.body));

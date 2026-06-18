@@ -6,6 +6,7 @@ import { createEvent, createEventForConnectedAccount, deleteEvent, listEvents, l
 import { createMicrosoftEvent, createMicrosoftEventForConnectedAccount, listMicrosoftEvents, listMicrosoftEventsForConnectedAccount } from './microsoftCalendarService.js';
 import { listEmails, listEmailsForConnectedAccount } from './emailService.js';
 import { listMicrosoftEmails, listMicrosoftEmailsForConnectedAccount } from './microsoftEmailService.js';
+import { listZohoEmails, listZohoEmailsForConnectedAccount } from './zohoEmailService.js';
 import { createTask, listTasks } from '../repositories/taskRepository.js';
 import { createGoogleTask, createGoogleTaskForConnectedAccount } from './googleTasksService.js';
 import { createMicrosoftTask, createMicrosoftTaskForConnectedAccount } from './microsoftTasksService.js';
@@ -153,11 +154,15 @@ async function searchEmails(user: AuthUser, query: string, account: AccountConte
   if (!account.isPrimary) {
     return account.provider === 'microsoft'
       ? listMicrosoftEmailsForConnectedAccount(user.tenantId, user.id, account.accountId, account.email, query)
+      : account.provider === 'zoho'
+        ? listZohoEmailsForConnectedAccount(user.tenantId, user.id, account.accountId, account.email, account.providerAccountId!, query)
       : listEmailsForConnectedAccount(user.tenantId, user.id, account.accountId, account.email, query);
   }
 
   const primary = await (user.provider === 'microsoft'
     ? listMicrosoftEmails(user.id, query)
+    : user.provider === 'zoho'
+      ? listZohoEmails(user.id, query)
     : listEmails(user.id, query));
   const primaryMessages = primary.messages.map((message: EmailMessage) => ({
     ...message,
@@ -232,6 +237,7 @@ function isStandaloneRequest(message: string) {
 }
 
 async function listCalendarForAccount(user: AuthUser, account: AccountContext, params: any) {
+  if (account.provider === 'zoho') return [];
   if (account.provider === 'microsoft') {
     return account.isPrimary
       ? listMicrosoftEvents(user.id, params.timeMin, params.timeMax)
@@ -283,6 +289,9 @@ async function processAssistantMessage(user: AuthUser, message: string, forcedAc
 
   switch (intent.intent) {
     case 'calendar_create': {
+      if (account?.provider === 'zoho') {
+        return { intent, result: 'Zoho Mail spaces do not support calendar creation yet. Please choose a Gmail or Outlook space for meetings.' };
+      }
       const calendarParams = {
         ...params,
         title: params.title || fallbackCalendarTitle(message),
@@ -307,8 +316,11 @@ async function processAssistantMessage(user: AuthUser, message: string, forcedAc
     }
     case 'calendar_check':
       if (combinedScope) {
-        const eventsByAccount = await Promise.all(accounts.map((item) => listCalendarForAccount(user, item, params)));
+        const eventsByAccount = await Promise.all(accounts.filter((item) => item.provider !== 'zoho').map((item) => listCalendarForAccount(user, item, params)));
         return { intent, result: eventsByAccount.flat() };
+      }
+      if (account?.provider === 'zoho') {
+        return { intent, result: 'Zoho Mail spaces do not support calendar lookup yet. Please choose a Gmail or Outlook space.' };
       }
       return { intent, result: await listCalendarForAccount(user, account!, params) };
     case 'calendar_delete':
@@ -333,6 +345,9 @@ async function processAssistantMessage(user: AuthUser, message: string, forcedAc
       return { intent, result: await generateEmailSummary(tenantId, userId, emails.messages) };
     }
     case 'task_create': {
+      if (account?.provider === 'zoho') {
+        return { intent, result: 'Zoho Mail spaces do not support task creation yet. Please choose a Gmail or Outlook space for tasks.' };
+      }
       const title = params.title || message;
       const providerTask = account?.provider === 'microsoft'
         ? account.isPrimary
@@ -358,6 +373,9 @@ async function processAssistantMessage(user: AuthUser, message: string, forcedAc
       };
     }
     case 'task_list':
+      if (!combinedScope && account?.provider === 'zoho') {
+        return { intent, result: 'Zoho Mail spaces do not support synced tasks yet. Please choose a Gmail or Outlook space.' };
+      }
       return { intent, result: formatTaskList(await listTasks(tenantId, combinedScope ? undefined : account?.accountId)) };
     default:
       return { intent, result: await answerGeneralQuestion(tenantId, userId, message) };

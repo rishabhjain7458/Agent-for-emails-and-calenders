@@ -9,6 +9,7 @@ emailRoutes.get('/', inbox);
 emailRoutes.get('/summary', summary);
 emailRoutes.get('/threads/:threadId', thread);
 emailRoutes.post('/send-reply', validateBody(Joi.object({
+  messageId: Joi.string().optional(),
   threadId: Joi.string().required(),
   to: Joi.string().required(),
   subject: Joi.string().required(),

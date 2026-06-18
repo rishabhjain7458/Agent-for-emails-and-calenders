@@ -21,6 +21,9 @@ export function LoginPage() {
           <Button size="large" variant="outlined" startIcon={<MailOutlineIcon />} onClick={() => login('microsoft')}>
             Continue with Outlook
           </Button>
+          <Button size="large" variant="outlined" startIcon={<MailOutlineIcon />} onClick={() => login('zoho')}>
+            Continue with Zoho Mail
+          </Button>
         </Stack>
       </Paper>
     </Box>

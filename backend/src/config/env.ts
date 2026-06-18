@@ -28,6 +28,11 @@ export const env = {
   MICROSOFT_CLIENT_ID: process.env.MICROSOFT_CLIENT_ID ?? '',
   MICROSOFT_CLIENT_SECRET: process.env.MICROSOFT_CLIENT_SECRET ?? '',
   MICROSOFT_REDIRECT_URI: process.env.MICROSOFT_REDIRECT_URI ?? 'http://localhost:4000/api/auth/microsoft/callback',
+  ZOHO_CLIENT_ID: process.env.ZOHO_CLIENT_ID ?? '',
+  ZOHO_CLIENT_SECRET: process.env.ZOHO_CLIENT_SECRET ?? '',
+  ZOHO_REDIRECT_URI: process.env.ZOHO_REDIRECT_URI ?? 'http://localhost:4000/api/auth/zoho/callback',
+  ZOHO_ACCOUNTS_URL: process.env.ZOHO_ACCOUNTS_URL ?? 'https://accounts.zoho.com',
+  ZOHO_MAIL_API_URL: process.env.ZOHO_MAIL_API_URL ?? 'https://mail.zoho.com',
   GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? '',
   GEMINI_MODEL: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash'
 };

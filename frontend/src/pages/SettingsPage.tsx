@@ -39,7 +39,7 @@ export function SettingsPage() {
     getDashboardCards().then((result) => setDashboardCards(result.cards));
     const connected = new URLSearchParams(window.location.search).get('connected');
     if (connected) {
-      setNotice(`${connected === 'microsoft' ? 'Outlook' : 'Gmail'} account connected.`);
+      setNotice(`${connected === 'microsoft' ? 'Outlook' : connected === 'zoho' ? 'Zoho Mail' : 'Gmail'} account connected.`);
       window.history.replaceState({}, '', '/settings');
     }
   }, []);
@@ -56,7 +56,7 @@ export function SettingsPage() {
     setNotice('Settings saved.');
   }
 
-  async function connect(provider: 'google' | 'microsoft') {
+  async function connect(provider: 'google' | 'microsoft' | 'zoho') {
     const isNative = Capacitor.isNativePlatform();
     const url = await getConnectAccountUrl(provider, isNative);
     if (isNative) {
@@ -140,11 +140,12 @@ export function SettingsPage() {
               <Stack spacing={2}>
                 <Box>
                   <Typography variant="h6">Connected Inboxes</Typography>
-                  <Typography color="text.secondary" variant="body2">Add extra Gmail or Outlook inboxes for this signed-in user.</Typography>
+                  <Typography color="text.secondary" variant="body2">Add extra Gmail, Outlook, or Zoho Mail inboxes for this signed-in user.</Typography>
                 </Box>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                   <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('google')}>Connect Gmail</Button>
                   <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('microsoft')}>Connect Outlook</Button>
+                  <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('zoho')}>Connect Zoho Mail</Button>
                 </Stack>
                 <Stack divider={<Divider flexItem />} spacing={0}>
                   {accounts.map((account) => (
@@ -152,7 +153,7 @@ export function SettingsPage() {
                       <Box sx={{ minWidth: 0 }}>
                         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                           <Typography sx={{ fontWeight: 800, overflowWrap: 'anywhere' }}>{account.email}</Typography>
-                          <Chip size="small" label={account.provider === 'microsoft' ? 'Outlook' : 'Gmail'} variant="outlined" />
+                          <Chip size="small" label={account.provider === 'microsoft' ? 'Outlook' : account.provider === 'zoho' ? 'Zoho Mail' : 'Gmail'} variant="outlined" />
                         </Stack>
                         {account.name && <Typography variant="body2" color="text.secondary">{account.name}</Typography>}
                       </Box>

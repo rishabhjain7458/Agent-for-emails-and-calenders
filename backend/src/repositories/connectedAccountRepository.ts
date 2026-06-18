@@ -1,7 +1,7 @@
 import { pool } from '../db/pool.js';
 import { encrypt } from '../utils/crypto.js';
 
-export type ConnectedAccountProvider = 'google' | 'microsoft';
+export type ConnectedAccountProvider = 'google' | 'microsoft' | 'zoho';
 
 export type ConnectedAccountInput = {
   tenantId: string;

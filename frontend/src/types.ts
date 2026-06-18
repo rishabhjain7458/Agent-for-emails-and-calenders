@@ -4,7 +4,7 @@ export type User = {
   email: string;
   name: string;
   role: string;
-  provider?: 'google' | 'microsoft';
+  provider?: 'google' | 'microsoft' | 'zoho';
 };
 
 export type EmailMessage = {
@@ -12,7 +12,7 @@ export type EmailMessage = {
   threadId: string;
   accountId?: string;
   accountEmail?: string;
-  provider?: 'google' | 'microsoft';
+  provider?: 'google' | 'microsoft' | 'zoho';
   subject: string;
   sender: string;
   date: string;
@@ -25,7 +25,7 @@ export type EmailMessage = {
 
 export type ConnectedAccount = {
   id: string;
-  provider: 'google' | 'microsoft';
+  provider: 'google' | 'microsoft' | 'zoho';
   email: string;
   name?: string;
   created_at: string;
@@ -36,7 +36,7 @@ export type Task = {
   title: string;
   due_date?: string;
   status: 'pending' | 'needsAction' | 'completed';
-  provider?: 'google' | 'microsoft';
+  provider?: 'google' | 'microsoft' | 'zoho';
   account_id?: string;
   account_email?: string;
 };
@@ -52,7 +52,7 @@ export type CalendarEvent = {
   categories?: string[];
   accountId?: string;
   accountEmail?: string;
-  provider?: 'google' | 'microsoft';
+  provider?: 'google' | 'microsoft' | 'zoho';
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
 };

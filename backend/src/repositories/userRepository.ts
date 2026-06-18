@@ -20,6 +20,15 @@ type UpsertMicrosoftUserInput = {
   tokenExpiry?: Date | null;
 };
 
+type UpsertZohoUserInput = {
+  zohoId: string;
+  email: string;
+  name: string;
+  accessToken?: string | null;
+  refreshToken?: string | null;
+  tokenExpiry?: Date | null;
+};
+
 export async function upsertGoogleUser(input: UpsertUserInput) {
   const result = await pool.query(
     `
@@ -66,6 +75,33 @@ export async function upsertMicrosoftUser(input: UpsertMicrosoftUserInput) {
     `,
     [
       input.microsoftId,
+      input.email,
+      input.name,
+      encrypt(input.accessToken),
+      encrypt(input.refreshToken),
+      input.tokenExpiry
+    ]
+  );
+  return result.rows[0];
+}
+
+export async function upsertZohoUser(input: UpsertZohoUserInput) {
+  const result = await pool.query(
+    `
+    INSERT INTO users (zoho_id, auth_provider, email, name, access_token, refresh_token, token_expiry)
+    VALUES ($1, 'zoho', $2, $3, $4, $5, $6)
+    ON CONFLICT (zoho_id) DO UPDATE SET
+      auth_provider = 'zoho',
+      email = EXCLUDED.email,
+      name = EXCLUDED.name,
+      access_token = COALESCE(EXCLUDED.access_token, users.access_token),
+      refresh_token = COALESCE(EXCLUDED.refresh_token, users.refresh_token),
+      token_expiry = EXCLUDED.token_expiry,
+      updated_at = NOW()
+    RETURNING *
+    `,
+    [
+      input.zohoId,
       input.email,
       input.name,
       encrypt(input.accessToken),

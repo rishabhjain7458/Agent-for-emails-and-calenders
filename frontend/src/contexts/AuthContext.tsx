@@ -9,7 +9,7 @@ import type { User } from '../types';
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
-  login: (provider?: 'google' | 'microsoft') => void;
+  login: (provider?: 'google' | 'microsoft' | 'zoho') => void;
   logout: () => void;
   refresh: () => Promise<void>;
 };

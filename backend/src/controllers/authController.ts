@@ -2,7 +2,8 @@ import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { getGoogleAuthUrl, exchangeCode, redirectWithSession } from '../services/googleAuthService.js';
 import { exchangeMicrosoftCode, getMicrosoftAuthUrl, redirectWithMicrosoftSession } from '../services/microsoftAuthService.js';
-import { upsertGoogleUser, upsertMicrosoftUser } from '../repositories/userRepository.js';
+import { exchangeZohoCode, getZohoAuthUrl, redirectWithZohoSession } from '../services/zohoAuthService.js';
+import { upsertGoogleUser, upsertMicrosoftUser, upsertZohoUser } from '../repositories/userRepository.js';
 import { ensureDefaultTenant } from '../repositories/tenantRepository.js';
 import { signSession } from '../middleware/auth.js';
 import { deleteConnectedAccount, listConnectedAccounts, upsertConnectedAccount } from '../repositories/connectedAccountRepository.js';
@@ -12,14 +13,14 @@ import type { AuthUser } from '../types.js';
 
 type ConnectState = {
   mode: 'connect';
-  provider: 'google' | 'microsoft';
+  provider: 'google' | 'microsoft' | 'zoho';
   user: AuthUser;
   mobile?: boolean;
 };
 
 type LoginState = {
   mode: 'login';
-  provider: 'google' | 'microsoft';
+  provider: 'google' | 'microsoft' | 'zoho';
   mobile?: boolean;
 };
 
@@ -29,15 +30,15 @@ function isMobileRequest(req: Request) {
   return req.query.mobile === '1' || req.query.platform === 'mobile';
 }
 
-function signConnectState(user: AuthUser, provider: 'google' | 'microsoft', mobile = false) {
+function signConnectState(user: AuthUser, provider: 'google' | 'microsoft' | 'zoho', mobile = false) {
   return jwt.sign({ mode: 'connect', provider, user, mobile }, env.JWT_SECRET, { expiresIn: '10m' });
 }
 
-function signLoginState(provider: 'google' | 'microsoft', mobile = false) {
+function signLoginState(provider: 'google' | 'microsoft' | 'zoho', mobile = false) {
   return jwt.sign({ mode: 'login', provider, mobile }, env.JWT_SECRET, { expiresIn: '10m' });
 }
 
-function readOAuthState(value: unknown, provider: 'google' | 'microsoft') {
+function readOAuthState(value: unknown, provider: 'google' | 'microsoft' | 'zoho') {
   if (!value) return null;
   try {
     const state = jwt.verify(String(value), env.JWT_SECRET) as OAuthState;
@@ -47,21 +48,21 @@ function readOAuthState(value: unknown, provider: 'google' | 'microsoft') {
   }
 }
 
-function readConnectState(value: unknown, provider: 'google' | 'microsoft') {
+function readConnectState(value: unknown, provider: 'google' | 'microsoft' | 'zoho') {
   const state = readOAuthState(value, provider);
   return state?.mode === 'connect' ? state : null;
 }
 
-function isMobileState(value: unknown, provider: 'google' | 'microsoft') {
+function isMobileState(value: unknown, provider: 'google' | 'microsoft' | 'zoho') {
   return Boolean(readOAuthState(value, provider)?.mobile);
 }
 
-function redirectAfterConnect(provider: 'google' | 'microsoft', mobile = false) {
+function redirectAfterConnect(provider: 'google' | 'microsoft' | 'zoho', mobile = false) {
   const baseUrl = mobile ? env.MOBILE_APP_URL : env.FRONTEND_URL;
   return `${baseUrl}/settings?connected=${provider}`;
 }
 
-function isPrimaryAccount(user: AuthUser, provider: 'google' | 'microsoft', email: string) {
+function isPrimaryAccount(user: AuthUser, provider: 'google' | 'microsoft' | 'zoho', email: string) {
   return user.provider === provider && user.email.toLowerCase() === email.toLowerCase();
 }
 
@@ -170,6 +171,55 @@ export async function microsoftCallback(req: Request, res: Response, next: NextF
     const tenant = await ensureDefaultTenant(user.id, user.email);
     const token = signSession({ id: user.id, tenantId: tenant.id, email: user.email, name: user.name, role: tenant.role, provider: 'microsoft' });
     res.redirect(redirectWithMicrosoftSession(token, isMobileState(req.query.state, 'microsoft')));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function zohoLogin(req: Request, res: Response) {
+  const mobile = isMobileRequest(req);
+  res.redirect(getZohoAuthUrl(mobile ? signLoginState('zoho', true) : undefined));
+}
+
+export function zohoConnect(req: Request, res: Response) {
+  send(res, { url: getZohoAuthUrl(signConnectState(req.user!, 'zoho', isMobileRequest(req))) });
+}
+
+export async function zohoCallback(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { profile, tokens } = await exchangeZohoCode(String(req.query.code ?? ''));
+    const connectState = readConnectState(req.query.state, 'zoho');
+    if (connectState) {
+      if (isPrimaryAccount(connectState.user, 'zoho', profile.email)) {
+        res.redirect(redirectAfterConnect('zoho', connectState.mobile));
+        return;
+      }
+      await upsertConnectedAccount({
+        tenantId: connectState.user.tenantId,
+        userId: connectState.user.id,
+        provider: 'zoho',
+        providerAccountId: profile.id,
+        email: profile.email,
+        name: profile.name,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        tokenExpiry: tokens.expiry
+      });
+      res.redirect(redirectAfterConnect('zoho', connectState.mobile));
+      return;
+    }
+
+    const user = await upsertZohoUser({
+      zohoId: profile.id,
+      email: profile.email,
+      name: profile.name,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      tokenExpiry: tokens.expiry
+    });
+    const tenant = await ensureDefaultTenant(user.id, user.email);
+    const token = signSession({ id: user.id, tenantId: tenant.id, email: user.email, name: user.name, role: tenant.role, provider: 'zoho' });
+    res.redirect(redirectWithZohoSession(token, isMobileState(req.query.state, 'zoho')));
   } catch (error) {
     next(error);
   }

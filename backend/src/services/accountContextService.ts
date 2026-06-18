@@ -4,9 +4,10 @@ import type { AuthUser } from '../types.js';
 
 export type AccountContext = {
   accountId: string;
-  provider: 'google' | 'microsoft';
+  provider: 'google' | 'microsoft' | 'zoho';
   email: string;
   name?: string | null;
+  providerAccountId?: string | null;
   isPrimary: boolean;
 };
 
@@ -18,6 +19,7 @@ export async function listAccountContexts(user: AuthUser): Promise<AccountContex
       provider: user.provider,
       email: user.email,
       name: user.name,
+      providerAccountId: null,
       isPrimary: true
     },
     ...connected
@@ -27,6 +29,7 @@ export async function listAccountContexts(user: AuthUser): Promise<AccountContex
       provider: account.provider,
       email: account.email,
       name: account.name,
+      providerAccountId: account.provider_account_id,
       isPrimary: false
     }))
   ];
@@ -44,9 +47,10 @@ export async function resolveAccountContext(user: AuthUser, accountId?: string |
     return {
       accountId: 'primary',
       provider: user.provider,
-      email: user.email,
-      name: user.name,
-      isPrimary: true
+    email: user.email,
+    name: user.name,
+    providerAccountId: null,
+    isPrimary: true
     };
   }
 
@@ -58,6 +62,7 @@ export async function resolveAccountContext(user: AuthUser, accountId?: string |
     provider: account.provider,
     email: account.email,
     name: account.name,
+    providerAccountId: account.provider_account_id,
     isPrimary: false
   };
 }
@@ -84,7 +89,7 @@ export function formatAccountChoicePrompt(accounts: AccountContext[], action: st
     `Which account should I use for ${action}?`,
     '',
     'Available accounts:',
-    ...accounts.map((account, index) => `${index + 1}. ${account.email} (${account.provider === 'microsoft' ? 'Outlook' : 'Gmail'}${account.isPrimary ? ', primary' : ''})`),
+    ...accounts.map((account, index) => `${index + 1}. ${account.email} (${account.provider === 'microsoft' ? 'Outlook' : account.provider === 'zoho' ? 'Zoho Mail' : 'Gmail'}${account.isPrimary ? ', primary' : ''})`),
     '',
     'Reply with the number or email address, for example: 1 or Use name@example.com.'
   ].join('\n');

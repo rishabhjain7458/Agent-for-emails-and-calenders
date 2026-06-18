@@ -20,7 +20,7 @@ export async function getConnectedAccounts() {
   return data.data;
 }
 
-export async function getConnectAccountUrl(provider: 'google' | 'microsoft', mobile = false) {
+export async function getConnectAccountUrl(provider: 'google' | 'microsoft' | 'zoho', mobile = false) {
   const { data } = await api.get<{ data: { url: string } }>(`/auth/${provider}/connect`, { params: mobile ? { mobile: '1' } : undefined });
   return data.data.url;
 }
@@ -50,7 +50,7 @@ export async function refineReply(id: string, payload: { draft: string; instruct
   return data.data;
 }
 
-export async function sendReply(payload: { threadId: string; to: string; subject: string; body: string }) {
+export async function sendReply(payload: { messageId?: string; threadId: string; to: string; subject: string; body: string }) {
   const { data } = await api.post('/emails/send-reply', payload);
   return data.data;
 }

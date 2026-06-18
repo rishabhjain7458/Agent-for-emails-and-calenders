@@ -4,7 +4,7 @@ export type AuthUser = {
   email: string;
   name: string;
   role: string;
-  provider: 'google' | 'microsoft';
+  provider: 'google' | 'microsoft' | 'zoho';
 };
 
 export type EmailMessage = {
@@ -12,7 +12,7 @@ export type EmailMessage = {
   threadId: string;
   accountId?: string;
   accountEmail?: string;
-  provider?: 'google' | 'microsoft';
+  provider?: 'google' | 'microsoft' | 'zoho';
   subject: string;
   sender: string;
   date: string;

@@ -284,7 +284,7 @@ export function EmailDetailPage() {
 
   async function sendApprovedReply() {
     if (!email) return;
-    await sendReply({ threadId: email.threadId, to: email.sender, subject: email.subject, body: draft });
+    await sendReply({ messageId: email.id, threadId: email.threadId, to: email.sender, subject: email.subject, body: draft });
     setConfirmOpen(false);
     setNotice('Reply sent.');
   }
@@ -491,7 +491,7 @@ export function EmailDetailPage() {
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <DialogTitle>Send this reply?</DialogTitle>
         <DialogContent>
-          <Typography>This will send the edited draft in the original Gmail thread. Please confirm before sending.</Typography>
+          <Typography>This will send the edited draft from the same mailbox where the message was received. Please confirm before sending.</Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>

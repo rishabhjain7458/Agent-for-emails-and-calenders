@@ -7,7 +7,7 @@ import type { ConnectedAccount } from '../types';
 export type SpaceAccount = {
   id: string;
   email: string;
-  provider: 'google' | 'microsoft';
+  provider: 'google' | 'microsoft' | 'zoho';
   label: string;
   name?: string;
   isPrimary: boolean;

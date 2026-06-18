@@ -3,7 +3,7 @@ import { pool } from '../db/pool.js';
 export type ExternalTask = {
   googleTaskId: string;
   googleTaskListId?: string | null;
-  provider?: 'google' | 'microsoft';
+  provider?: 'google' | 'microsoft' | 'zoho';
   accountId?: string | null;
   accountEmail?: string | null;
   title: string;
@@ -29,7 +29,7 @@ export async function createTask(
   title: string,
   dueDate?: string | null,
   googleTaskId?: string | null,
-  account?: { provider?: 'google' | 'microsoft'; accountId?: string | null; accountEmail?: string | null; taskListId?: string | null }
+  account?: { provider?: 'google' | 'microsoft' | 'zoho'; accountId?: string | null; accountEmail?: string | null; taskListId?: string | null }
 ) {
   const result = await pool.query(
     `

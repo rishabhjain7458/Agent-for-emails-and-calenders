@@ -207,7 +207,7 @@ export function EmailsPage() {
           <TextField fullWidth label="To" type="date" value={dateTo} InputLabelProps={{ shrink: true }} onChange={(event) => setDateTo(event.target.value)} />
         </Stack>
       </Box>
-      <TextField label="Advanced Gmail query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="in:inbox from:name@example.com newer_than:7d" helperText="Use this for Gmail operators. The fields above are added when you search." />
+      <TextField label="Advanced mail query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="in:inbox from:name@example.com newer_than:7d" helperText="Use common mail operators. The fields above are added when you search." />
       <Box>
         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Query operators</Typography>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -304,7 +304,7 @@ export function EmailsPage() {
     <>
       <PageHeader
         title="Emails"
-        subtitle="Search Gmail, summarize important mail, and draft approved replies."
+        subtitle="Search connected inboxes, summarize important mail, and draft approved replies."
         action={<Button variant="outlined" startIcon={<AutoAwesomeIcon />} onClick={async () => setSummary(await getEmailSummary())}>AI Summary</Button>}
       />
       {isMobile && (
