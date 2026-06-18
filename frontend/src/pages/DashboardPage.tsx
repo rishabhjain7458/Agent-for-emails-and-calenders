@@ -8,10 +8,14 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import LayersIcon from '@mui/icons-material/Layers';
 import InboxIcon from '@mui/icons-material/Inbox';
+import InstagramIcon from '@mui/icons-material/Instagram';
+import FacebookIcon from '@mui/icons-material/Facebook';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { PageHeader } from '../components/PageHeader';
 import { completeTask, getEmails, getEvents, getTasks } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
 import type { CalendarEvent, EmailMessage, Task } from '../types';
+import { loadSocialAccounts, type SocialAccount } from '../utils/socialAccounts';
 
 const accountPalette = ['#2557d6', '#0f9f8f', '#b86b00', '#8b5cf6', '#e0476b', '#168053'];
 
@@ -71,6 +75,7 @@ export function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
 
   async function loadDashboard() {
     setLoading(true);
@@ -93,6 +98,7 @@ export function DashboardPage() {
 
   useEffect(() => {
     loadDashboard();
+    setSocialAccounts(loadSocialAccounts());
   }, []);
 
   const pendingTasks = tasks.filter((task) => task.status !== 'completed');
@@ -364,6 +370,66 @@ export function DashboardPage() {
                 ))}
                 <Button href="/calendar" variant="contained" startIcon={<AddIcon />}>Create Meeting</Button>
               </Stack>
+            </Stack>
+          </CardContent>
+        </Card>
+
+        <Card className="premium-panel">
+          <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
+            <Stack spacing={1.5}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 900 }}>Social Media</Typography>
+                  <Typography color="text.secondary" variant="body2">Quick access to connected profile cards.</Typography>
+                </Box>
+                <Button href="/settings" variant="outlined" size="small" startIcon={<AddIcon />}>Manage</Button>
+              </Stack>
+              <Box className="scroll-thin" sx={{ display: 'flex', gap: 1.25, overflowX: 'auto', pb: 0.5 }}>
+                {socialAccounts.map((account) => {
+                  const instagram = account.platform === 'instagram';
+                  return (
+                    <Box
+                      key={account.id}
+                      component="a"
+                      href={account.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      sx={{
+                        bgcolor: '#fff',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        color: 'inherit',
+                        flex: '0 0 230px',
+                        p: 1.5,
+                        textDecoration: 'none',
+                        transition: 'transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
+                        '&:hover': { borderColor: instagram ? '#c026d3' : '#2563eb', boxShadow: '0 16px 32px rgba(24,35,56,0.09)', transform: { sm: 'translateY(-2px)' } }
+                      }}
+                    >
+                      <Stack spacing={1.25}>
+                        <Stack direction="row" alignItems="center" justifyContent="space-between">
+                          <Box sx={{ bgcolor: instagram ? '#fdf2f8' : '#eff6ff', borderRadius: 1.5, color: instagram ? '#c026d3' : '#2563eb', display: 'grid', height: 42, placeItems: 'center', width: 42 }}>
+                            {instagram ? <InstagramIcon /> : <FacebookIcon />}
+                          </Box>
+                          <OpenInNewIcon fontSize="small" color="action" />
+                        </Stack>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography sx={{ fontWeight: 900 }} noWrap>{account.label}</Typography>
+                          <Typography variant="caption" color="text.secondary" noWrap>{account.platform === 'instagram' ? 'Instagram' : 'Facebook'}</Typography>
+                        </Box>
+                      </Stack>
+                    </Box>
+                  );
+                })}
+                {socialAccounts.length === 0 && (
+                  <Box sx={{ bgcolor: '#fff', border: '1px dashed', borderColor: 'divider', borderRadius: 2, flex: '1 1 260px', p: 2 }}>
+                    <Typography sx={{ fontWeight: 850 }}>No social cards yet</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Add Instagram or Facebook profiles from Settings.</Typography>
+                    <Button href="/settings" variant="contained" size="small" startIcon={<AddIcon />}>Add social card</Button>
+                  </Box>
+                )}
+              </Box>
             </Stack>
           </CardContent>
         </Card>
