@@ -45,6 +45,11 @@ export async function generateReply(id: string) {
   return data.data;
 }
 
+export async function refineReply(id: string, payload: { draft: string; instruction: string }) {
+  const { data } = await api.post<{ data: { draft: string; email: EmailMessage } }>(`/emails/${encodeURIComponent(id)}/refine-reply`, payload);
+  return data.data;
+}
+
 export async function sendReply(payload: { threadId: string; to: string; subject: string; body: string }) {
   const { data } = await api.post('/emails/send-reply', payload);
   return data.data;

@@ -15,8 +15,22 @@ import LinkIcon from '@mui/icons-material/Link';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { PageHeader } from '../components/PageHeader';
-import { archiveEmail, deleteEmail, generateReply, getEmail, getEmailAttachment, saveDraft, sendReply } from '../api/endpoints';
+import { archiveEmail, deleteEmail, generateReply, getEmail, getEmailAttachment, refineReply, saveDraft, sendReply } from '../api/endpoints';
 import type { EmailMessage } from '../types';
+
+type ReplyRefinementMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
+const replyRefinementPrompts = [
+  'Make it concise',
+  'Make it more professional',
+  'Make it warmer',
+  'Make it firm but polite',
+  'Add a clear next step',
+  'Remove unnecessary details'
+];
 
 function stripHtmlFallback(value?: string) {
   if (!value) return '';
@@ -238,6 +252,9 @@ export function EmailDetailPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [originalOpen, setOriginalOpen] = useState(false);
   const [notice, setNotice] = useState('');
+  const [refineInstruction, setRefineInstruction] = useState('');
+  const [refineMessages, setRefineMessages] = useState<ReplyRefinementMessage[]>([]);
+  const [refining, setRefining] = useState(false);
 
   useEffect(() => {
     if (id) getEmail(id).then(setEmail);
@@ -247,6 +264,22 @@ export function EmailDetailPage() {
     if (!id) return;
     const response = await generateReply(id);
     setDraft(response.draft);
+    setRefineMessages([]);
+  }
+
+  async function refineDraft(instruction = refineInstruction) {
+    if (!id || !draft.trim() || !instruction.trim()) return;
+    const nextInstruction = instruction.trim();
+    setRefining(true);
+    setRefineInstruction('');
+    setRefineMessages((current) => [...current, { role: 'user', content: nextInstruction }]);
+    try {
+      const response = await refineReply(id, { draft, instruction: nextInstruction });
+      setDraft(response.draft);
+      setRefineMessages((current) => [...current, { role: 'assistant', content: 'Updated the draft.' }]);
+    } finally {
+      setRefining(false);
+    }
   }
 
   async function sendApprovedReply() {
@@ -379,7 +412,7 @@ export function EmailDetailPage() {
         </Stack>
         <Card className="premium-panel" sx={{ maxWidth: 980, mx: 'auto', width: '100%' }}>
           <CardContent>
-            <Stack spacing={1.5}>
+            <Stack spacing={2}>
               <TextField
                 label="Editable reply draft"
                 multiline
@@ -389,6 +422,64 @@ export function EmailDetailPage() {
                 placeholder="Generate or write a reply. Nothing is sent until you approve it."
                 sx={{ '& .MuiOutlinedInput-root': { alignItems: 'flex-start' } }}
               />
+              <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: '#f8faff', p: { xs: 1.25, sm: 1.5 } }}>
+                <Stack spacing={1.5}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>Tailor this reply</Typography>
+                      <Typography variant="body2" color="text.secondary">Ask AI to rewrite the current draft before you save or send.</Typography>
+                    </Box>
+                    <Chip icon={<AutoAwesomeIcon />} label="Draft assistant" color="primary" variant="outlined" sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }} />
+                  </Stack>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {replyRefinementPrompts.map((prompt) => (
+                      <Button key={prompt} size="small" variant="outlined" disabled={!draft || refining} onClick={() => refineDraft(prompt)}>
+                        {prompt}
+                      </Button>
+                    ))}
+                  </Stack>
+                  {refineMessages.length > 0 && (
+                    <Stack spacing={1} sx={{ maxHeight: 180, overflowY: 'auto', pr: 0.5 }} className="scroll-thin">
+                      {refineMessages.slice(-6).map((message, index) => (
+                        <Box
+                          key={`${message.role}-${index}`}
+                          sx={{
+                            alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start',
+                            bgcolor: message.role === 'user' ? 'primary.main' : '#ffffff',
+                            border: message.role === 'assistant' ? '1px solid' : 0,
+                            borderColor: 'divider',
+                            borderRadius: 2,
+                            color: message.role === 'user' ? '#fff' : 'text.primary',
+                            maxWidth: '82%',
+                            px: 1.25,
+                            py: 0.85
+                          }}
+                        >
+                          <Typography variant="body2">{message.content}</Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  )}
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      value={refineInstruction}
+                      onChange={(event) => setRefineInstruction(event.target.value)}
+                      placeholder="Tell AI how to change it, e.g. make it shorter and more confident"
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' && !event.shiftKey) {
+                          event.preventDefault();
+                          refineDraft();
+                        }
+                      }}
+                    />
+                    <Button disabled={!draft || !refineInstruction.trim() || refining} variant="contained" startIcon={<AutoAwesomeIcon />} onClick={() => refineDraft()}>
+                      {refining ? 'Updating...' : 'Update'}
+                    </Button>
+                  </Stack>
+                </Stack>
+              </Box>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
                 <Button disabled={!draft} variant="outlined" startIcon={<SaveIcon />} onClick={() => saveDraft(email.id, { threadId: email.threadId, subject: email.subject, body: draft })}>Save Draft</Button>
                 <Button disabled={!draft} variant="contained" startIcon={<SendIcon />} onClick={() => setConfirmOpen(true)}>Send Reply</Button>

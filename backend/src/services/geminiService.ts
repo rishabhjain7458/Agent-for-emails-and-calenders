@@ -140,6 +140,25 @@ export async function generateEmailReply(tenantId: string, userId: string, email
   );
 }
 
+export async function refineEmailReply(tenantId: string, userId: string, email: EmailMessage, draft: string, instruction: string) {
+  return generateText(
+    tenantId,
+    userId,
+    [
+      'Rewrite the current email reply draft according to the user instruction.',
+      'Return only the final email reply body, no commentary, no markdown fences, no labels.',
+      'Preserve factual accuracy from the original email and current draft.',
+      'Do not invent commitments, dates, attachments, or claims.',
+      'Never claim the reply has been sent. The user must approve before sending.'
+    ].join(' '),
+    JSON.stringify({
+      instruction,
+      originalEmail: email,
+      currentDraft: draft
+    })
+  );
+}
+
 export async function answerGeneralQuestion(tenantId: string, userId: string, message: string) {
   return generateText(
     tenantId,

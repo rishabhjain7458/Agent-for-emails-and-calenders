@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { archiveEmail, archiveEmailForConnectedAccount, deleteEmail, deleteEmailForConnectedAccount, getEmail, getEmailAttachment, getEmailAttachmentForConnectedAccount, getEmailForConnectedAccount, getThread, listEmails, listEmailsForConnectedAccount, sendReply } from '../services/emailService.js';
 import { archiveMicrosoftEmail, archiveMicrosoftEmailForConnectedAccount, deleteMicrosoftEmail, deleteMicrosoftEmailForConnectedAccount, getMicrosoftAttachment, getMicrosoftAttachmentForConnectedAccount, getMicrosoftEmail, getMicrosoftEmailForConnectedAccount, listMicrosoftEmails, listMicrosoftEmailsForConnectedAccount, sendMicrosoftReply } from '../services/microsoftEmailService.js';
-import { generateEmailReply, generateEmailSummary, generateSingleEmailSummary } from '../services/geminiService.js';
+import { generateEmailReply, generateEmailSummary, generateSingleEmailSummary, refineEmailReply } from '../services/geminiService.js';
 import { saveDraft } from '../repositories/draftRepository.js';
 import { getConnectedAccount } from '../repositories/connectedAccountRepository.js';
 import { send } from '../utils/http.js';
@@ -173,6 +173,18 @@ export async function draftReply(req: Request, res: Response, next: NextFunction
   try {
     const email = await getEmailForRequest(req, req.params.id);
     send(res, { draft: await generateEmailReply(req.user!.tenantId, req.user!.id, email, req.body.tone), email });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function refineReply(req: Request, res: Response, next: NextFunction) {
+  try {
+    const email = await getEmailForRequest(req, req.params.id);
+    send(res, {
+      draft: await refineEmailReply(req.user!.tenantId, req.user!.id, email, req.body.draft, req.body.instruction),
+      email
+    });
   } catch (error) {
     next(error);
   }
