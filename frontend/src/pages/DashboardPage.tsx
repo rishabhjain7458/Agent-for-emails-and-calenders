@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, Grid, LinearProgress, Stack, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import MailIcon from '@mui/icons-material/Mail';
@@ -270,7 +271,8 @@ export function DashboardPage() {
     const ids = dashboardCards.map((card) => card.id);
     setCardOrder((current) => {
       const next = mergeCardOrder(ids, current);
-      if (next.join('|') !== current.join('|')) updateDashboardCardOrder(next).catch(() => undefined);
+      if (next.join('|') === current.join('|')) return current;
+      updateDashboardCardOrder(next).catch(() => undefined);
       return next;
     });
   }, [dashboardCards]);
@@ -533,9 +535,9 @@ export function DashboardPage() {
                 <Typography color="text.secondary" sx={{ mt: 0.75 }}>{workspaceSubtitle}</Typography>
               </Box>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                <Button variant="outlined" href={`/emails${selectedSpace ? `?accountId=${encodeURIComponent(selectedSpace.id)}` : ''}`} startIcon={<InboxIcon />}>Inbox</Button>
-                <Button variant="outlined" href="/tasks" startIcon={<TaskAltIcon />}>Tasks</Button>
-                <Button variant="contained" href="/calendar" startIcon={<EventIcon />}>Calendar</Button>
+                <Button variant="outlined" component={RouterLink} to={`/emails${selectedSpace ? `?accountId=${encodeURIComponent(selectedSpace.id)}` : ''}`} startIcon={<InboxIcon />}>Inbox</Button>
+                <Button variant="outlined" component={RouterLink} to="/tasks" startIcon={<TaskAltIcon />}>Tasks</Button>
+                <Button variant="contained" component={RouterLink} to="/calendar" startIcon={<EventIcon />}>Calendar</Button>
               </Stack>
             </Stack>
           </Box>
@@ -765,11 +767,11 @@ export function DashboardPage() {
               </Box>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" useFlexGap>
                 {[workspacePrompt, 'Summarize unread emails', 'Create tasks from important emails'].map((prompt) => (
-                  <Button key={prompt} href={`/assistant?prompt=${encodeURIComponent(prompt)}`} variant="outlined" startIcon={<AutoAwesomeIcon />}>
+                  <Button key={prompt} component={RouterLink} to={`/assistant?prompt=${encodeURIComponent(prompt)}`} variant="outlined" startIcon={<AutoAwesomeIcon />}>
                     {prompt}
                   </Button>
                 ))}
-                <Button href="/calendar" variant="contained" startIcon={<AddIcon />}>Create Meeting</Button>
+                <Button component={RouterLink} to="/calendar" variant="contained" startIcon={<AddIcon />}>Create Meeting</Button>
               </Stack>
             </Stack>
           </CardContent>

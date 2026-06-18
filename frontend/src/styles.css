@@ -72,6 +72,71 @@ body::before {
   backdrop-filter: blur(16px);
 }
 
+[data-theme="dark"] body {
+  background: #0b1220;
+}
+
+[data-theme="dark"] body::before {
+  background-image:
+    linear-gradient(rgba(124, 160, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 160, 255, 0.055) 1px, transparent 1px);
+  opacity: 0.5;
+}
+
+[data-theme="dark"] .premium-panel {
+  background: rgba(17, 26, 44, 0.9);
+}
+
+[data-theme="dark"] .MuiCard-root,
+[data-theme="dark"] .MuiPaper-root {
+  background-color: #111a2c;
+}
+
+[data-theme="dark"] .MuiOutlinedInput-root,
+[data-theme="dark"] .MuiButton-outlined {
+  background-color: #111a2c !important;
+}
+
+[data-theme="dark"] .MuiButton-outlined:hover {
+  background-color: #17243a !important;
+}
+
+[data-theme="dark"] .fc .fc-view-harness,
+[data-theme="dark"] .fc .fc-button,
+[data-theme="dark"] .fc .fc-timegrid-axis,
+[data-theme="dark"] .fc .fc-timegrid-slot-label,
+[data-theme="dark"] .fc .fc-timegrid-axis-frame,
+[data-theme="dark"] .fc .fc-timegrid-divider,
+[data-theme="dark"] .fc .fc-timegrid-all-day {
+  background: #111a2c;
+}
+
+[data-theme="dark"] .fc .fc-toolbar-title {
+  color: #edf3ff;
+}
+
+[data-theme="dark"] .fc .fc-button {
+  border-color: #33445f;
+  color: #dbe7ff;
+}
+
+[data-theme="dark"] .fc .fc-timegrid-slot,
+[data-theme="dark"] .fc .fc-scrollgrid,
+[data-theme="dark"] .fc-theme-standard td,
+[data-theme="dark"] .fc-theme-standard th {
+  border-color: #26344c;
+}
+
+[data-theme="dark"] .fc .fc-col-header-cell {
+  background: #17243a;
+}
+
+[data-theme="dark"] .fc .fc-col-header-cell-cushion,
+[data-theme="dark"] .fc .fc-daygrid-day-number,
+[data-theme="dark"] .fc .fc-timegrid-slot-label {
+  color: #a8b4c8;
+}
+
 .scroll-thin {
   scrollbar-color: #b8c6dc transparent;
   scrollbar-width: thin;

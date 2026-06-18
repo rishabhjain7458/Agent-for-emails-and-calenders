@@ -1,25 +1,29 @@
 import { createTheme } from '@mui/material/styles';
 
-export const theme = createTheme({
+export type AppThemeMode = 'light' | 'dark';
+
+export function createAppTheme(mode: AppThemeMode) {
+  const isDark = mode === 'dark';
+  return createTheme({
   palette: {
-    mode: 'light',
-    primary: { main: '#2557d6', dark: '#163d9e', light: '#eaf0ff' },
-    secondary: { main: '#0f9f8f', dark: '#087c72', light: '#def8f3' },
+    mode,
+    primary: { main: '#2557d6', dark: '#163d9e', light: isDark ? '#7ca0ff' : '#eaf0ff' },
+    secondary: { main: '#0f9f8f', dark: '#087c72', light: isDark ? '#5eead4' : '#def8f3' },
     success: { main: '#137a50' },
-    warning: { main: '#aa6400' },
-    error: { main: '#c53636' },
+    warning: { main: isDark ? '#f4b860' : '#aa6400' },
+    error: { main: isDark ? '#ff7b7b' : '#c53636' },
     background: {
-      default: '#f6f8fc',
-      paper: '#ffffff'
+      default: isDark ? '#0b1220' : '#f6f8fc',
+      paper: isDark ? '#111a2c' : '#ffffff'
     },
     text: {
-      primary: '#111827',
-      secondary: '#5f6b7f'
+      primary: isDark ? '#edf3ff' : '#111827',
+      secondary: isDark ? '#a8b4c8' : '#5f6b7f'
     },
-    divider: '#e0e7f1',
+    divider: isDark ? '#26344c' : '#e0e7f1',
     action: {
-      hover: '#eef4ff',
-      selected: '#eaf0ff'
+      hover: isDark ? '#17243a' : '#eef4ff',
+      selected: isDark ? '#1d3154' : '#eaf0ff'
     }
   },
   shape: { borderRadius: 8 },
@@ -34,9 +38,12 @@ export const theme = createTheme({
     MuiCssBaseline: {
       styleOverrides: {
         body: {
+          colorScheme: mode,
           backgroundImage:
-            'linear-gradient(180deg, #fbfcff 0%, #f6f8fc 46%, #f3f6fb 100%)',
-          color: '#111827'
+            isDark
+              ? 'linear-gradient(180deg, #0f172a 0%, #0b1220 48%, #08101d 100%)'
+              : 'linear-gradient(180deg, #fbfcff 0%, #f6f8fc 46%, #f3f6fb 100%)',
+          color: isDark ? '#edf3ff' : '#111827'
         }
       }
     },
@@ -52,8 +59,8 @@ export const theme = createTheme({
         },
         contained: { boxShadow: '0 8px 18px rgba(37, 87, 214, 0.18)' },
         outlined: {
-          backgroundColor: '#ffffff',
-          '&:hover': { backgroundColor: '#f8fbff' }
+          backgroundColor: isDark ? '#111a2c' : '#ffffff',
+          '&:hover': { backgroundColor: isDark ? '#17243a' : '#f8fbff' }
         }
       }
     },
@@ -61,12 +68,12 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 8,
-          border: '1px solid rgba(214, 223, 236, 0.92)',
-          boxShadow: '0 14px 34px rgba(24, 35, 56, 0.06)',
+          border: isDark ? '1px solid rgba(58, 75, 105, 0.92)' : '1px solid rgba(214, 223, 236, 0.92)',
+          boxShadow: isDark ? '0 14px 34px rgba(0, 0, 0, 0.24)' : '0 14px 34px rgba(24, 35, 56, 0.06)',
           transition: 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
           '&:hover': {
-            borderColor: '#cdd9ea',
-            boxShadow: '0 18px 42px rgba(24, 35, 56, 0.085)'
+            borderColor: isDark ? '#3b4c68' : '#cdd9ea',
+            boxShadow: isDark ? '0 18px 42px rgba(0, 0, 0, 0.3)' : '0 18px 42px rgba(24, 35, 56, 0.085)'
           }
         }
       }
@@ -84,13 +91,13 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            backgroundColor: '#ffffff',
+            backgroundColor: isDark ? '#111a2c' : '#ffffff',
             transition: 'box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease',
             '& fieldset': {
-              borderColor: '#d8e1ee'
+              borderColor: isDark ? '#33445f' : '#d8e1ee'
             },
             '&:hover fieldset': {
-              borderColor: '#b9c7db'
+              borderColor: isDark ? '#4d6284' : '#b9c7db'
             },
             '&.Mui-focused': {
               boxShadow: '0 0 0 4px rgba(37, 87, 214, 0.1)'
@@ -108,9 +115,9 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           transition: 'background-color 160ms ease, color 160ms ease, transform 160ms ease',
-          '&:hover': { transform: 'translateX(2px)', backgroundColor: '#f2f6ff' },
+          '&:hover': { transform: 'translateX(2px)', backgroundColor: isDark ? '#17243a' : '#f2f6ff' },
           '&.Mui-selected': {
-            color: '#163d9e',
+            color: isDark ? '#9bb7ff' : '#163d9e',
             '& .MuiListItemIcon-root': { color: '#2557d6' }
           }
         }
@@ -131,4 +138,7 @@ export const theme = createTheme({
       }
     }
   }
-});
+  });
+}
+
+export const theme = createAppTheme('light');

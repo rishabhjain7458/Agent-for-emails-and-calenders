@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Avatar,
@@ -35,8 +35,11 @@ import CloseIcon from '@mui/icons-material/Close';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import LayersIcon from '@mui/icons-material/Layers';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LightModeIcon from '@mui/icons-material/LightMode';
 import { useAuth } from '../contexts/AuthContext';
 import { useSpace } from '../contexts/SpaceContext';
+import { useThemeMode } from '../contexts/ThemeModeContext';
 
 const drawerWidth = 276;
 const collapsedDrawerWidth = 78;
@@ -55,6 +58,7 @@ export function DashboardLayout() {
   const [sidebarHover, setSidebarHover] = useState(false);
   const { user, logout } = useAuth();
   const { activeSpaceId, activeSpace, isCombined, setActiveSpaceId, spaces } = useSpace();
+  const { mode, toggleMode } = useThemeMode();
   const location = useLocation();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -71,16 +75,8 @@ export function DashboardLayout() {
     });
   }
 
-  function goTo(path: string) {
-    navigate(path);
-    setOpen(false);
-    window.requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  }
-
   const drawer = (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#ffffff', overflowX: 'hidden' }}>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper', overflowX: 'hidden' }}>
       <Toolbar sx={{ px: drawerExpanded ? { xs: 2, sm: 3 } : 1.25, minHeight: { xs: 64, sm: 76 }, justifyContent: drawerExpanded ? 'space-between' : 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: drawerExpanded ? 1.5 : 0 }}>
           <Box sx={{ width: 40, height: 40, display: 'grid', placeItems: 'center', borderRadius: 2, bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 900, boxShadow: '0 12px 26px rgba(37, 87, 214, 0.28)', flex: '0 0 auto' }}>
@@ -110,6 +106,8 @@ export function DashboardLayout() {
           const navButton = (
             <ListItemButton
               key={item.path}
+              component={RouterLink}
+              to={item.path}
               selected={selected}
               sx={{
                 borderRadius: 2,
@@ -137,7 +135,12 @@ export function DashboardLayout() {
                   width: 18
                 }
               }}
-              onClick={() => goTo(item.path)}
+              onClick={() => {
+                setOpen(false);
+                window.requestAnimationFrame(() => {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+              }}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
               {drawerExpanded && <ListItemText primary={item.label} />}
@@ -152,7 +155,7 @@ export function DashboardLayout() {
         })}
       </List>
       <Box sx={{ p: drawerExpanded ? 2 : 1.25 }}>
-        <Box sx={{ p: drawerExpanded ? 1.5 : 0, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: '#f8faff', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8)', display: 'grid', placeItems: drawerExpanded ? 'stretch' : 'center', minHeight: drawerExpanded ? 'auto' : 48 }}>
+        <Box sx={{ p: drawerExpanded ? 1.5 : 0, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'action.hover', boxShadow: `inset 0 1px 0 ${alpha(theme.palette.background.paper, 0.8)}`, display: 'grid', placeItems: drawerExpanded ? 'stretch' : 'center', minHeight: drawerExpanded ? 'auto' : 48 }}>
           <Stack direction="row" spacing={drawerExpanded ? 1.25 : 0} alignItems="center">
             <Avatar sx={{ width: 34, height: 34, bgcolor: 'secondary.main' }}>{user?.name?.[0] ?? 'U'}</Avatar>
             <Box sx={{ minWidth: 0, display: drawerExpanded ? 'block' : 'none' }}>
@@ -175,7 +178,7 @@ export function DashboardLayout() {
           borderBottom: '1px solid',
           borderColor: 'divider',
           zIndex: theme.zIndex.drawer + 1,
-          bgcolor: alpha('#ffffff', 0.82),
+          bgcolor: alpha(theme.palette.background.paper, 0.82),
           backdropFilter: 'blur(18px)'
         }}
       >
@@ -192,7 +195,7 @@ export function DashboardLayout() {
               maxWidth: { xs: 'none', md: 560 },
               flex: 1,
               minWidth: 0,
-              '& .MuiOutlinedInput-root': { borderRadius: 999, bgcolor: '#ffffff' },
+              '& .MuiOutlinedInput-root': { borderRadius: 999, bgcolor: 'background.paper' },
               '& .MuiInputBase-input': { px: { xs: 0.5, sm: 1.75 } }
             }}
             InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
@@ -210,7 +213,7 @@ export function DashboardLayout() {
               label="Space"
               value={activeSpaceId}
               onChange={(event) => setActiveSpaceId(event.target.value)}
-              sx={{ minWidth: 260, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#ffffff' } }}
+              sx={{ minWidth: 260, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: 'background.paper' } }}
               InputProps={{ startAdornment: <InputAdornment position="start"><LayersIcon fontSize="small" /></InputAdornment> }}
             >
               <MenuItem value="combined">Combined workspace</MenuItem>
@@ -222,6 +225,11 @@ export function DashboardLayout() {
             </TextField>
           )}
           {isMobile && <Chip size="small" label={isCombined ? 'Combined' : activeSpace?.email ?? 'Space'} color="secondary" variant="outlined" />}
+          <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+            <IconButton onClick={toggleMode} aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+              {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+            </IconButton>
+          </Tooltip>
           <Avatar sx={{ width: { xs: 32, sm: 36 }, height: { xs: 32, sm: 36 }, bgcolor: 'primary.main' }}>{user?.name?.[0] ?? 'U'}</Avatar>
           {!isMobile && <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 220 }}>{user?.email}</Typography>}
           <Tooltip title="Logout">
@@ -263,7 +271,7 @@ export function DashboardLayout() {
 
       <Box component="main" sx={{ flex: 1, pt: { xs: 9, sm: 10, md: 11 }, px: { xs: 1.25, sm: 2.5, md: 3.5, xl: 5 }, pb: { xs: 3, md: 5 }, minWidth: 0, transition: theme.transitions.create('padding', { duration: theme.transitions.duration.shorter }) }}>
         <Box className="page-shell" sx={{ maxWidth: 1480, mx: 'auto', width: '100%' }}>
-          <Outlet key={location.pathname} />
+          <Outlet />
         </Box>
       </Box>
     </Box>
