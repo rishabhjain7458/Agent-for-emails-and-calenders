@@ -35,6 +35,7 @@ export function SettingsPage() {
   const [imapName, setImapName] = useState('');
   const [imapHost, setImapHost] = useState('imappro.zoho.in');
   const [smtpHost, setSmtpHost] = useState('smtp.zoho.in');
+  const [smtpPort, setSmtpPort] = useState('465');
 
   useEffect(() => {
     getSettings().then((settings) => {
@@ -93,8 +94,8 @@ export function SettingsPage() {
       imapPort: 993,
       imapSecure: true,
       smtpHost,
-      smtpPort: 465,
-      smtpSecure: true
+      smtpPort: Number(smtpPort),
+      smtpSecure: smtpPort === '465'
     });
     setAccounts(await getConnectedAccounts());
     setImapEmail('');
@@ -191,6 +192,10 @@ export function SettingsPage() {
                       <TextField size="small" label="IMAP host" value={imapHost} onChange={(event) => setImapHost(event.target.value)} />
                       <TextField size="small" label="SMTP host" value={smtpHost} onChange={(event) => setSmtpHost(event.target.value)} />
                     </Stack>
+                    <TextField size="small" select label="SMTP port" value={smtpPort} onChange={(event) => setSmtpPort(event.target.value)}>
+                      <MenuItem value="465">465 SSL</MenuItem>
+                      <MenuItem value="587">587 TLS</MenuItem>
+                    </TextField>
                     <Button variant="contained" startIcon={<LinkIcon />} onClick={connectZohoImap}>Connect Zoho IMAP</Button>
                   </Stack>
                 </Box>

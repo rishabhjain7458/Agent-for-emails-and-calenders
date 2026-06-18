@@ -245,18 +245,51 @@ export async function deleteImapEmailForConnectedAccount(tenantId: string, userI
 
 export async function sendImapReplyForConnectedAccount(tenantId: string, userId: string, accountId: string, input: { to: string; subject: string; body: string }) {
   const account = await getImapAccount(tenantId, userId, accountId);
-  const transport = nodemailer.createTransport({
-    host: account.config.smtpHost,
-    port: account.config.smtpPort,
-    secure: account.config.smtpSecure,
-    auth: { user: account.email, pass: account.password }
-  });
-  await transport.verify();
-  await transport.sendMail({
-    from: account.email,
-    to: input.to,
-    subject: `Re: ${input.subject.replace(/^Re:\s*/i, '')}`,
-    text: input.body
-  });
-  return { sent: true };
+  const hostCandidates = Array.from(new Set([
+    account.config.smtpHost,
+    account.config.smtpHost.replace(/^smtp\./i, 'smtppro.'),
+    'smtp.zoho.in',
+    'smtppro.zoho.in',
+    'smtp.zoho.com',
+    'smtppro.zoho.com'
+  ].filter(Boolean)));
+  const configuredPort = { port: account.config.smtpPort, secure: account.config.smtpSecure };
+  const portCandidates = [
+    configuredPort,
+    { port: 465, secure: true },
+    { port: 587, secure: false }
+  ].filter((candidate, index, all) => all.findIndex((item) => item.port === candidate.port && item.secure === candidate.secure) === index);
+  const failures: string[] = [];
+
+  for (const host of hostCandidates) {
+    for (const candidate of portCandidates) {
+      const transport = nodemailer.createTransport({
+        host,
+        port: candidate.port,
+        secure: candidate.secure,
+        requireTLS: !candidate.secure,
+        connectionTimeout: 12_000,
+        greetingTimeout: 12_000,
+        socketTimeout: 20_000,
+        auth: { user: account.email, pass: account.password }
+      });
+
+      try {
+        await transport.verify();
+        await transport.sendMail({
+          from: { address: account.email },
+          to: input.to,
+          subject: `Re: ${input.subject.replace(/^Re:\s*/i, '')}`,
+          text: input.body
+        });
+        return { sent: true, smtpHost: host, smtpPort: candidate.port };
+      } catch (error: any) {
+        failures.push(`${host}:${candidate.port} ${error?.code ?? ''} ${error?.responseCode ?? ''} ${error?.message ?? 'failed'}`.replace(/\s+/g, ' ').trim());
+      } finally {
+        transport.close();
+      }
+    }
+  }
+
+  throw new HttpError(502, `Could not send through Zoho SMTP. Tried ${failures.slice(0, 4).join(' | ')}. Check SMTP is enabled and use a Zoho app password.`);
 }
