@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, Grid, LinearProgress, Stack, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import MailIcon from '@mui/icons-material/Mail';
@@ -14,6 +14,9 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
+import DonutLargeIcon from '@mui/icons-material/DonutLarge';
+import InsightsIcon from '@mui/icons-material/Insights';
 import { PageHeader } from '../components/PageHeader';
 import { completeTask, getDashboardCards, getEmails, getEvents, getTasks, updateDashboardCardOrder } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
@@ -80,9 +83,104 @@ function mergeCardOrder(ids: string[], order: string[]) {
   return [...uniqueOrder, ...ids.filter((id) => !uniqueOrder.includes(id))];
 }
 
+function percentage(value: number, total: number) {
+  if (!total) return 0;
+  return Math.round((value / total) * 100);
+}
+
+function withinDays(date: Date | null, days: number) {
+  if (!date) return false;
+  const now = Date.now();
+  const time = date.getTime();
+  return time >= now && time <= now + days * 24 * 60 * 60 * 1000;
+}
+
+function ChartBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
+  const pct = percentage(value, total);
+  return (
+    <Box>
+      <Stack direction="row" justifyContent="space-between" spacing={1} sx={{ mb: 0.65 }}>
+        <Typography variant="body2" sx={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</Typography>
+        <Typography variant="caption" color="text.secondary">{value}</Typography>
+      </Stack>
+      <Box sx={{ bgcolor: '#edf2fb', borderRadius: 999, height: 9, overflow: 'hidden' }}>
+        <Box sx={{ bgcolor: color, borderRadius: 999, height: '100%', transition: 'width 260ms ease', width: `${pct}%` }} />
+      </Box>
+    </Box>
+  );
+}
+
+function DonutMetric({ value, total, color, label }: { value: number; total: number; color: string; label: string }) {
+  const pct = percentage(value, total);
+  return (
+    <Stack direction="row" spacing={1.5} alignItems="center">
+      <Box
+        sx={{
+          alignItems: 'center',
+          background: `conic-gradient(${color} 0deg ${pct * 3.6}deg, #e8eef8 ${pct * 3.6}deg 360deg)`,
+          borderRadius: '50%',
+          display: 'flex',
+          flex: '0 0 auto',
+          height: 86,
+          justifyContent: 'center',
+          position: 'relative',
+          width: 86,
+          '&::after': { bgcolor: '#fff', borderRadius: '50%', content: '""', height: 58, position: 'absolute', width: 58 }
+        }}
+      >
+        <Typography sx={{ color, fontWeight: 950, position: 'relative', zIndex: 1 }}>{pct}%</Typography>
+      </Box>
+      <Box sx={{ minWidth: 0 }}>
+        <Typography sx={{ fontWeight: 900 }}>{label}</Typography>
+        <Typography variant="body2" color="text.secondary">{value} of {total || 0}</Typography>
+      </Box>
+    </Stack>
+  );
+}
+
+function SignalTile({ label, value, helper, color, icon }: { label: string; value: string | number; helper: string; color: string; icon: ReactNode }) {
+  return (
+    <Box
+      sx={{
+        bgcolor: '#fff',
+        border: '1px solid',
+        borderColor: `${color}30`,
+        borderRadius: 2,
+        boxShadow: `0 16px 34px ${color}12`,
+        minHeight: 118,
+        overflow: 'hidden',
+        p: 1.65,
+        position: 'relative',
+        '&::after': {
+          bgcolor: `${color}10`,
+          borderRadius: '50%',
+          content: '""',
+          height: 96,
+          position: 'absolute',
+          right: -34,
+          top: -34,
+          width: 96
+        }
+      }}
+    >
+      <Stack spacing={1.15} sx={{ position: 'relative', zIndex: 1 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 850, textTransform: 'uppercase' }}>{label}</Typography>
+          <Box sx={{ bgcolor: `${color}14`, borderRadius: 1.5, color, display: 'grid', height: 34, placeItems: 'center', width: 34 }}>
+            {icon}
+          </Box>
+        </Stack>
+        <Typography variant="h4" sx={{ color, fontWeight: 950, lineHeight: 1 }}>{value}</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.35 }}>{helper}</Typography>
+      </Stack>
+    </Box>
+  );
+}
+
 export function DashboardPage() {
   const { activeSpaceId, setActiveSpaceId, isCombined, spaces } = useSpace();
   const [emails, setEmails] = useState<EmailMessage[]>([]);
+  const [recentEmails, setRecentEmails] = useState<EmailMessage[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
@@ -92,12 +190,15 @@ export function DashboardPage() {
 
   async function loadDashboard() {
     setLoading(true);
-    const results = await Promise.allSettled([getEmails('in:inbox is:unread'), getEvents(), getTasks()]);
+    const results = await Promise.allSettled([getEmails('in:inbox is:unread'), getEmails('in:inbox newer_than:14d'), getEvents(), getTasks()]);
     const nextErrors: string[] = [];
-    const [mailResult, calendarResult, taskResult] = results;
+    const [mailResult, recentMailResult, calendarResult, taskResult] = results;
 
     if (mailResult.status === 'fulfilled') setEmails(mailResult.value);
     else nextErrors.push('Unread emails could not be loaded.');
+
+    if (recentMailResult.status === 'fulfilled') setRecentEmails(recentMailResult.value);
+    else nextErrors.push('Recent email analysis could not be loaded.');
 
     if (calendarResult.status === 'fulfilled') setEvents(calendarResult.value);
     else nextErrors.push('Upcoming meetings could not be loaded.');
@@ -118,6 +219,7 @@ export function DashboardPage() {
   }, []);
 
   const pendingTasks = tasks.filter((task) => task.status !== 'completed');
+  const completedTasks = tasks.filter((task) => task.status === 'completed');
   const overdue = overdueTasks(tasks);
 
   const accountColors = useMemo(() => {
@@ -173,6 +275,11 @@ export function DashboardPage() {
   const scopedTasks = selectedSpace
     ? pendingTasks.filter((task) => itemAccountKey(task) === selectedSpace.id || task.account_email === selectedSpace.email)
     : pendingTasks;
+  const scopedCompletedTasks = selectedSpace
+    ? completedTasks.filter((task) => itemAccountKey(task) === selectedSpace.id || task.account_email === selectedSpace.email)
+    : completedTasks;
+  const scopedAllTasks = [...scopedTasks, ...scopedCompletedTasks];
+  const scopedOverdueTasks = overdue.filter((task) => !selectedSpace || itemAccountKey(task) === selectedSpace.id || task.account_email === selectedSpace.email);
   const priorityEmails = scopedEmails.filter(isLikelyImportantSender).slice(0, 4);
   const selectedSpaceEvents = scopedEvents
     .map((event) => ({ event, starts: eventStart(event) }))
@@ -187,6 +294,29 @@ export function DashboardPage() {
   const workspacePrompt = selectedSpace
     ? `Plan my day for ${selectedSpace.email}`
     : 'Plan my day across all spaces';
+  const recentScopedEmails = selectedSpace
+    ? recentEmails.filter((email) => itemAccountKey(email) === selectedSpace.id || email.accountEmail === selectedSpace.email)
+    : recentEmails;
+  const nextSevenDayEvents = scopedEvents.filter((event) => withinDays(eventStart(event), 7));
+  const nextDayEvents = scopedEvents.filter((event) => withinDays(eventStart(event), 1));
+  const accountAnalytics = accountSpaces.map((account) => ({
+    id: account.id,
+    label: account.email,
+    color: account.color,
+    recentEmails: recentEmails.filter((email) => itemAccountKey(email) === account.id || email.accountEmail === account.email).length,
+    unreadEmails: emails.filter((email) => itemAccountKey(email) === account.id || email.accountEmail === account.email).length,
+    events: events.filter((event) => itemAccountKey(event) === account.id || event.accountEmail === account.email).filter((event) => withinDays(eventStart(event), 7)).length
+  }));
+  const maxRecentEmails = Math.max(...accountAnalytics.map((item) => item.recentEmails), 1);
+  const maxUpcomingEvents = Math.max(...accountAnalytics.map((item) => item.events), 1);
+  const providerAnalytics = Object.entries(
+    recentScopedEmails.reduce<Record<string, number>>((acc, email) => {
+      const key = providerLabel(email.provider);
+      acc[key] = (acc[key] ?? 0) + 1;
+      return acc;
+    }, {})
+  ).sort((a, b) => b[1] - a[1]);
+  const importantUnreadRate = percentage(priorityEmails.length, scopedEmails.length);
 
   async function quickComplete(task: Task) {
     setTasks((current) => current.map((item) => item.id === task.id ? { ...item, status: 'completed' } : item));
@@ -465,6 +595,151 @@ export function DashboardPage() {
                     {selectedSpaceTasks.length === 0 && <Alert severity="success">No pending tasks here.</Alert>}
                   </Stack>
                 </Stack>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+
+        <Card className="premium-panel">
+          <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
+            <Stack direction={{ xs: 'column', lg: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 2.25 }}>
+              <Box sx={{ maxWidth: 620 }}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <AnalyticsIcon color="primary" />
+                  <Typography variant="h5" sx={{ fontWeight: 950 }}>Workspace Analysis</Typography>
+                </Stack>
+                <Typography color="text.secondary" sx={{ mt: 0.45 }}>Live operational signals from connected inboxes, calendars, and tasks, scoped to the selected space.</Typography>
+              </Box>
+              <Chip icon={<InsightsIcon />} label={selectedSpace ? providerLabel(selectedSpace.provider) : 'Combined analysis'} color="primary" variant="outlined" sx={{ alignSelf: { xs: 'flex-start', md: 'center' } }} />
+            </Stack>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} lg={3}>
+                <SignalTile
+                  label="Unread"
+                  value={scopedEmails.length}
+                  helper={`${priorityEmails.length} look like real people or work mail`}
+                  color={selectedSpaceColor}
+                  icon={<MailIcon fontSize="small" />}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} lg={3}>
+                <SignalTile
+                  label="Priority rate"
+                  value={`${importantUnreadRate}%`}
+                  helper="Higher means the inbox needs attention sooner"
+                  color={importantUnreadRate > 40 ? '#b86b00' : '#0f9f8f'}
+                  icon={<InsightsIcon fontSize="small" />}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} lg={3}>
+                <SignalTile
+                  label="Meetings"
+                  value={nextSevenDayEvents.length}
+                  helper={`${nextDayEvents.length} scheduled in the next 24 hours`}
+                  color="#8b5cf6"
+                  icon={<EventIcon fontSize="small" />}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} lg={3}>
+                <SignalTile
+                  label="Task pressure"
+                  value={scopedOverdueTasks.length}
+                  helper={`${scopedTasks.length} pending in this workspace`}
+                  color={scopedOverdueTasks.length ? '#e0476b' : '#168053'}
+                  icon={<TaskAltIcon fontSize="small" />}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, height: '100%', p: 2 }}>
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Box>
+                        <Typography sx={{ fontWeight: 900 }}>Mail Volume</Typography>
+                        <Typography variant="caption" color="text.secondary">Recent inbox, last 14 days</Typography>
+                      </Box>
+                      <MailIcon sx={{ color: selectedSpaceColor }} />
+                    </Stack>
+                    {accountAnalytics.map((item) => (
+                      <ChartBar key={item.id} label={item.label} value={item.recentEmails} total={maxRecentEmails} color={item.color} />
+                    ))}
+                    {accountAnalytics.length === 0 && <Alert severity="info">No connected accounts to analyze yet.</Alert>}
+                  </Stack>
+                </Box>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, height: '100%', p: 2 }}>
+                  <Stack spacing={1.6}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Box>
+                        <Typography sx={{ fontWeight: 900 }}>Task Balance</Typography>
+                        <Typography variant="caption" color="text.secondary">Completion and urgency</Typography>
+                      </Box>
+                      <DonutLargeIcon sx={{ color: selectedSpaceColor }} />
+                    </Stack>
+                    <DonutMetric value={scopedCompletedTasks.length} total={scopedAllTasks.length} color={selectedSpaceColor} label="Completed tasks" />
+                    <Grid container spacing={1}>
+                      <Grid item xs={6}>
+                        <Box sx={{ bgcolor: '#f8faff', borderRadius: 2, p: 1.25 }}>
+                          <Typography variant="h5" sx={{ fontWeight: 950 }}>{scopedTasks.length}</Typography>
+                          <Typography variant="caption" color="text.secondary">Pending</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Box sx={{ bgcolor: scopedOverdueTasks.length ? '#fff7ed' : '#f0fdf4', borderRadius: 2, p: 1.25 }}>
+                          <Typography variant="h5" sx={{ fontWeight: 950 }}>{scopedOverdueTasks.length}</Typography>
+                          <Typography variant="caption" color="text.secondary">Overdue</Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </Stack>
+                </Box>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, height: '100%', p: 2 }}>
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Box>
+                        <Typography sx={{ fontWeight: 900 }}>Calendar Load</Typography>
+                        <Typography variant="caption" color="text.secondary">Upcoming events, next 7 days</Typography>
+                      </Box>
+                      <EventIcon sx={{ color: selectedSpaceColor }} />
+                    </Stack>
+                    {accountAnalytics.map((item) => (
+                      <ChartBar key={item.id} label={item.label} value={item.events} total={maxUpcomingEvents} color={item.color} />
+                    ))}
+                    <Grid container spacing={1}>
+                      <Grid item xs={6}>
+                        <Box sx={{ bgcolor: '#f8faff', borderRadius: 2, p: 1.25 }}>
+                          <Typography variant="h5" sx={{ fontWeight: 950 }}>{nextDayEvents.length}</Typography>
+                          <Typography variant="caption" color="text.secondary">Next 24h</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Box sx={{ bgcolor: '#f8faff', borderRadius: 2, p: 1.25 }}>
+                          <Typography variant="h5" sx={{ fontWeight: 950 }}>{nextSevenDayEvents.length}</Typography>
+                          <Typography variant="caption" color="text.secondary">Next 7d</Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </Stack>
+                </Box>
+              </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ bgcolor: '#f8faff', border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
+                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems={{ xs: 'stretch', md: 'center' }} justifyContent="space-between">
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      <Chip label={`${importantUnreadRate}% important unread`} color={importantUnreadRate > 40 ? 'warning' : 'default'} />
+                      <Chip label={`${recentScopedEmails.length} recent inbox messages`} />
+                      <Chip label={`${providerAnalytics.length || 1} mail provider${providerAnalytics.length === 1 ? '' : 's'}`} />
+                    </Stack>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      {providerAnalytics.map(([provider, count]) => (
+                        <Chip key={provider} variant="outlined" label={`${provider}: ${count}`} />
+                      ))}
+                      {providerAnalytics.length === 0 && <Chip variant="outlined" label="No recent provider data" />}
+                    </Stack>
+                  </Stack>
+                </Box>
               </Grid>
             </Grid>
           </CardContent>
