@@ -8,16 +8,42 @@ import LinkIcon from '@mui/icons-material/Link';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import FacebookIcon from '@mui/icons-material/Facebook';
+import LinkedInIcon from '@mui/icons-material/LinkedIn';
+import XIcon from '@mui/icons-material/X';
+import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
+import RedditIcon from '@mui/icons-material/Reddit';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import { PageHeader } from '../components/PageHeader';
 import { connectImapAccount, createDashboardCard, deleteDashboardCard, disconnectAccount, getConnectedAccounts, getConnectAccountUrl, getDashboardCards, getSettings, updateSettings } from '../api/endpoints';
 import type { ConnectedAccount, DashboardCard } from '../types';
-import { normalizeSocialUrl, type SocialPlatform } from '../utils/socialAccounts';
+import { normalizeSocialUrl, socialPlatformLabels, type SocialPlatform } from '../utils/socialAccounts';
 import { useSpace } from '../contexts/SpaceContext';
 
 type CardFormType = 'social' | 'news' | 'custom_link';
 type ZohoSmtpPreset = 'india' | 'global' | 'europe' | 'custom';
+
+const socialPlatforms = Object.entries(socialPlatformLabels) as [SocialPlatform, string][];
+
+function socialCardStyle(platform?: string | null) {
+  if (platform === 'instagram') return { bg: '#fdf2f8', fg: '#c026d3' };
+  if (platform === 'facebook') return { bg: '#eff6ff', fg: '#2563eb' };
+  if (platform === 'linkedin') return { bg: '#eef6ff', fg: '#0a66c2' };
+  if (platform === 'x') return { bg: '#f4f4f5', fg: '#111827' };
+  if (platform === 'threads') return { bg: '#f5f3ff', fg: '#5b21b6' };
+  if (platform === 'reddit') return { bg: '#fff1ed', fg: '#ff4500' };
+  return { bg: '#f8faff', fg: '#2557d6' };
+}
+
+function socialCardIcon(platform?: string | null) {
+  if (platform === 'instagram') return <InstagramIcon />;
+  if (platform === 'facebook') return <FacebookIcon />;
+  if (platform === 'linkedin') return <LinkedInIcon />;
+  if (platform === 'x') return <XIcon />;
+  if (platform === 'threads') return <AlternateEmailIcon />;
+  if (platform === 'reddit') return <RedditIcon />;
+  return <LinkIcon />;
+}
 
 function accountProviderLabel(provider: ConnectedAccount['provider']) {
   return provider === 'microsoft' ? 'Outlook' : provider === 'imap' ? 'IMAP Mail' : provider === 'zoho' ? 'Zoho Mail' : 'Gmail';
@@ -138,7 +164,7 @@ export function SettingsPage() {
     await createDashboardCard({
       cardType,
       platform: cardType === 'social' ? socialPlatform : cardType,
-      label: cardLabel.trim() || (cardType === 'news' ? 'News website' : cardType === 'custom_link' ? 'Custom link' : socialPlatform === 'instagram' ? 'Instagram account' : 'Facebook account'),
+      label: cardLabel.trim() || (cardType === 'news' ? 'News website' : cardType === 'custom_link' ? 'Custom link' : `${socialPlatformLabels[socialPlatform]} account`),
       url
     });
     setDashboardCards((await getDashboardCards()).cards);
@@ -155,15 +181,13 @@ export function SettingsPage() {
 
   function cardIcon(card: DashboardCard) {
     if (card.cardType === 'news') return <NewspaperIcon />;
-    if (card.platform === 'instagram') return <InstagramIcon />;
-    if (card.platform === 'facebook') return <FacebookIcon />;
+    if (card.cardType === 'social') return socialCardIcon(card.platform);
     return <LinkIcon />;
   }
 
   function cardColor(card: DashboardCard) {
     if (card.cardType === 'news') return { bg: '#fefce8', fg: '#a16207' };
-    if (card.platform === 'instagram') return { bg: '#fdf2f8', fg: '#c026d3' };
-    if (card.platform === 'facebook') return { bg: '#eff6ff', fg: '#2563eb' };
+    if (card.cardType === 'social') return socialCardStyle(card.platform);
     return { bg: '#f8faff', fg: '#2557d6' };
   }
 
@@ -280,8 +304,9 @@ export function SettingsPage() {
                   <Grid item xs={12} sm={3}>
                     {cardType === 'social' ? (
                       <TextField fullWidth select label="Platform" value={socialPlatform} onChange={(event) => setSocialPlatform(event.target.value as SocialPlatform)}>
-                        <MenuItem value="instagram">Instagram</MenuItem>
-                        <MenuItem value="facebook">Facebook</MenuItem>
+                        {socialPlatforms.map(([platform, label]) => (
+                          <MenuItem key={platform} value={platform}>{label}</MenuItem>
+                        ))}
                       </TextField>
                     ) : (
                       <TextField fullWidth label="Card name" value={cardLabel} onChange={(event) => setCardLabel(event.target.value)} placeholder={cardType === 'news' ? 'BBC News, TechCrunch' : 'Client portal'} />

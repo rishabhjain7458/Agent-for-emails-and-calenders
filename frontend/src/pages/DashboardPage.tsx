@@ -10,6 +10,10 @@ import LayersIcon from '@mui/icons-material/Layers';
 import InboxIcon from '@mui/icons-material/Inbox';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import FacebookIcon from '@mui/icons-material/Facebook';
+import LinkedInIcon from '@mui/icons-material/LinkedIn';
+import XIcon from '@mui/icons-material/X';
+import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
+import RedditIcon from '@mui/icons-material/Reddit';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -21,6 +25,7 @@ import { PageHeader } from '../components/PageHeader';
 import { completeTask, getDashboardCards, getEmails, getEvents, getTasks, updateDashboardCardOrder } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
 import type { CalendarEvent, DashboardCard as LinkDashboardCard, EmailMessage, Task } from '../types';
+import { socialPlatformLabels } from '../utils/socialAccounts';
 
 const accountPalette = ['#2557d6', '#0f9f8f', '#b86b00', '#8b5cf6', '#e0476b', '#168053'];
 
@@ -81,6 +86,17 @@ function metricLabel(value: number, singular: string, plural = `${singular}s`) {
 function mergeCardOrder(ids: string[], order: string[]) {
   const uniqueOrder = order.filter((id, index) => ids.includes(id) && order.indexOf(id) === index);
   return [...uniqueOrder, ...ids.filter((id) => !uniqueOrder.includes(id))];
+}
+
+function linkCardMeta(card: LinkDashboardCard) {
+  if (card.cardType === 'news') return { accent: '#a16207', accentBg: '#fefce8', label: 'News', icon: <NewspaperIcon /> };
+  if (card.platform === 'instagram') return { accent: '#c026d3', accentBg: '#fdf2f8', label: socialPlatformLabels.instagram, icon: <InstagramIcon /> };
+  if (card.platform === 'facebook') return { accent: '#2563eb', accentBg: '#eff6ff', label: socialPlatformLabels.facebook, icon: <FacebookIcon /> };
+  if (card.platform === 'linkedin') return { accent: '#0a66c2', accentBg: '#eef6ff', label: socialPlatformLabels.linkedin, icon: <LinkedInIcon /> };
+  if (card.platform === 'x') return { accent: '#111827', accentBg: '#f4f4f5', label: socialPlatformLabels.x, icon: <XIcon /> };
+  if (card.platform === 'threads') return { accent: '#5b21b6', accentBg: '#f5f3ff', label: socialPlatformLabels.threads, icon: <AlternateEmailIcon /> };
+  if (card.platform === 'reddit') return { accent: '#ff4500', accentBg: '#fff1ed', label: socialPlatformLabels.reddit, icon: <RedditIcon /> };
+  return { accent: '#2557d6', accentBg: '#f8faff', label: 'Custom link', icon: <OpenInNewIcon /> };
 }
 
 function percentage(value: number, total: number) {
@@ -401,12 +417,7 @@ export function DashboardPage() {
                   }
 
                   if (card.kind === 'link') {
-                    const instagram = card.account.platform === 'instagram';
-                    const facebook = card.account.platform === 'facebook';
-                    const news = card.account.cardType === 'news';
-                    const accent = instagram ? '#c026d3' : facebook ? '#2563eb' : news ? '#a16207' : '#2557d6';
-                    const accentBg = instagram ? '#fdf2f8' : facebook ? '#eff6ff' : news ? '#fefce8' : '#f8faff';
-                    const cardLabel = news ? 'News' : instagram ? 'Instagram' : facebook ? 'Facebook' : 'Custom link';
+                    const meta = linkCardMeta(card.account);
                     return (
                       <Box
                         key={card.id}
@@ -420,15 +431,15 @@ export function DashboardPage() {
                           minHeight: 128,
                           p: 1.15,
                           transition: 'transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
-                          '&:hover': { borderColor: accent, boxShadow: '0 16px 32px rgba(24,35,56,0.09)', transform: { sm: 'translateY(-2px)' } }
+                          '&:hover': { borderColor: meta.accent, boxShadow: '0 16px 32px rgba(24,35,56,0.09)', transform: { sm: 'translateY(-2px)' } }
                         }}
                       >
                         <Stack spacing={0.85} sx={{ height: '100%' }}>
                           <Box component="a" href={card.account.url} target="_blank" rel="noreferrer" sx={{ color: 'inherit', textDecoration: 'none' }}>
                             <Stack spacing={0.85}>
                               <Stack direction="row" alignItems="center" justifyContent="space-between">
-                                <Box sx={{ bgcolor: accentBg, borderRadius: 1.5, color: accent, display: 'grid', height: 36, placeItems: 'center', width: 36 }}>
-                                  {instagram ? <InstagramIcon /> : facebook ? <FacebookIcon /> : news ? <NewspaperIcon /> : <OpenInNewIcon />}
+                                <Box sx={{ bgcolor: meta.accentBg, borderRadius: 1.5, color: meta.accent, display: 'grid', height: 36, placeItems: 'center', width: 36 }}>
+                                  {meta.icon}
                                 </Box>
                                 <Stack direction="row" spacing={0.75} alignItems="center">
                                   <Chip size="small" label={`#${index + 1}`} sx={{ fontWeight: 850 }} />
@@ -437,7 +448,7 @@ export function DashboardPage() {
                               </Stack>
                               <Box sx={{ minWidth: 0 }}>
                                 <Typography sx={{ fontWeight: 900 }} noWrap>{card.account.label}</Typography>
-                                <Typography variant="caption" color="text.secondary" noWrap>{cardLabel}</Typography>
+                                <Typography variant="caption" color="text.secondary" noWrap>{meta.label}</Typography>
                               </Box>
                             </Stack>
                           </Box>
