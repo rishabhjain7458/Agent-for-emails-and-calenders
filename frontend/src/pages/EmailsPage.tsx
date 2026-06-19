@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { Alert, Box, Button, Card, CardContent, Chip, Divider, Drawer, Grid, LinearProgress, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SearchIcon from '@mui/icons-material/Search';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
@@ -10,7 +9,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import { PageHeader } from '../components/PageHeader';
 import { EmptyState } from '../components/EmptyState';
 import { WindowedList } from '../components/WindowedList';
-import { archiveEmail, deleteEmail, getEmails, getEmailSummary } from '../api/endpoints';
+import { archiveEmail, deleteEmail, getEmails } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
 import type { EmailMessage } from '../types';
 
@@ -64,7 +63,6 @@ export function EmailsPage() {
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [limit, setLimit] = useState(24);
-  const [summary, setSummary] = useState('');
   const [actionError, setActionError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -332,8 +330,7 @@ export function EmailsPage() {
     <>
       <PageHeader
         title="Emails"
-        subtitle="Search connected inboxes, summarize important mail, and draft approved replies."
-        action={<Button variant="outlined" startIcon={<AutoAwesomeIcon />} onClick={async () => setSummary(await getEmailSummary())}>AI Summary</Button>}
+        subtitle="Search connected inboxes, inspect clean email details, and draft approved replies."
       />
       {isMobile && (
         <Button fullWidth variant="contained" startIcon={<FilterAltIcon />} onClick={() => setFilterOpen(true)} sx={{ mb: 2 }}>
@@ -361,11 +358,6 @@ export function EmailsPage() {
             </CardContent>
           </Card>
         </Grid>
-        {summary && (
-          <Grid item xs={12}>
-            <Alert severity="info">{summary}</Alert>
-          </Grid>
-        )}
         {actionError && (
           <Grid item xs={12}>
             <Alert severity="error">{actionError}</Alert>

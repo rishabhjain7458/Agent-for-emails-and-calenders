@@ -529,6 +529,73 @@ button {
     min-height: 520px;
   }
 
+  .fc .fc-daygrid-day-frame {
+    min-height: 78px;
+  }
+
+  .fc .fc-daygrid-day-top {
+    justify-content: center;
+  }
+
+  .fc .fc-daygrid-day-number {
+    font-size: 0.78rem;
+    font-weight: 750;
+    padding: 3px 0 2px;
+  }
+
+  .fc .fc-daygrid-day-events {
+    margin: 0 2px 2px;
+  }
+
+  .fc .fc-daygrid-event {
+    border-radius: 6px;
+    margin-top: 2px;
+    min-height: 20px;
+  }
+
+  .fc .fc-daygrid-event .fc-event-main {
+    min-width: 0;
+  }
+
+  .fc .mobile-month-event {
+    align-items: center;
+    display: flex;
+    gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 2px 4px;
+  }
+
+  .fc .mobile-month-event-time {
+    flex: 0 0 auto;
+    font-size: 0.62rem;
+    font-weight: 850;
+    line-height: 1;
+    opacity: 0.95;
+    white-space: nowrap;
+  }
+
+  .fc .mobile-month-event-title {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 800;
+    line-height: 1.05;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .fc .fc-daygrid-more-link {
+    border-radius: 5px;
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 800;
+    line-height: 1.1;
+    padding: 1px 4px;
+  }
+
   .fc .fc-timegrid-slot {
     height: 2.4rem;
   }

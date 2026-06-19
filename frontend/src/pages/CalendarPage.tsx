@@ -165,6 +165,8 @@ export function CalendarPage() {
     })
   }), [agendaEvents]);
 
+  const isMobileMonthView = isMobile && calendarView === 'dayGridMonth';
+
   function formatEventDate(value?: string) {
     if (!value) return 'Not set';
     const parsed = new Date(value);
@@ -375,10 +377,12 @@ export function CalendarPage() {
                 initialView={calendarView}
                 firstDay={1}
                 headerToolbar={isMobile ? { left: 'prev,next today', center: 'title', right: '' } : { left: 'prev,next today', center: 'title', right: '' }}
+                titleFormat={isMobileMonthView ? { month: 'short', year: 'numeric' } : undefined}
                 buttonText={{ today: 'Today', month: 'Month', week: 'Week', day: 'Day' }}
                 events={calendarEvents}
                 height="auto"
                 expandRows
+                fixedWeekCount={false}
                 nowIndicator
                 selectable
                 selectMirror
@@ -389,12 +393,12 @@ export function CalendarPage() {
                 scrollTime="08:00:00"
                 slotDuration="00:30:00"
                 slotLabelFormat={{ hour: 'numeric', minute: '2-digit', meridiem: 'short' }}
-                dayHeaderFormat={{ weekday: isMobile ? 'short' : 'short', day: 'numeric', month: 'short' }}
+                dayHeaderFormat={isMobileMonthView ? { weekday: 'narrow' } : { weekday: 'short', day: 'numeric', month: 'short' }}
                 eventDisplay="block"
-                eventMinHeight={34}
-                eventShortHeight={34}
+                eventMinHeight={isMobileMonthView ? 20 : 34}
+                eventShortHeight={isMobileMonthView ? 20 : 34}
                 slotEventOverlap={false}
-                dayMaxEvents
+                dayMaxEvents={isMobileMonthView ? 2 : true}
                 select={(info) => prefillFromSlot(info.start, info.end)}
                 dateClick={(info) => prefillFromSlot(info.date)}
                 eventClick={(info) => {
@@ -402,14 +406,22 @@ export function CalendarPage() {
                   if (matchingEvent) setSelectedEvent(matchingEvent);
                 }}
                 eventContent={(info) => (
-                  <Box sx={{ px: 0.75, py: 0.4, overflow: 'hidden', borderLeft: `4px solid ${info.event.extendedProps.typeColor}`, minHeight: '100%' }}>
-                    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ minWidth: 0 }}>
-                      <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: info.event.extendedProps.typeColor, border: '1px solid rgba(255,255,255,0.75)', flex: '0 0 auto' }} />
-                      {info.timeText && <Typography component="div" variant="caption" sx={{ fontWeight: 800, lineHeight: 1.1 }}>{info.timeText}</Typography>}
-                    </Stack>
-                    <Typography component="div" variant="caption" sx={{ fontWeight: 750, lineHeight: 1.2, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{info.event.title}</Typography>
-                    {info.event.extendedProps.accountEmail && <Typography component="div" variant="caption" sx={{ lineHeight: 1.2, opacity: 0.9 }}>{info.event.extendedProps.accountEmail}</Typography>}
-                  </Box>
+                  isMobileMonthView ? (
+                    <Box className="mobile-month-event" sx={{ borderLeft: `3px solid ${info.event.extendedProps.typeColor}` }}>
+                      <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: info.event.extendedProps.typeColor, border: '1px solid rgba(255,255,255,0.8)', flex: '0 0 auto' }} />
+                      {info.timeText && <Typography component="span" className="mobile-month-event-time">{info.timeText}</Typography>}
+                      <Typography component="span" className="mobile-month-event-title">{info.event.title}</Typography>
+                    </Box>
+                  ) : (
+                    <Box sx={{ px: 0.75, py: 0.4, overflow: 'hidden', borderLeft: `4px solid ${info.event.extendedProps.typeColor}`, minHeight: '100%' }}>
+                      <Stack direction="row" spacing={0.5} alignItems="center" sx={{ minWidth: 0 }}>
+                        <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: info.event.extendedProps.typeColor, border: '1px solid rgba(255,255,255,0.75)', flex: '0 0 auto' }} />
+                        {info.timeText && <Typography component="div" variant="caption" sx={{ fontWeight: 800, lineHeight: 1.1 }}>{info.timeText}</Typography>}
+                      </Stack>
+                      <Typography component="div" variant="caption" sx={{ fontWeight: 750, lineHeight: 1.2, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{info.event.title}</Typography>
+                      {info.event.extendedProps.accountEmail && <Typography component="div" variant="caption" sx={{ lineHeight: 1.2, opacity: 0.9 }}>{info.event.extendedProps.accountEmail}</Typography>}
+                    </Box>
+                  )
                 )}
               />
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 2 }}>

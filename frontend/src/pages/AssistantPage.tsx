@@ -218,7 +218,8 @@ export function AssistantPage() {
   async function loadConversations() {
     setHistoryLoading(true);
     try {
-      setConversations(await getAssistantConversations());
+      const history = await getAssistantConversations();
+      setConversations(history.slice(0, 10));
     } finally {
       setHistoryLoading(false);
     }
@@ -350,7 +351,7 @@ export function AssistantPage() {
                 <Button variant="contained" startIcon={<AddIcon />} onClick={startNewChat}>New Chat</Button>
                 <Box>
                   <Typography variant="h6">History</Typography>
-                  <Typography variant="body2" color="text.secondary">{historyLoading ? 'Loading chats...' : `${conversations.length} saved conversations`}</Typography>
+                  <Typography variant="body2" color="text.secondary">{historyLoading ? 'Loading chats...' : `Latest ${conversations.length} chats`}</Typography>
                 </Box>
                 <Stack className="scroll-thin" divider={<Divider flexItem />} spacing={0} sx={{ maxHeight: { md: 560 }, overflowY: 'auto', pr: 0.5 }}>
                   {conversations.map((conversation) => (
