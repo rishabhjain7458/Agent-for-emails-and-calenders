@@ -7,8 +7,11 @@ import { upsertGoogleUser, upsertMicrosoftUser, upsertZohoUser } from '../reposi
 import { ensureDefaultTenant } from '../repositories/tenantRepository.js';
 import { signSession } from '../middleware/auth.js';
 import { deleteConnectedAccount, listConnectedAccounts, upsertConnectedAccount } from '../repositories/connectedAccountRepository.js';
+import { createDashboardCard } from '../repositories/dashboardCardRepository.js';
+import { upsertSocialConnection, type SocialPlatform } from '../repositories/socialConnectionRepository.js';
+import { exchangeSocialCode, getSocialAuthUrl, socialCodeVerifier, socialTokenExpiry, supportedSocialPlatform } from '../services/socialAuthService.js';
 import { env } from '../config/env.js';
-import { send } from '../utils/http.js';
+import { HttpError, send } from '../utils/http.js';
 import type { AuthUser } from '../types.js';
 
 type ImapConnectionInput = {
@@ -38,6 +41,14 @@ type LoginState = {
 
 type OAuthState = ConnectState | LoginState;
 
+type SocialConnectState = {
+  mode: 'social-connect';
+  provider: SocialPlatform;
+  user: AuthUser;
+  mobile?: boolean;
+  codeVerifier?: string;
+};
+
 function isMobileRequest(req: Request) {
   return req.query.mobile === '1' || req.query.platform === 'mobile';
 }
@@ -48,6 +59,10 @@ function signConnectState(user: AuthUser, provider: 'google' | 'microsoft' | 'zo
 
 function signLoginState(provider: 'google' | 'microsoft' | 'zoho', mobile = false) {
   return jwt.sign({ mode: 'login', provider, mobile }, env.JWT_SECRET, { expiresIn: '10m' });
+}
+
+function signSocialConnectState(user: AuthUser, provider: SocialPlatform, mobile = false, codeVerifier?: string) {
+  return jwt.sign({ mode: 'social-connect', provider, user, mobile, codeVerifier }, env.JWT_SECRET, { expiresIn: '10m' });
 }
 
 function readOAuthState(value: unknown, provider: 'google' | 'microsoft' | 'zoho') {
@@ -65,11 +80,26 @@ function readConnectState(value: unknown, provider: 'google' | 'microsoft' | 'zo
   return state?.mode === 'connect' ? state : null;
 }
 
+function readSocialConnectState(value: unknown, provider: SocialPlatform) {
+  if (!value) return null;
+  try {
+    const state = jwt.verify(String(value), env.JWT_SECRET) as SocialConnectState;
+    return state.mode === 'social-connect' && state.provider === provider ? state : null;
+  } catch {
+    return null;
+  }
+}
+
 function isMobileState(value: unknown, provider: 'google' | 'microsoft' | 'zoho') {
   return Boolean(readOAuthState(value, provider)?.mobile);
 }
 
 function redirectAfterConnect(provider: 'google' | 'microsoft' | 'zoho', mobile = false) {
+  const baseUrl = mobile ? env.MOBILE_APP_URL : env.FRONTEND_URL;
+  return `${baseUrl}/settings?connected=${provider}`;
+}
+
+function redirectAfterSocialConnect(provider: SocialPlatform, mobile = false) {
   const baseUrl = mobile ? env.MOBILE_APP_URL : env.FRONTEND_URL;
   return `${baseUrl}/settings?connected=${provider}`;
 }
@@ -276,6 +306,56 @@ export async function connectImapAccount(req: Request, res: Response, next: Next
       tokenExpiry: null
     });
     send(res, account, 201);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function socialConnect(req: Request, res: Response, next: NextFunction) {
+  try {
+    const platform = String(req.params.platform ?? '');
+    if (!supportedSocialPlatform(platform)) throw new HttpError(404, 'Unsupported social platform.');
+    const verifier = platform === 'x' ? socialCodeVerifier() : undefined;
+    const state = signSocialConnectState(req.user!, platform, isMobileRequest(req), verifier);
+    send(res, { url: getSocialAuthUrl(platform, state, verifier) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function socialCallback(req: Request, res: Response, next: NextFunction) {
+  try {
+    const platform = String(req.params.platform ?? '');
+    if (!supportedSocialPlatform(platform)) throw new HttpError(404, 'Unsupported social platform.');
+    const connectState = readSocialConnectState(req.query.state, platform);
+    if (!connectState) throw new HttpError(401, 'Social connect session expired. Please try again.');
+    const { tokens, profile } = await exchangeSocialCode(platform, String(req.query.code ?? ''), connectState.codeVerifier);
+    const connection = await upsertSocialConnection({
+      tenantId: connectState.user.tenantId,
+      userId: connectState.user.id,
+      platform,
+      providerAccountId: profile.providerAccountId,
+      username: profile.username,
+      displayName: profile.displayName,
+      profileUrl: profile.profileUrl,
+      avatarUrl: profile.avatarUrl,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      tokenExpiry: socialTokenExpiry(tokens)
+    });
+    await createDashboardCard(connectState.user.tenantId, connectState.user.id, {
+      cardType: 'social',
+      platform,
+      label: profile.displayName,
+      url: profile.profileUrl,
+      metadata: {
+        imageUrl: profile.avatarUrl,
+        socialConnectionId: connection.id,
+        providerAccountId: profile.providerAccountId,
+        connectedViaOAuth: true
+      }
+    });
+    res.redirect(redirectAfterSocialConnect(platform, connectState.mobile));
   } catch (error) {
     next(error);
   }

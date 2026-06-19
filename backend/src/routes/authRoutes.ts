@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { connectedAccounts, connectImapAccount, disconnectAccount, googleCallback, googleConnect, googleLogin, me, microsoftCallback, microsoftConnect, microsoftLogin, zohoCallback, zohoConnect, zohoLogin } from '../controllers/authController.js';
+import { connectedAccounts, connectImapAccount, disconnectAccount, googleCallback, googleConnect, googleLogin, me, microsoftCallback, microsoftConnect, microsoftLogin, socialCallback, socialConnect, zohoCallback, zohoConnect, zohoLogin } from '../controllers/authController.js';
 import { requireAuth } from '../middleware/auth.js';
 import Joi from 'joi';
 import { validateBody } from '../middleware/validate.js';
@@ -15,6 +15,8 @@ authRoutes.get('/microsoft/callback', microsoftCallback);
 authRoutes.get('/zoho', zohoLogin);
 authRoutes.get('/zoho/connect', requireAuth, zohoConnect);
 authRoutes.get('/zoho/callback', zohoCallback);
+authRoutes.get('/social/:platform/connect', requireAuth, socialConnect);
+authRoutes.get('/social/:platform/callback', socialCallback);
 authRoutes.get('/me', requireAuth, me);
 authRoutes.get('/connected-accounts', requireAuth, connectedAccounts);
 authRoutes.post('/imap/connect', requireAuth, validateBody(Joi.object({

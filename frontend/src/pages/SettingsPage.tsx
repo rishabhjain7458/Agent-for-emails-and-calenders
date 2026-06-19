@@ -15,7 +15,7 @@ import RedditIcon from '@mui/icons-material/Reddit';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import { PageHeader } from '../components/PageHeader';
-import { connectImapAccount, createDashboardCard, deleteDashboardCard, disconnectAccount, getConnectedAccounts, getConnectAccountUrl, getDashboardCards, getSettings, updateSettings } from '../api/endpoints';
+import { connectImapAccount, createDashboardCard, deleteDashboardCard, disconnectAccount, getConnectedAccounts, getConnectAccountUrl, getDashboardCards, getSettings, getSocialConnectUrl, updateSettings } from '../api/endpoints';
 import type { ConnectedAccount, DashboardCard } from '../types';
 import { normalizeSocialUrl, socialPlatformLabels, type SocialPlatform } from '../utils/socialAccounts';
 import { useSpace } from '../contexts/SpaceContext';
@@ -24,6 +24,7 @@ type CardFormType = 'social' | 'news' | 'custom_link';
 type ZohoSmtpPreset = 'india' | 'global' | 'europe' | 'custom';
 
 const socialPlatforms = Object.entries(socialPlatformLabels) as [SocialPlatform, string][];
+const oauthSocialPlatforms = socialPlatforms.filter(([platform]) => platform !== 'threads') as [Exclude<SocialPlatform, 'threads'>, string][];
 
 function socialCardStyle(platform?: string | null) {
   if (platform === 'instagram') return { bg: 'rgba(192, 38, 211, 0.14)', fg: '#c026d3' };
@@ -79,7 +80,8 @@ export function SettingsPage() {
     getDashboardCards().then((result) => setDashboardCards(result.cards));
     const connected = new URLSearchParams(window.location.search).get('connected');
     if (connected) {
-      setNotice(`${connected === 'microsoft' ? 'Outlook' : connected === 'zoho' ? 'Zoho Mail' : 'Gmail'} account connected.`);
+      const label = connected === 'microsoft' ? 'Outlook' : connected === 'zoho' ? 'Zoho Mail' : socialPlatformLabels[connected as SocialPlatform] ?? 'Gmail';
+      setNotice(`${label} account connected.`);
       window.history.replaceState({}, '', '/settings');
     }
   }, []);
@@ -99,6 +101,16 @@ export function SettingsPage() {
   async function connect(provider: 'google' | 'microsoft' | 'zoho') {
     const isNative = Capacitor.isNativePlatform();
     const url = await getConnectAccountUrl(provider, isNative);
+    if (isNative) {
+      await Browser.open({ url });
+      return;
+    }
+    window.location.href = url;
+  }
+
+  async function connectSocial(platform: Exclude<SocialPlatform, 'threads'>) {
+    const isNative = Capacitor.isNativePlatform();
+    const url = await getSocialConnectUrl(platform, isNative);
     if (isNative) {
       await Browser.open({ url });
       return;
@@ -289,10 +301,26 @@ export function SettingsPage() {
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.5}>
                   <Box>
                     <Typography variant="h6">Dashboard Link Cards</Typography>
-                    <Typography color="text.secondary" variant="body2">Add social, news, or custom links. Reorder them directly on the Dashboard.</Typography>
+                    <Typography color="text.secondary" variant="body2">Connect social profiles with OAuth, or add social, news, and custom links manually.</Typography>
                   </Box>
                   <Chip icon={<LinkIcon />} label={`${dashboardCards.length} saved`} variant="outlined" />
                 </Stack>
+                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'action.hover', p: 1.5 }}>
+                  <Stack spacing={1.25}>
+                    <Box>
+                      <Typography sx={{ fontWeight: 900 }}>Connect social accounts</Typography>
+                      <Typography color="text.secondary" variant="body2">OAuth creates a dashboard card and saves the profile image when the provider returns one.</Typography>
+                    </Box>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      {oauthSocialPlatforms.map(([platform, label]) => (
+                        <Button key={platform} variant="outlined" startIcon={socialCardIcon(platform)} onClick={() => connectSocial(platform)}>
+                          Connect {label}
+                        </Button>
+                      ))}
+                    </Stack>
+                    <Typography variant="caption" color="text.secondary">Requires matching client ID, client secret, and redirect URI environment variables on the backend.</Typography>
+                  </Stack>
+                </Box>
                 <Grid container spacing={1.25} alignItems="flex-start">
                   <Grid item xs={12} sm={3}>
                     <TextField fullWidth select label="Card type" value={cardType} onChange={(event) => setCardType(event.target.value as CardFormType)}>

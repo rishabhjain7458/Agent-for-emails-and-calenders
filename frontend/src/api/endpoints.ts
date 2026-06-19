@@ -25,6 +25,11 @@ export async function getConnectAccountUrl(provider: 'google' | 'microsoft' | 'z
   return data.data.url;
 }
 
+export async function getSocialConnectUrl(platform: 'facebook' | 'instagram' | 'linkedin' | 'x' | 'reddit', mobile = false) {
+  const { data } = await api.get<{ data: { url: string } }>(`/auth/social/${platform}/connect`, { params: mobile ? { mobile: '1' } : undefined });
+  return data.data.url;
+}
+
 export async function connectImapAccount(payload: {
   email: string;
   password: string;
