@@ -119,6 +119,13 @@ function socialErrorMessage(error: unknown) {
     ?? (error instanceof Error ? error.message : 'Social connect failed.');
 }
 
+function socialProviderErrorMessage(req: Request) {
+  const reason = String(req.query.error_reason ?? req.query.error ?? '').trim();
+  const description = String(req.query.error_description ?? req.query.error_message ?? '').trim();
+  if (!reason && !description) return '';
+  return [reason, description].filter(Boolean).join(': ');
+}
+
 function requestOrigin(req: Request) {
   const forwardedProto = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]?.trim();
   const forwardedHost = String(req.headers['x-forwarded-host'] ?? '').split(',')[0]?.trim();
@@ -375,6 +382,9 @@ export async function socialCallback(req: Request, res: Response, next: NextFunc
     const connectState = readSocialConnectState(req.query.state, platform);
     if (!connectState) throw new HttpError(401, 'Social connect session expired. Please try again.');
     mobile = Boolean(connectState.mobile);
+    const providerError = socialProviderErrorMessage(req);
+    if (providerError) throw new HttpError(400, providerError);
+    if (!req.query.code) throw new HttpError(400, `${platform} did not return an authorization code. Please check the app redirect URI and OAuth product settings.`);
     const { tokens, profile } = await exchangeSocialCode(platform, String(req.query.code ?? ''), connectState.codeVerifier, connectState.redirectUri ?? socialRedirectUri(req, platform));
     const connection = await upsertSocialConnection({
       tenantId: connectState.user.tenantId,

@@ -16,6 +16,8 @@ type SocialTokens = {
   expiresIn?: number | null;
 };
 
+type InstagramMode = 'business' | 'basic';
+
 export type SocialProfile = {
   providerAccountId: string;
   username?: string | null;
@@ -72,13 +74,19 @@ export function getSocialAuthUrl(platform: SocialPlatform, state: string, codeVe
     return `https://www.facebook.com/v20.0/dialog/oauth?${params.toString()}`;
   }
   if (platform === 'instagram') {
+    const mode = instagramMode();
     const params = new URLSearchParams({
       client_id: config.clientId,
       redirect_uri: config.redirectUri,
       response_type: 'code',
-      scope: 'instagram_business_basic',
+      scope: mode === 'basic' ? 'user_profile' : 'instagram_business_basic',
       state
     });
+    if (mode === 'business') {
+      params.set('enable_fb_login', '0');
+      params.set('force_authentication', '1');
+      return `https://www.instagram.com/oauth/authorize?${params.toString()}`;
+    }
     return `https://api.instagram.com/oauth/authorize?${params.toString()}`;
   }
   if (platform === 'linkedin') {
@@ -137,6 +145,7 @@ export async function exchangeSocialCode(platform: SocialPlatform, code: string,
   }
 
   if (platform === 'instagram') {
+    const mode = instagramMode();
     const body = new URLSearchParams({
       client_id: config.clientId,
       client_secret: config.clientSecret,
@@ -144,9 +153,11 @@ export async function exchangeSocialCode(platform: SocialPlatform, code: string,
       redirect_uri: config.redirectUri,
       code
     });
-    const { data } = await axios.post('https://api.instagram.com/oauth/access_token', body);
+    const { data } = await axios.post('https://api.instagram.com/oauth/access_token', body, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
     tokens = { accessToken: data.access_token };
-    const profile = await instagramProfile(tokens.accessToken, data.user_id);
+    const profile = await instagramProfile(tokens.accessToken, data.user_id, mode);
     return { tokens, profile };
   }
 
@@ -206,10 +217,27 @@ async function facebookProfile(accessToken: string): Promise<SocialProfile> {
   };
 }
 
-async function instagramProfile(accessToken: string, userId?: string): Promise<SocialProfile> {
-  const { data } = await axios.get('https://graph.instagram.com/v20.0/me', {
-    params: { fields: 'id,user_id,username,name,profile_picture_url,account_type', access_token: accessToken }
-  });
+function instagramMode(): InstagramMode {
+  return env.INSTAGRAM_OAUTH_MODE === 'basic' ? 'basic' : 'business';
+}
+
+async function instagramProfile(accessToken: string, userId?: string, mode: InstagramMode = instagramMode()): Promise<SocialProfile> {
+  const fields = mode === 'basic'
+    ? 'id,username'
+    : 'id,user_id,username,name,profile_picture_url,account_type';
+  let data: any;
+  try {
+    const response = await axios.get('https://graph.instagram.com/v20.0/me', {
+      params: { fields, access_token: accessToken }
+    });
+    data = response.data;
+  } catch (error) {
+    if (mode !== 'business') throw error;
+    const response = await axios.get('https://graph.instagram.com/v20.0/me', {
+      params: { fields: 'id,username', access_token: accessToken }
+    });
+    data = response.data;
+  }
   const username = data.username ?? data.name;
   return {
     providerAccountId: String(data.id ?? data.user_id ?? userId),

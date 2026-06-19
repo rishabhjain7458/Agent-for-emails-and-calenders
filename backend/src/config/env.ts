@@ -39,6 +39,7 @@ export const env = {
   INSTAGRAM_CLIENT_ID: process.env.INSTAGRAM_CLIENT_ID ?? '',
   INSTAGRAM_CLIENT_SECRET: process.env.INSTAGRAM_CLIENT_SECRET ?? '',
   INSTAGRAM_REDIRECT_URI: process.env.INSTAGRAM_REDIRECT_URI ?? 'http://localhost:4000/api/auth/social/instagram/callback',
+  INSTAGRAM_OAUTH_MODE: process.env.INSTAGRAM_OAUTH_MODE === 'basic' ? 'basic' : 'business',
   LINKEDIN_CLIENT_ID: process.env.LINKEDIN_CLIENT_ID ?? '',
   LINKEDIN_CLIENT_SECRET: process.env.LINKEDIN_CLIENT_SECRET ?? '',
   LINKEDIN_REDIRECT_URI: process.env.LINKEDIN_REDIRECT_URI ?? 'http://localhost:4000/api/auth/social/linkedin/callback',
