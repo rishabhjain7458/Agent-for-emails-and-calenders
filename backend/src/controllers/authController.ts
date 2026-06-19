@@ -126,6 +126,11 @@ function socialProviderErrorMessage(req: Request) {
   return [reason, description].filter(Boolean).join(': ');
 }
 
+function isUsedAuthorizationCodeError(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes('authorization code') && normalized.includes('used');
+}
+
 function requestOrigin(req: Request) {
   const forwardedProto = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]?.trim();
   const forwardedHost = String(req.headers['x-forwarded-host'] ?? '').split(',')[0]?.trim();
@@ -415,6 +420,10 @@ export async function socialCallback(req: Request, res: Response, next: NextFunc
   } catch (error) {
     if (supportedSocialPlatform(platform)) {
       const message = socialErrorMessage(error);
+      if (isUsedAuthorizationCodeError(message)) {
+        res.redirect(redirectAfterSocialConnect(platform, mobile));
+        return;
+      }
       res.redirect(redirectAfterSocialError(platform, message, mobile));
       return;
     }
