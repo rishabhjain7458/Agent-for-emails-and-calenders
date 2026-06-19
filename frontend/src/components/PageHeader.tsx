@@ -16,7 +16,32 @@ export function PageHeader({ title, subtitle, action, eyebrow }: { title: string
         border: '1px solid',
         borderColor: 'divider',
         borderRadius: 2,
-        boxShadow: '0 14px 34px rgba(24, 35, 56, 0.06)'
+        boxShadow: '0 18px 46px rgba(24, 35, 56, 0.08)',
+        overflow: 'hidden',
+        position: 'relative',
+        '&::before': {
+          background: 'linear-gradient(135deg, rgba(37, 87, 214, 0.18), transparent 34%, rgba(15, 159, 143, 0.12))',
+          content: '""',
+          inset: 0,
+          opacity: 0.78,
+          pointerEvents: 'none',
+          position: 'absolute'
+        },
+        '&::after': {
+          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.42), transparent)',
+          content: '""',
+          height: '100%',
+          left: 0,
+          pointerEvents: 'none',
+          position: 'absolute',
+          top: 0,
+          transform: 'translateX(-130%)',
+          width: '36%'
+        },
+        '&:hover::after': {
+          animation: 'loading-sweep 1200ms ease'
+        },
+        '& > *': { position: 'relative', zIndex: 1 }
       }}
     >
       <Stack spacing={0.5} sx={{ minWidth: 0 }}>

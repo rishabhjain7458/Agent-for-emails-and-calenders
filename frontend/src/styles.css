@@ -16,6 +16,7 @@ body {
 
 body::before {
   background-image:
+    linear-gradient(115deg, rgba(37, 87, 214, 0.07), transparent 32%, rgba(15, 159, 143, 0.055) 68%, transparent),
     linear-gradient(rgba(37, 87, 214, 0.032) 1px, transparent 1px),
     linear-gradient(90deg, rgba(37, 87, 214, 0.032) 1px, transparent 1px);
   background-size: 44px 44px;
@@ -26,6 +27,18 @@ body::before {
   pointer-events: none;
   position: fixed;
   z-index: -1;
+}
+
+body::after {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.76), transparent 36%),
+    linear-gradient(315deg, rgba(37, 87, 214, 0.055), transparent 42%),
+    linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.38));
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: -2;
 }
 
 @keyframes page-enter {
@@ -63,13 +76,85 @@ body::before {
   }
 }
 
+@keyframes float-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes loading-sweep {
+  from {
+    transform: translateX(-120%);
+  }
+
+  to {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes progress-glow {
+  0%,
+  100% {
+    filter: saturate(1);
+  }
+
+  50% {
+    filter: saturate(1.25);
+  }
+}
+
 .page-shell {
-  animation: page-enter 340ms ease both;
+  animation: page-enter 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .premium-panel {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(16px);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.72)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent);
+  backdrop-filter: blur(18px) saturate(1.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 18px 48px rgba(24, 35, 56, 0.075);
+}
+
+.premium-panel,
+.MuiCard-root {
+  animation: float-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.MuiCard-root {
+  overflow: hidden;
+}
+
+.MuiCard-root::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.48), transparent);
+  content: "";
+  height: 100%;
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  transform: translateX(-130%);
+  transition: opacity 180ms ease;
+  width: 42%;
+}
+
+.MuiCard-root:hover::before {
+  animation: loading-sweep 980ms ease;
+  opacity: 1;
+}
+
+.MuiLinearProgress-root {
+  animation: progress-glow 1.8s ease-in-out infinite;
+  border-radius: 999px;
+  overflow: hidden;
 }
 
 [data-theme="dark"] body {
@@ -78,13 +163,26 @@ body::before {
 
 [data-theme="dark"] body::before {
   background-image:
+    linear-gradient(115deg, rgba(124, 160, 255, 0.085), transparent 34%, rgba(94, 234, 212, 0.055) 68%, transparent),
     linear-gradient(rgba(124, 160, 255, 0.055) 1px, transparent 1px),
     linear-gradient(90deg, rgba(124, 160, 255, 0.055) 1px, transparent 1px);
   opacity: 0.5;
 }
 
+[data-theme="dark"] body::after {
+  background:
+    linear-gradient(135deg, rgba(17, 26, 44, 0.72), transparent 36%),
+    linear-gradient(315deg, rgba(37, 87, 214, 0.16), transparent 42%),
+    linear-gradient(180deg, transparent, rgba(8, 16, 29, 0.72));
+}
+
 [data-theme="dark"] .premium-panel {
-  background: rgba(17, 26, 44, 0.9);
+  background:
+    linear-gradient(145deg, rgba(17, 26, 44, 0.92), rgba(17, 26, 44, 0.74)),
+    linear-gradient(180deg, rgba(124, 160, 255, 0.08), transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 20px 54px rgba(0, 0, 0, 0.32);
 }
 
 [data-theme="dark"] .MuiCard-root,
@@ -112,6 +210,10 @@ body::before {
 [data-theme="dark"] .MuiAlert-standardError {
   background-color: #17243a;
   color: #edf3ff;
+}
+
+[data-theme="dark"] .MuiCard-root::before {
+  background: linear-gradient(90deg, transparent, rgba(124, 160, 255, 0.12), transparent);
 }
 
 [data-theme="dark"] .MuiButton-outlined:hover {
@@ -202,6 +304,49 @@ body::before {
 
 .metric-card:hover::after {
   animation: sheen 900ms ease;
+}
+
+.MuiListItemButton-root,
+a[href],
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.MuiAlert-root {
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(214, 223, 236, 0.72);
+}
+
+.MuiSkeleton-root {
+  background:
+    linear-gradient(90deg, rgba(148, 163, 184, 0.14), rgba(148, 163, 184, 0.28), rgba(148, 163, 184, 0.14));
+  background-size: 220% 100%;
+  animation: loading-sweep 1.45s ease-in-out infinite;
+}
+
+.fc .fc-daygrid-day,
+.fc .fc-timegrid-col {
+  transition: background-color 160ms ease;
+}
+
+.fc .fc-daygrid-day:hover,
+.fc .fc-timegrid-col:hover {
+  background: rgba(37, 87, 214, 0.035);
+}
+
+[data-theme="dark"] .MuiAlert-root {
+  border-color: rgba(58, 75, 105, 0.78);
+}
+
+[data-theme="dark"] .MuiSkeleton-root {
+  background:
+    linear-gradient(90deg, rgba(148, 163, 184, 0.1), rgba(148, 163, 184, 0.2), rgba(148, 163, 184, 0.1));
+  background-size: 220% 100%;
+}
+
+[data-theme="dark"] .fc .fc-daygrid-day:hover,
+[data-theme="dark"] .fc .fc-timegrid-col:hover {
+  background: rgba(124, 160, 255, 0.055);
 }
 
 .thinking-dots {

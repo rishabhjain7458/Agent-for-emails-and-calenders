@@ -52,14 +52,20 @@ export function createAppTheme(mode: AppThemeMode) {
       styleOverrides: {
         root: {
           borderRadius: 8,
-          minHeight: 38,
-          transition: 'transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease',
-          '&:hover': { transform: 'translateY(-1px)' },
+          minHeight: 40,
+          position: 'relative',
+          overflow: 'hidden',
+          transition: 'transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease, border-color 180ms ease',
+          '&:hover': { transform: 'translateY(-2px)' },
           '&:active': { transform: 'translateY(0)' }
         },
-        contained: { boxShadow: '0 8px 18px rgba(37, 87, 214, 0.18)' },
+        contained: {
+          backgroundImage: 'linear-gradient(135deg, #2557d6 0%, #1d4ed8 54%, #0f9f8f 140%)',
+          boxShadow: isDark ? '0 12px 28px rgba(37, 87, 214, 0.28)' : '0 10px 24px rgba(37, 87, 214, 0.2)'
+        },
         outlined: {
           backgroundColor: isDark ? '#111a2c' : '#ffffff',
+          borderColor: isDark ? '#33445f' : '#d8e1ee',
           '&:hover': { backgroundColor: isDark ? '#17243a' : '#f8fbff' }
         }
       }
@@ -70,10 +76,12 @@ export function createAppTheme(mode: AppThemeMode) {
           borderRadius: 8,
           border: isDark ? '1px solid rgba(58, 75, 105, 0.92)' : '1px solid rgba(214, 223, 236, 0.92)',
           boxShadow: isDark ? '0 14px 34px rgba(0, 0, 0, 0.24)' : '0 14px 34px rgba(24, 35, 56, 0.06)',
-          transition: 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
+          position: 'relative',
+          transition: 'transform 190ms ease, box-shadow 190ms ease, border-color 190ms ease, background-color 190ms ease',
           '&:hover': {
             borderColor: isDark ? '#3b4c68' : '#cdd9ea',
-            boxShadow: isDark ? '0 18px 42px rgba(0, 0, 0, 0.3)' : '0 18px 42px rgba(24, 35, 56, 0.085)'
+            boxShadow: isDark ? '0 20px 48px rgba(0, 0, 0, 0.34)' : '0 20px 48px rgba(24, 35, 56, 0.095)',
+            transform: 'translateY(-2px)'
           }
         }
       }
@@ -100,7 +108,7 @@ export function createAppTheme(mode: AppThemeMode) {
               borderColor: isDark ? '#4d6284' : '#b9c7db'
             },
             '&.Mui-focused': {
-              boxShadow: '0 0 0 4px rgba(37, 87, 214, 0.1)'
+              boxShadow: isDark ? '0 0 0 4px rgba(124, 160, 255, 0.13)' : '0 0 0 4px rgba(37, 87, 214, 0.1)'
             }
           }
         }
@@ -108,7 +116,12 @@ export function createAppTheme(mode: AppThemeMode) {
     },
     MuiChip: {
       styleOverrides: {
-        root: { borderRadius: 6, fontWeight: 700 }
+        root: {
+          borderRadius: 6,
+          fontWeight: 750,
+          transition: 'transform 160ms ease, background-color 160ms ease, border-color 160ms ease',
+          '&:hover': { transform: 'translateY(-1px)' }
+        }
       }
     },
     MuiListItemButton: {
