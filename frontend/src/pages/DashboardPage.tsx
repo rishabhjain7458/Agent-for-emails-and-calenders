@@ -125,6 +125,13 @@ function avatarInitial(card: LinkDashboardCard) {
   return (card.label || socialHandleFromUrl(card.url) || 'A').trim().charAt(0).toUpperCase();
 }
 
+function dashboardCardUrl(card: LinkDashboardCard) {
+  if (card.cardType === 'social' && card.platform === 'facebook' && card.metadata?.connectedViaOAuth) {
+    return 'https://www.facebook.com/me';
+  }
+  return card.url;
+}
+
 function percentage(value: number, total: number) {
   if (!total) return 0;
   return Math.round((value / total) * 100);
@@ -531,7 +538,7 @@ export function DashboardPage() {
                         }}
                       >
                         <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%' }}>
-                          <Box component="a" href={card.account.url} target="_blank" rel="noreferrer" sx={{ alignItems: 'center', color: 'inherit', display: 'flex', flex: 1, gap: 1, minWidth: 0, textDecoration: 'none' }}>
+                          <Box component="a" href={dashboardCardUrl(card.account)} target="_blank" rel="noreferrer" sx={{ alignItems: 'center', color: 'inherit', display: 'flex', flex: 1, gap: 1, minWidth: 0, textDecoration: 'none' }}>
                             <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}45`, borderRadius: '50%', color: meta.accent, display: 'grid', flex: '0 0 auto', height: 36, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 36 }}>
                               {card.account.cardType === 'social' ? (
                                 <Typography sx={{ color: meta.accent, fontSize: '0.9rem', fontWeight: 950 }}>{avatarInitial(card.account)}</Typography>

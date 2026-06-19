@@ -76,10 +76,10 @@ export function getSocialAuthUrl(platform: SocialPlatform, state: string, codeVe
       client_id: config.clientId,
       redirect_uri: config.redirectUri,
       response_type: 'code',
-      scope: 'user_profile',
+      scope: 'instagram_business_basic',
       state
     });
-    return `https://api.instagram.com/oauth/authorize?${params.toString()}`;
+    return `https://www.instagram.com/oauth/authorize?${params.toString()}`;
   }
   if (platform === 'linkedin') {
     const params = new URLSearchParams({
@@ -201,20 +201,22 @@ async function facebookProfile(accessToken: string): Promise<SocialProfile> {
   return {
     providerAccountId: data.id,
     displayName: data.name,
-    profileUrl: data.link ?? `https://www.facebook.com/${data.id}`,
+    profileUrl: 'https://www.facebook.com/me',
     avatarUrl: data.picture?.data?.url
   };
 }
 
 async function instagramProfile(accessToken: string, userId?: string): Promise<SocialProfile> {
-  const { data } = await axios.get('https://graph.instagram.com/me', {
-    params: { fields: 'id,username,account_type', access_token: accessToken }
+  const { data } = await axios.get('https://graph.instagram.com/v20.0/me', {
+    params: { fields: 'id,user_id,username,name,profile_picture_url,account_type', access_token: accessToken }
   });
+  const username = data.username ?? data.name;
   return {
-    providerAccountId: data.id ?? userId,
-    username: data.username,
-    displayName: data.username ? `@${data.username}` : 'Instagram profile',
-    profileUrl: data.username ? `https://www.instagram.com/${data.username}` : 'https://www.instagram.com'
+    providerAccountId: String(data.id ?? data.user_id ?? userId),
+    username,
+    displayName: username ? `@${username}` : 'Instagram profile',
+    profileUrl: username ? `https://www.instagram.com/${username}` : 'https://www.instagram.com',
+    avatarUrl: data.profile_picture_url
   };
 }
 
