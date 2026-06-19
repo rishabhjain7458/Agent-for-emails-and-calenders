@@ -113,9 +113,23 @@ function requestOrigin(req: Request) {
   return `${protocol}://${host}`;
 }
 
+function isAllowedRedirectOrigin(value: string) {
+  if (!value) return false;
+  try {
+    const parsed = new URL(value);
+    const isHttps = parsed.protocol === 'https:';
+    const isLocalDev = parsed.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(parsed.hostname);
+    const isConfigured = env.FRONTEND_ORIGINS.includes(parsed.origin);
+    const isRenderApp = parsed.hostname.endsWith('.onrender.com');
+    return (isHttps || isLocalDev) && (isConfigured || isRenderApp || env.NODE_ENV !== 'production');
+  } catch {
+    return false;
+  }
+}
+
 function socialRedirectUri(req: Request, platform: SocialPlatform) {
   const requestedOrigin = String(req.query.origin ?? '').replace(/\/$/, '');
-  const trustedOrigin = env.FRONTEND_ORIGINS.includes(requestedOrigin) ? requestedOrigin : requestOrigin(req);
+  const trustedOrigin = isAllowedRedirectOrigin(requestedOrigin) ? new URL(requestedOrigin).origin : requestOrigin(req);
   return `${trustedOrigin}/api/auth/social/${platform}/callback`;
 }
 
