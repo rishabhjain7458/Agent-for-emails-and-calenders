@@ -114,7 +114,9 @@ function requestOrigin(req: Request) {
 }
 
 function socialRedirectUri(req: Request, platform: SocialPlatform) {
-  return `${requestOrigin(req)}/api/auth/social/${platform}/callback`;
+  const requestedOrigin = String(req.query.origin ?? '').replace(/\/$/, '');
+  const trustedOrigin = env.FRONTEND_ORIGINS.includes(requestedOrigin) ? requestedOrigin : requestOrigin(req);
+  return `${trustedOrigin}/api/auth/social/${platform}/callback`;
 }
 
 function isPrimaryAccount(user: AuthUser, provider: 'google' | 'microsoft' | 'zoho', email: string) {

@@ -69,6 +69,7 @@ export function SettingsPage() {
   const [smtpHost, setSmtpHost] = useState('smtp.zoho.in');
   const [smtpPort, setSmtpPort] = useState('465');
   const [smtpPreset, setSmtpPreset] = useState<ZohoSmtpPreset>('india');
+  const [lastSocialRedirectUri, setLastSocialRedirectUri] = useState('');
 
   useEffect(() => {
     getSettings().then((settings) => {
@@ -110,7 +111,8 @@ export function SettingsPage() {
 
   async function connectSocial(platform: Exclude<SocialPlatform, 'instagram' | 'threads'>) {
     const isNative = Capacitor.isNativePlatform();
-    const url = await getSocialConnectUrl(platform, isNative);
+    const { url, redirectUri } = await getSocialConnectUrl(platform, isNative, window.location.origin);
+    setLastSocialRedirectUri(redirectUri);
     if (isNative) {
       await Browser.open({ url });
       return;
@@ -318,6 +320,14 @@ export function SettingsPage() {
                         </Button>
                       ))}
                     </Stack>
+                    {lastSocialRedirectUri && (
+                      <Alert
+                        severity="info"
+                        action={<Button size="small" onClick={() => navigator.clipboard?.writeText(lastSocialRedirectUri)}>Copy</Button>}
+                      >
+                        OAuth redirect URI sent to provider: {lastSocialRedirectUri}
+                      </Alert>
+                    )}
                     <Typography variant="caption" color="text.secondary">Requires matching client ID, client secret, and redirect URI environment variables on the backend.</Typography>
                   </Stack>
                 </Box>
