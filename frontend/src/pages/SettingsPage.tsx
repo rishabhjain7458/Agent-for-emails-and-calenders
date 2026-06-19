@@ -85,6 +85,11 @@ export function SettingsPage() {
       setNotice(`${label} account connected.`);
       window.history.replaceState({}, '', '/settings');
     }
+    const socialError = new URLSearchParams(window.location.search).get('social_error');
+    if (socialError) {
+      setNotice(`Social connect issue: ${socialError}`);
+      window.history.replaceState({}, '', '/settings');
+    }
   }, []);
 
   async function save() {

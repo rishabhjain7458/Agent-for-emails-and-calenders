@@ -105,6 +105,11 @@ function redirectAfterSocialConnect(provider: SocialPlatform, mobile = false) {
   return `${baseUrl}/settings?connected=${provider}`;
 }
 
+function redirectAfterSocialError(provider: string, message: string, mobile = false) {
+  const baseUrl = mobile ? env.MOBILE_APP_URL : env.FRONTEND_URL;
+  return `${baseUrl}/settings?social_error=${encodeURIComponent(`${provider}: ${message}`)}`;
+}
+
 function requestOrigin(req: Request) {
   const forwardedProto = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]?.trim();
   const forwardedHost = String(req.headers['x-forwarded-host'] ?? '').split(',')[0]?.trim();
@@ -354,11 +359,13 @@ export function socialConnect(req: Request, res: Response, next: NextFunction) {
 }
 
 export async function socialCallback(req: Request, res: Response, next: NextFunction) {
+  let platform = String(req.params.platform ?? '');
+  let mobile = false;
   try {
-    const platform = String(req.params.platform ?? '');
     if (!supportedSocialPlatform(platform)) throw new HttpError(404, 'Unsupported social platform.');
     const connectState = readSocialConnectState(req.query.state, platform);
     if (!connectState) throw new HttpError(401, 'Social connect session expired. Please try again.');
+    mobile = Boolean(connectState.mobile);
     const { tokens, profile } = await exchangeSocialCode(platform, String(req.query.code ?? ''), connectState.codeVerifier, connectState.redirectUri ?? socialRedirectUri(req, platform));
     const connection = await upsertSocialConnection({
       tenantId: connectState.user.tenantId,
@@ -387,6 +394,11 @@ export async function socialCallback(req: Request, res: Response, next: NextFunc
     });
     res.redirect(redirectAfterSocialConnect(platform, connectState.mobile));
   } catch (error) {
+    if (supportedSocialPlatform(platform)) {
+      const message = error instanceof Error ? error.message : 'Social connect failed.';
+      res.redirect(redirectAfterSocialError(platform, message, mobile));
+      return;
+    }
     next(error);
   }
 }

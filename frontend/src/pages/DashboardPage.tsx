@@ -127,7 +127,7 @@ function avatarInitial(card: LinkDashboardCard) {
 
 function dashboardCardUrl(card: LinkDashboardCard) {
   if (card.cardType === 'social' && card.platform === 'facebook' && card.metadata?.connectedViaOAuth) {
-    return 'https://www.facebook.com/me';
+    return `https://www.facebook.com/login.php?next=${encodeURIComponent('https://www.facebook.com/me')}`;
   }
   return card.url;
 }
