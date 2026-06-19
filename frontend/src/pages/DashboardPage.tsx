@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, FormControlLabel, Grid, LinearProgress, Stack, Switch, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, FormControlLabel, Grid, IconButton, LinearProgress, Stack, Switch, Tooltip, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import MailIcon from '@mui/icons-material/Mail';
 import EventIcon from '@mui/icons-material/Event';
@@ -191,6 +191,27 @@ function SignalTile({ label, value, helper, color, icon }: { label: string; valu
         <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.35 }}>{helper}</Typography>
       </Stack>
     </Box>
+  );
+}
+
+function CardMoveControls({ disabledLeft, disabledRight, onLeft, onRight }: { disabledLeft: boolean; disabledRight: boolean; onLeft: () => void; onRight: () => void }) {
+  return (
+    <Stack direction="row" spacing={0.25} sx={{ flex: '0 0 auto' }}>
+      <Tooltip title="Move left">
+        <span>
+          <IconButton size="small" disabled={disabledLeft} onClick={onLeft} sx={{ height: 28, width: 28 }}>
+            <ArrowBackIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </Tooltip>
+      <Tooltip title="Move right">
+        <span>
+          <IconButton size="small" disabled={disabledRight} onClick={onRight} sx={{ height: 28, width: 28 }}>
+            <ArrowForwardIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </Tooltip>
+    </Stack>
   );
 }
 
@@ -426,7 +447,7 @@ export function DashboardPage() {
                 <Typography variant="h5" sx={{ fontWeight: 900 }}>Cards</Typography>
                 <Typography color="text.secondary" variant="body2">Email spaces and social profiles in one sequence.</Typography>
               </Box>
-              <Box className="scroll-thin" sx={{ display: 'flex', gap: 1.25, overflowX: 'auto', pb: 0.5 }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, minWidth: 0 }}>
                 {visibleDashboardCards.map((card, index) => {
                   const isFirst = index === 0;
                   const isLast = index === visibleDashboardCards.length - 1;
@@ -439,35 +460,31 @@ export function DashboardPage() {
                           border: '1px solid',
                           borderColor: isCombined ? 'primary.main' : 'divider',
                           borderRadius: 2,
-                          boxShadow: isCombined ? '0 18px 36px rgba(37,87,214,0.22)' : 'none',
+                          boxShadow: isCombined ? '0 10px 22px rgba(37,87,214,0.18)' : 'none',
                           color: isCombined ? '#fff' : 'text.primary',
-                          flex: '0 0 244px',
-                          minHeight: 128,
-                          p: 1.15,
+                          flex: { xs: '1 1 100%', sm: '0 1 285px' },
+                          minHeight: 62,
+                          p: 0.85,
                           transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
                           '&:hover': { transform: { sm: 'translateY(-2px)' }, borderColor: 'primary.main' }
                         }}
                       >
-                        <Stack spacing={0.85} sx={{ height: '100%' }}>
-                          <Box component="button" type="button" onClick={() => setActiveSpaceId('combined')} sx={{ all: 'unset', cursor: 'pointer', display: 'block' }}>
-                            <Stack spacing={0.85}>
-                              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                <LayersIcon />
-                                {isCombined && <Chip size="small" label="Active" sx={{ bgcolor: 'background.paper', color: 'primary.main', fontWeight: 800 }} />}
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%' }}>
+                          <Box component="button" type="button" onClick={() => setActiveSpaceId('combined')} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flex: 1, gap: 1, minWidth: 0 }}>
+                            <Box sx={{ display: 'grid', flex: '0 0 auto', placeItems: 'center' }}>
+                              <LayersIcon fontSize="small" />
+                            </Box>
+                            <Box sx={{ minWidth: 0 }}>
+                              <Stack direction="row" spacing={0.75} alignItems="center">
+                                <Typography sx={{ fontWeight: 900 }} noWrap>Combined</Typography>
+                                {isCombined && <Chip size="small" label="Active" sx={{ bgcolor: 'background.paper', color: 'primary.main', fontWeight: 800, height: 22 }} />}
                               </Stack>
-                              <Box>
-                                <Typography sx={{ fontWeight: 900 }}>Combined</Typography>
-                                <Typography variant="caption" sx={{ opacity: 0.78 }}>All spaces together</Typography>
-                              </Box>
-                              <Typography variant="body2" sx={{ fontWeight: 850 }}>
+                              <Typography variant="caption" sx={{ display: 'block', fontWeight: 800, opacity: 0.82 }} noWrap>
                                 {metricLabel(emails.length, 'email')} · {metricLabel(pendingTasks.length, 'task')}
                               </Typography>
-                            </Stack>
+                            </Box>
                           </Box>
-                          <Stack direction="row" spacing={0.75} sx={{ mt: 'auto' }}>
-                            <Button size="small" variant={isCombined ? 'contained' : 'outlined'} disabled={isFirst} startIcon={<ArrowBackIcon />} onClick={() => moveDashboardCard(card.id, -1)} sx={{ minHeight: 32 }}>Left</Button>
-                            <Button size="small" variant={isCombined ? 'contained' : 'outlined'} disabled={isLast} endIcon={<ArrowForwardIcon />} onClick={() => moveDashboardCard(card.id, 1)} sx={{ minHeight: 32 }}>Right</Button>
-                          </Stack>
+                          <CardMoveControls disabledLeft={isFirst} disabledRight={isLast} onLeft={() => moveDashboardCard(card.id, -1)} onRight={() => moveDashboardCard(card.id, 1)} />
                         </Stack>
                       </Box>
                     );
@@ -481,38 +498,31 @@ export function DashboardPage() {
                         sx={{
                           bgcolor: 'background.paper',
                           border: '1px solid',
-                          borderColor: 'divider',
+                          borderColor: meta.accent,
                           borderRadius: 2,
                           color: 'inherit',
-                          flex: '0 0 244px',
-                          minHeight: 128,
-                          p: 1.15,
+                          flex: { xs: '1 1 100%', sm: '0 1 285px' },
+                          minHeight: 62,
+                          p: 0.85,
                           transition: 'transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
-                          '&:hover': { borderColor: meta.accent, boxShadow: '0 16px 32px rgba(24,35,56,0.09)', transform: { sm: 'translateY(-2px)' } }
+                          boxShadow: `inset 4px 0 0 ${meta.accent}`,
+                          '&:hover': { boxShadow: `inset 4px 0 0 ${meta.accent}, 0 12px 24px rgba(24,35,56,0.09)`, transform: { sm: 'translateY(-2px)' } }
                         }}
                       >
-                        <Stack spacing={0.85} sx={{ height: '100%' }}>
-                          <Box component="a" href={card.account.url} target="_blank" rel="noreferrer" sx={{ color: 'inherit', textDecoration: 'none' }}>
-                            <Stack spacing={0.85}>
-                              <Stack direction="row" alignItems="center" justifyContent="space-between">
-                                <Box sx={{ bgcolor: meta.accentBg, borderRadius: 1.5, color: meta.accent, display: 'grid', height: 36, placeItems: 'center', width: 36 }}>
-                                  {meta.icon}
-                                </Box>
-                                <Stack direction="row" spacing={0.75} alignItems="center">
-                                  <Chip size="small" label={`#${index + 1}`} sx={{ fontWeight: 850 }} />
-                                  <OpenInNewIcon fontSize="small" color="action" />
-                                </Stack>
-                              </Stack>
-                              <Box sx={{ minWidth: 0 }}>
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%' }}>
+                          <Box component="a" href={card.account.url} target="_blank" rel="noreferrer" sx={{ alignItems: 'center', color: 'inherit', display: 'flex', flex: 1, gap: 1, minWidth: 0, textDecoration: 'none' }}>
+                            <Box sx={{ bgcolor: meta.accentBg, borderRadius: 1.5, color: meta.accent, display: 'grid', flex: '0 0 auto', height: 34, placeItems: 'center', width: 34 }}>
+                              {meta.icon}
+                            </Box>
+                            <Box sx={{ minWidth: 0 }}>
+                              <Stack direction="row" spacing={0.75} alignItems="center">
                                 <Typography sx={{ fontWeight: 900 }} noWrap>{card.account.label}</Typography>
-                                <Typography variant="caption" color="text.secondary" noWrap>{meta.label}</Typography>
-                              </Box>
-                            </Stack>
+                                <OpenInNewIcon sx={{ color: meta.accent, flex: '0 0 auto', fontSize: 16 }} />
+                              </Stack>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 800 }} noWrap>{meta.label} · #{index + 1}</Typography>
+                            </Box>
                           </Box>
-                          <Stack direction="row" spacing={0.75} sx={{ mt: 'auto' }}>
-                            <Button size="small" variant="outlined" disabled={isFirst} startIcon={<ArrowBackIcon />} onClick={() => moveDashboardCard(card.id, -1)} sx={{ minHeight: 32 }}>Left</Button>
-                            <Button size="small" variant="outlined" disabled={isLast} endIcon={<ArrowForwardIcon />} onClick={() => moveDashboardCard(card.id, 1)} sx={{ minHeight: 32 }}>Right</Button>
-                          </Stack>
+                          <CardMoveControls disabledLeft={isFirst} disabledRight={isLast} onLeft={() => moveDashboardCard(card.id, -1)} onRight={() => moveDashboardCard(card.id, 1)} />
                         </Stack>
                       </Box>
                     );
@@ -528,48 +538,32 @@ export function DashboardPage() {
                         border: '1px solid',
                         borderColor: active ? account.color : 'divider',
                         borderRadius: 2,
-                        boxShadow: active ? `0 18px 36px ${account.color}22` : 'none',
+                        boxShadow: active ? `inset 4px 0 0 ${account.color}, 0 10px 22px ${account.color}18` : `inset 4px 0 0 ${account.color}`,
                         color: 'text.primary',
-                        flex: '0 0 264px',
-                        minHeight: 128,
+                        flex: { xs: '1 1 100%', sm: '0 1 300px' },
+                        minHeight: 62,
                         overflow: 'hidden',
-                        p: 1.15,
+                        p: 0.85,
                         position: 'relative',
                         textAlign: 'left',
                         transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
-                        '&:hover': { borderColor: account.color, transform: { sm: 'translateY(-2px)' } },
-                        '&::before': {
-                          bgcolor: account.color,
-                          content: '""',
-                          inset: '0 auto 0 0',
-                          position: 'absolute',
-                          width: 4
-                        }
+                        '&:hover': { borderColor: account.color, transform: { sm: 'translateY(-2px)' } }
                       }}
                     >
-                      <Stack spacing={0.85} sx={{ pl: 0.5, height: '100%' }}>
-                        <Box component="button" type="button" onClick={() => setActiveSpaceId(account.id)} sx={{ all: 'unset', cursor: 'pointer', display: 'block' }}>
-                          <Stack spacing={0.85}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="center">
-                              <Chip size="small" label={providerLabel(account.provider)} variant="outlined" sx={{ borderColor: account.color, color: account.color, fontWeight: 800 }} />
-                              <Stack direction="row" spacing={0.75} alignItems="center">
-                                <Chip size="small" label={`#${index + 1}`} sx={{ fontWeight: 850 }} />
-                                {active && <Chip size="small" label="Active" sx={{ bgcolor: account.color, color: '#fff', fontWeight: 800 }} />}
-                              </Stack>
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%', pl: 0.35 }}>
+                        <Box component="button" type="button" onClick={() => setActiveSpaceId(account.id)} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flex: 1, gap: 1, minWidth: 0 }}>
+                          <Chip size="small" label={providerLabel(account.provider)} variant="outlined" sx={{ borderColor: account.color, color: account.color, flex: '0 0 auto', fontWeight: 800, maxWidth: 92 }} />
+                          <Box sx={{ minWidth: 0 }}>
+                            <Stack direction="row" spacing={0.75} alignItems="center">
+                              <Typography sx={{ fontWeight: 900 }} noWrap>{account.email}</Typography>
+                              {active && <Chip size="small" label="Active" sx={{ bgcolor: account.color, color: '#fff', flex: '0 0 auto', fontWeight: 800, height: 22 }} />}
                             </Stack>
-                            <Box sx={{ minWidth: 0 }}>
-                              <Typography sx={{ fontWeight: 900, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.email}</Typography>
-                              <Typography variant="caption" color="text.secondary">{account.isPrimary ? 'Primary account' : account.name}</Typography>
-                            </Box>
-                            <Typography variant="body2" sx={{ color: account.color, fontWeight: 900 }}>
-                              {metricLabel(account.emails, 'email')} · {metricLabel(account.tasks, 'task')}
+                            <Typography variant="caption" sx={{ color: account.color, display: 'block', fontWeight: 900 }} noWrap>
+                              {metricLabel(account.emails, 'email')} · {metricLabel(account.tasks, 'task')} · #{index + 1}
                             </Typography>
-                          </Stack>
+                          </Box>
                         </Box>
-                        <Stack direction="row" spacing={0.75} sx={{ mt: 'auto' }}>
-                          <Button size="small" variant="outlined" disabled={isFirst} startIcon={<ArrowBackIcon />} onClick={() => moveDashboardCard(card.id, -1)} sx={{ minHeight: 32 }}>Left</Button>
-                          <Button size="small" variant="outlined" disabled={isLast} endIcon={<ArrowForwardIcon />} onClick={() => moveDashboardCard(card.id, 1)} sx={{ minHeight: 32 }}>Right</Button>
-                        </Stack>
+                        <CardMoveControls disabledLeft={isFirst} disabledRight={isLast} onLeft={() => moveDashboardCard(card.id, -1)} onRight={() => moveDashboardCard(card.id, 1)} />
                       </Stack>
                     </Box>
                   );
