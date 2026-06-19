@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import type { AxiosError } from 'axios';
 import { getGoogleAuthUrl, exchangeCode, redirectWithSession } from '../services/googleAuthService.js';
 import { exchangeMicrosoftCode, getMicrosoftAuthUrl, redirectWithMicrosoftSession } from '../services/microsoftAuthService.js';
 import { exchangeZohoCode, getZohoAuthUrl, redirectWithZohoSession } from '../services/zohoAuthService.js';
@@ -108,6 +109,14 @@ function redirectAfterSocialConnect(provider: SocialPlatform, mobile = false) {
 function redirectAfterSocialError(provider: string, message: string, mobile = false) {
   const baseUrl = mobile ? env.MOBILE_APP_URL : env.FRONTEND_URL;
   return `${baseUrl}/settings?social_error=${encodeURIComponent(`${provider}: ${message}`)}`;
+}
+
+function socialErrorMessage(error: unknown) {
+  const axiosError = error as AxiosError<any>;
+  return axiosError.response?.data?.error?.message
+    ?? axiosError.response?.data?.message
+    ?? axiosError.response?.data?.error_description
+    ?? (error instanceof Error ? error.message : 'Social connect failed.');
 }
 
 function requestOrigin(req: Request) {
@@ -395,7 +404,7 @@ export async function socialCallback(req: Request, res: Response, next: NextFunc
     res.redirect(redirectAfterSocialConnect(platform, connectState.mobile));
   } catch (error) {
     if (supportedSocialPlatform(platform)) {
-      const message = error instanceof Error ? error.message : 'Social connect failed.';
+      const message = socialErrorMessage(error);
       res.redirect(redirectAfterSocialError(platform, message, mobile));
       return;
     }

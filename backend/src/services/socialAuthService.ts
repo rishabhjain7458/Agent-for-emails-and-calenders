@@ -196,7 +196,7 @@ export async function exchangeSocialCode(platform: SocialPlatform, code: string,
 
 async function facebookProfile(accessToken: string): Promise<SocialProfile> {
   const { data } = await axios.get('https://graph.facebook.com/v20.0/me', {
-    params: { fields: 'id,name,link,picture.type(large)', access_token: accessToken }
+    params: { fields: 'id,name,picture.type(large)', access_token: accessToken }
   });
   return {
     providerAccountId: data.id,
