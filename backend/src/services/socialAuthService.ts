@@ -212,7 +212,7 @@ async function facebookProfile(accessToken: string): Promise<SocialProfile> {
   return {
     providerAccountId: data.id,
     displayName: data.name,
-    profileUrl: 'https://www.facebook.com/me',
+    profileUrl: 'https://www.facebook.com/',
     avatarUrl: data.picture?.data?.url
   };
 }
