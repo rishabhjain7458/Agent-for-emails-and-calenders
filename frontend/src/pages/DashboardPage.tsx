@@ -100,6 +100,31 @@ function linkCardMeta(card: LinkDashboardCard) {
   return { accent: '#2557d6', accentBg: 'rgba(37, 87, 214, 0.14)', label: 'Custom link', icon: <OpenInNewIcon /> };
 }
 
+function socialHandleFromUrl(value: string) {
+  try {
+    const parsed = new URL(value);
+    const parts = parsed.pathname.split('/').filter(Boolean);
+    if (parsed.hostname.includes('reddit.com') && parts[0]?.toLowerCase() === 'user') return parts[1] ?? '';
+    return parts[0]?.replace(/^@/, '') ?? '';
+  } catch {
+    return value.trim().replace(/^@/, '').replace(/^\/+/, '');
+  }
+}
+
+function socialAvatarUrl(card: LinkDashboardCard) {
+  const metadataImage = typeof card.metadata?.imageUrl === 'string' ? card.metadata.imageUrl : '';
+  if (metadataImage) return metadataImage;
+  if (card.cardType !== 'social' || !card.platform) return '';
+  const handle = socialHandleFromUrl(card.url);
+  if (!handle) return '';
+  const platform = card.platform === 'x' ? 'twitter' : card.platform;
+  return `https://unavatar.io/${platform}/${encodeURIComponent(handle)}`;
+}
+
+function avatarInitial(card: LinkDashboardCard) {
+  return (card.label || socialHandleFromUrl(card.url) || 'A').trim().charAt(0).toUpperCase();
+}
+
 function percentage(value: number, total: number) {
   if (!total) return 0;
   return Math.round((value / total) * 100);
@@ -429,12 +454,7 @@ export function DashboardPage() {
       <Stack spacing={2.5}>
         <Card className="premium-panel" sx={{ overflow: 'hidden' }}>
           <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
-            <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'stretch', md: 'center' }} justifyContent="space-between" spacing={1.5} sx={{ mb: 2 }}>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                {accountSpaces.map((account) => (
-                  <Chip key={account.id} label={account.email} variant="outlined" sx={{ borderColor: account.color, color: account.color, fontWeight: 850 }} />
-                ))}
-              </Stack>
+            <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'stretch', md: 'center' }} justifyContent="flex-end" spacing={1.5} sx={{ mb: 2 }}>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
                 <FormControlLabel control={<Switch checked={focusMode} onChange={(event) => toggleFocusMode(event.target.checked)} />} label="Focus mode" />
                 {(['workspace', 'analysis', 'shortcuts'] as const).map((key) => (
@@ -492,6 +512,7 @@ export function DashboardPage() {
 
                   if (card.kind === 'link') {
                     const meta = linkCardMeta(card.account);
+                    const avatarUrl = socialAvatarUrl(card.account);
                     return (
                       <Box
                         key={card.id}
@@ -511,8 +532,21 @@ export function DashboardPage() {
                       >
                         <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%' }}>
                           <Box component="a" href={card.account.url} target="_blank" rel="noreferrer" sx={{ alignItems: 'center', color: 'inherit', display: 'flex', flex: 1, gap: 1, minWidth: 0, textDecoration: 'none' }}>
-                            <Box sx={{ bgcolor: meta.accentBg, borderRadius: 1.5, color: meta.accent, display: 'grid', flex: '0 0 auto', height: 34, placeItems: 'center', width: 34 }}>
-                              {meta.icon}
+                            <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}45`, borderRadius: '50%', color: meta.accent, display: 'grid', flex: '0 0 auto', height: 36, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 36 }}>
+                              {card.account.cardType === 'social' ? (
+                                <Typography sx={{ color: meta.accent, fontSize: '0.9rem', fontWeight: 950 }}>{avatarInitial(card.account)}</Typography>
+                              ) : meta.icon}
+                              {avatarUrl && (
+                                <Box
+                                  component="img"
+                                  src={avatarUrl}
+                                  alt=""
+                                  loading="lazy"
+                                  referrerPolicy="no-referrer"
+                                  onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                                  sx={{ bgcolor: 'background.paper', height: '100%', inset: 0, objectFit: 'cover', position: 'absolute', width: '100%' }}
+                                />
+                              )}
                             </Box>
                             <Box sx={{ minWidth: 0 }}>
                               <Stack direction="row" spacing={0.75} alignItems="center">
