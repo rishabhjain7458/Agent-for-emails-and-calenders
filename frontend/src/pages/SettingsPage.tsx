@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Browser } from '@capacitor/browser';
-import { Capacitor } from '@capacitor/core';
 import { Alert, Box, Button, Card, CardContent, Chip, Divider, FormControlLabel, Grid, MenuItem, Stack, Switch, TextField, Typography } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -15,7 +13,7 @@ import RedditIcon from '@mui/icons-material/Reddit';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import { PageHeader } from '../components/PageHeader';
-import { connectImapAccount, createDashboardCard, deleteDashboardCard, disconnectAccount, getConnectedAccounts, getConnectAccountUrl, getDashboardCards, getSettings, getSocialConnectUrl, updateSettings } from '../api/endpoints';
+import { connectImapAccount, createDashboardCard, deleteDashboardCard, disconnectAccount, getConnectedAccounts, getConnectAccountUrl, getDashboardCards, getSettings, updateSettings } from '../api/endpoints';
 import type { ConnectedAccount, DashboardCard } from '../types';
 import { normalizeSocialUrl, socialPlatformLabels, type SocialPlatform } from '../utils/socialAccounts';
 import { useSpace } from '../contexts/SpaceContext';
@@ -24,7 +22,6 @@ type CardFormType = 'social' | 'news' | 'custom_link';
 type ZohoSmtpPreset = 'india' | 'global' | 'europe' | 'custom';
 
 const socialPlatforms = Object.entries(socialPlatformLabels) as [SocialPlatform, string][];
-const oauthSocialPlatforms = socialPlatforms.filter(([platform]) => platform !== 'threads') as [Exclude<SocialPlatform, 'threads'>, string][];
 
 function socialCardStyle(platform?: string | null) {
   if (platform === 'instagram') return { bg: 'rgba(192, 38, 211, 0.14)', fg: '#c026d3' };
@@ -69,7 +66,6 @@ export function SettingsPage() {
   const [smtpHost, setSmtpHost] = useState('smtp.zoho.in');
   const [smtpPort, setSmtpPort] = useState('465');
   const [smtpPreset, setSmtpPreset] = useState<ZohoSmtpPreset>('india');
-  const [lastSocialRedirectUri, setLastSocialRedirectUri] = useState('');
 
   useEffect(() => {
     getSettings().then((settings) => {
@@ -105,23 +101,7 @@ export function SettingsPage() {
   }
 
   async function connect(provider: 'google' | 'microsoft' | 'zoho') {
-    const isNative = Capacitor.isNativePlatform();
-    const url = await getConnectAccountUrl(provider, isNative);
-    if (isNative) {
-      await Browser.open({ url });
-      return;
-    }
-    window.location.href = url;
-  }
-
-  async function connectSocial(platform: Exclude<SocialPlatform, 'threads'>) {
-    const isNative = Capacitor.isNativePlatform();
-    const { url, redirectUri } = await getSocialConnectUrl(platform, isNative, window.location.origin);
-    setLastSocialRedirectUri(redirectUri);
-    if (isNative) {
-      await Browser.open({ url });
-      return;
-    }
+    const url = await getConnectAccountUrl(provider);
     window.location.href = url;
   }
 
@@ -308,32 +288,16 @@ export function SettingsPage() {
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.5}>
                   <Box>
                     <Typography variant="h6">Dashboard Link Cards</Typography>
-                    <Typography color="text.secondary" variant="body2">Connect social profiles with OAuth, or add social, news, and custom links manually.</Typography>
+                    <Typography color="text.secondary" variant="body2">Add social profiles, news sites, and custom links for this workspace.</Typography>
                   </Box>
                   <Chip icon={<LinkIcon />} label={`${dashboardCards.length} saved`} variant="outlined" />
                 </Stack>
                 <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'action.hover', p: 1.5 }}>
                   <Stack spacing={1.25}>
                     <Box>
-                      <Typography sx={{ fontWeight: 900 }}>Connect social accounts</Typography>
-                    <Typography color="text.secondary" variant="body2">OAuth creates a dashboard card and saves the profile image when the provider returns one. Threads can be added as a manual profile card.</Typography>
+                      <Typography sx={{ fontWeight: 900 }}>Manual social profile cards</Typography>
+                      <Typography color="text.secondary" variant="body2">Add a username or profile link. The dashboard will show a profile-style image when one can be resolved.</Typography>
                     </Box>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                      {oauthSocialPlatforms.map(([platform, label]) => (
-                        <Button key={platform} variant="outlined" startIcon={socialCardIcon(platform)} onClick={() => connectSocial(platform)}>
-                          Connect {label}
-                        </Button>
-                      ))}
-                    </Stack>
-                    {lastSocialRedirectUri && (
-                      <Alert
-                        severity="info"
-                        action={<Button size="small" onClick={() => navigator.clipboard?.writeText(lastSocialRedirectUri)}>Copy</Button>}
-                      >
-                        OAuth redirect URI sent to provider: {lastSocialRedirectUri}
-                      </Alert>
-                    )}
-                    <Typography variant="caption" color="text.secondary">Requires matching client ID, client secret, and redirect URI environment variables on the backend.</Typography>
                   </Stack>
                 </Box>
                 <Grid container spacing={1.25} alignItems="flex-start">
