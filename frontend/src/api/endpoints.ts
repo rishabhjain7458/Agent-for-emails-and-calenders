@@ -10,8 +10,8 @@ type EmailsApiResponse =
   | { data: EmailMessage[] }
   | { data: { messages: EmailMessage[]; nextPageToken?: string; resultSizeEstimate?: number } };
 
-export async function getEmails(q = 'in:inbox', accountId = 'all') {
-  const { data } = await api.get<EmailsApiResponse>('/emails', { params: { q, accountId } });
+export async function getEmails(q = 'in:inbox', accountId = 'all', limit = 20, options?: { dashboard?: boolean }) {
+  const { data } = await api.get<EmailsApiResponse>('/emails', { params: { q, accountId, limit, dashboard: options?.dashboard ? '1' : undefined } });
   return Array.isArray(data.data) ? data.data : data.data.messages;
 }
 
@@ -90,8 +90,8 @@ export async function getEmailSummary() {
   return data.data.summary;
 }
 
-export async function getEvents(accountId = 'all') {
-  const { data } = await api.get<{ data: CalendarEvent[] }>('/calendar/events', { params: { accountId } });
+export async function getEvents(accountId = 'all', options?: { dashboard?: boolean }) {
+  const { data } = await api.get<{ data: CalendarEvent[] }>('/calendar/events', { params: { accountId, dashboard: options?.dashboard ? '1' : undefined } });
   return data.data;
 }
 
@@ -105,8 +105,8 @@ export async function deleteEvent(id: string) {
   return data.data;
 }
 
-export async function getTasks(accountId = 'all') {
-  const { data } = await api.get<{ data: Task[] }>('/tasks', { params: { accountId } });
+export async function getTasks(accountId = 'all', options?: { dashboard?: boolean }) {
+  const { data } = await api.get<{ data: Task[] }>('/tasks', { params: { accountId, dashboard: options?.dashboard ? '1' : undefined } });
   return data.data;
 }
 

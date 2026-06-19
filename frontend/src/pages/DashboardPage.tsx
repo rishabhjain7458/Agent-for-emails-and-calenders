@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, Grid, LinearProgress, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, FormControlLabel, Grid, LinearProgress, Stack, Switch, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import MailIcon from '@mui/icons-material/Mail';
 import EventIcon from '@mui/icons-material/Event';
@@ -29,6 +29,7 @@ import type { CalendarEvent, DashboardCard as LinkDashboardCard, EmailMessage, T
 import { socialPlatformLabels } from '../utils/socialAccounts';
 
 const accountPalette = ['#2557d6', '#0f9f8f', '#b86b00', '#8b5cf6', '#e0476b', '#168053'];
+const dashboardWidgetStorageKey = 'o-connect-dashboard-widgets';
 
 type MixedDashboardCard =
   | { id: string; kind: 'combined' }
@@ -204,10 +205,20 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [linkCards, setLinkCards] = useState<LinkDashboardCard[]>([]);
   const [cardOrder, setCardOrder] = useState<string[]>([]);
+  const [focusMode, setFocusMode] = useState(() => localStorage.getItem('o-connect-focus-mode') === 'true');
+  const [visibleWidgets, setVisibleWidgets] = useState<Record<string, boolean>>(() => {
+    const stored = localStorage.getItem(dashboardWidgetStorageKey);
+    return stored ? JSON.parse(stored) : { workspace: true, analysis: true, shortcuts: true };
+  });
 
   async function loadDashboard() {
     setLoading(true);
-    const results = await Promise.allSettled([getEmails('in:inbox is:unread'), getEmails('in:inbox newer_than:14d'), getEvents(), getTasks()]);
+    const results = await Promise.allSettled([
+      getEmails('in:inbox is:unread', 'all', 16, { dashboard: true }),
+      getEmails('in:inbox newer_than:14d', 'all', 24, { dashboard: true }),
+      getEvents('all', { dashboard: true }),
+      getTasks('all', { dashboard: true })
+    ]);
     const nextErrors: string[] = [];
     const [mailResult, recentMailResult, calendarResult, taskResult] = results;
 
@@ -235,9 +246,9 @@ export function DashboardPage() {
     });
   }, []);
 
-  const pendingTasks = tasks.filter((task) => task.status !== 'completed');
-  const completedTasks = tasks.filter((task) => task.status === 'completed');
-  const overdue = overdueTasks(tasks);
+  const pendingTasks = useMemo(() => tasks.filter((task) => task.status !== 'completed'), [tasks]);
+  const completedTasks = useMemo(() => tasks.filter((task) => task.status === 'completed'), [tasks]);
+  const overdue = useMemo(() => overdueTasks(tasks), [tasks]);
 
   const accountColors = useMemo(() => {
     const entries = spaces.map((account, index) => [account.id, accountPalette[index % accountPalette.length]] as const);
@@ -342,6 +353,19 @@ export function DashboardPage() {
     loadDashboard();
   }
 
+  function toggleFocusMode(checked: boolean) {
+    setFocusMode(checked);
+    localStorage.setItem('o-connect-focus-mode', String(checked));
+  }
+
+  function toggleWidget(key: string) {
+    setVisibleWidgets((current) => {
+      const next = { ...current, [key]: current[key] === false };
+      localStorage.setItem(dashboardWidgetStorageKey, JSON.stringify(next));
+      return next;
+    });
+  }
+
   function moveDashboardCard(id: string, direction: -1 | 1) {
     const ids = orderedDashboardCards.map((card) => card.id);
     const currentIndex = ids.indexOf(id);
@@ -366,13 +390,26 @@ export function DashboardPage() {
       <Stack spacing={2.5}>
         <Card className="premium-panel" sx={{ overflow: 'hidden' }}>
           <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
+            <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'stretch', md: 'center' }} justifyContent="space-between" spacing={1.5} sx={{ mb: 2 }}>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {accountSpaces.map((account) => (
+                  <Chip key={account.id} label={account.email} variant="outlined" sx={{ borderColor: account.color, color: account.color, fontWeight: 850 }} />
+                ))}
+              </Stack>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+                <FormControlLabel control={<Switch checked={focusMode} onChange={(event) => toggleFocusMode(event.target.checked)} />} label="Focus mode" />
+                {(['workspace', 'analysis', 'shortcuts'] as const).map((key) => (
+                  <Chip key={key} label={key} color={visibleWidgets[key] === false ? 'default' : 'primary'} variant={visibleWidgets[key] === false ? 'outlined' : 'filled'} onClick={() => toggleWidget(key)} />
+                ))}
+              </Stack>
+            </Stack>
             <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} alignItems={{ xs: 'stretch', lg: 'center' }}>
               <Box sx={{ minWidth: { lg: 260 } }}>
                 <Typography variant="h5" sx={{ fontWeight: 900 }}>Cards</Typography>
                 <Typography color="text.secondary" variant="body2">Email spaces and social profiles in one sequence.</Typography>
               </Box>
               <Box className="scroll-thin" sx={{ display: 'flex', gap: 1.25, overflowX: 'auto', pb: 0.5 }}>
-                {orderedDashboardCards.map((card, index) => {
+                {orderedDashboardCards.filter((card) => !(focusMode && selectedSpace && card.kind === 'space' && card.account.id !== selectedSpace.id)).map((card, index) => {
                   const isFirst = index === 0;
                   const isLast = index === orderedDashboardCards.length - 1;
                   if (card.kind === 'combined') {
@@ -524,6 +561,7 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
+        {visibleWidgets.workspace !== false && (
         <Card className="premium-panel" sx={{ borderColor: selectedSpaceColor, overflow: 'hidden' }}>
           <Box sx={{ bgcolor: selectedSpace ? `${selectedSpaceColor}10` : 'rgba(37,87,214,0.08)', borderBottom: '1px solid', borderColor: 'divider', p: { xs: 2, md: 2.5 } }}>
             <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2}>
@@ -612,7 +650,9 @@ export function DashboardPage() {
             </Grid>
           </CardContent>
         </Card>
+        )}
 
+        {visibleWidgets.analysis !== false && !focusMode && (
         <Card className="premium-panel">
           <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
             <Stack direction={{ xs: 'column', lg: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 2.25 }}>
@@ -757,7 +797,9 @@ export function DashboardPage() {
             </Grid>
           </CardContent>
         </Card>
+        )}
 
+        {visibleWidgets.shortcuts !== false && (
         <Card className="premium-panel">
           <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
             <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={2}>
@@ -776,6 +818,7 @@ export function DashboardPage() {
             </Stack>
           </CardContent>
         </Card>
+        )}
 
       </Stack>
     </>

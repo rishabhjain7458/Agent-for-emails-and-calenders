@@ -205,7 +205,7 @@ function EmailBody({ body }: { body?: string }) {
 function RichEmailBody({ html, text }: { html?: string; text?: string }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [height, setHeight] = useState(620);
-  const [mode, setMode] = useState(html ? 'rich' : 'text');
+  const [mode, setMode] = useState('text');
   const srcDoc = useMemo(() => sanitizeEmailHtml(html), [html]);
   const hasHtml = Boolean(srcDoc);
 

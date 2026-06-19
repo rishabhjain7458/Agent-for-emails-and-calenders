@@ -2,10 +2,11 @@ import { Router } from 'express';
 import Joi from 'joi';
 import { availability, create, events, freeBusy, remove, update } from '../controllers/calendarController.js';
 import { validateBody } from '../middleware/validate.js';
+import { cacheGet } from '../middleware/responseCache.js';
 
 export const calendarRoutes = Router();
 
-calendarRoutes.get('/events', events);
+calendarRoutes.get('/events', cacheGet(45, (req) => req.query.dashboard === '1'), events);
 calendarRoutes.post('/events', validateBody(Joi.object({
   title: Joi.string().required(),
   date: Joi.string().required(),

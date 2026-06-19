@@ -8,6 +8,8 @@ import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import SaveIcon from '@mui/icons-material/Save';
 import { PageHeader } from '../components/PageHeader';
+import { EmptyState } from '../components/EmptyState';
+import { WindowedList } from '../components/WindowedList';
 import { archiveEmail, deleteEmail, getEmails, getEmailSummary } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
 import type { EmailMessage } from '../types';
@@ -61,14 +63,15 @@ export function EmailsPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [emails, setEmails] = useState<EmailMessage[]>([]);
+  const [limit, setLimit] = useState(24);
   const [summary, setSummary] = useState('');
   const [actionError, setActionError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function load(q = query) {
+  async function load(q = query, nextLimit = limit) {
     setLoading(true);
     try {
-      setEmails(await getEmails(q, isCombined ? 'all' : activeSpaceId));
+      setEmails(await getEmails(q, isCombined ? 'all' : activeSpaceId, nextLimit));
     } finally {
       setLoading(false);
     }
@@ -96,8 +99,9 @@ export function EmailsPage() {
   }, [activeSpaceId, isCombined]);
 
   function applyFilter(nextQuery: string) {
+    setLimit(24);
     setQuery(nextQuery);
-    load(nextQuery);
+    load(nextQuery, 24);
   }
 
   function quoteSearchValue(value: string) {
@@ -123,8 +127,9 @@ export function EmailsPage() {
 
   function searchWithFields() {
     const nextQuery = buildFieldQuery();
+    setLimit(24);
     setQuery(nextQuery);
-    load(nextQuery);
+    load(nextQuery, 24);
   }
 
   function clearFieldSearch() {
@@ -133,8 +138,20 @@ export function EmailsPage() {
     setBodySearch('');
     setDateFrom('');
     setDateTo('');
+    setLimit(24);
     setQuery('in:inbox');
-    load('in:inbox');
+    load('in:inbox', 24);
+  }
+
+  async function loadMore() {
+    const nextLimit = limit + 24;
+    setLimit(nextLimit);
+    setLoading(true);
+    try {
+      setEmails(await getEmails(query, isCombined ? 'all' : activeSpaceId, nextLimit));
+    } finally {
+      setLoading(false);
+    }
   }
 
   function saveCurrentSearch() {
@@ -366,8 +383,12 @@ export function EmailsPage() {
                 <MailOutlineIcon color="primary" />
               </Stack>
               <Stack divider={<Divider flexItem />} spacing={0}>
-            {emails.map((email) => (
-              <Box
+                <WindowedList
+                  items={emails}
+                  estimateSize={118}
+                  maxVisible={48}
+                  renderItem={(email) => (
+                    <Box
                 key={email.id}
                 component={RouterLink}
                 to={`/emails/${encodeURIComponent(email.id)}`}
@@ -415,12 +436,26 @@ export function EmailsPage() {
                       <Typography color="text.secondary" variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.sender}</Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, display: '-webkit-box', WebkitLineClamp: { xs: 3, sm: 2 }, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{email.snippet}</Typography>
                     </Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: { xs: 'normal', sm: 'nowrap' } }}>{email.date}</Typography>
-                  </Box>
-              </Box>
-            ))}
-                {!loading && emails.length === 0 && <Alert severity="info">No emails found.</Alert>}
+                  <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: { xs: 'normal', sm: 'nowrap' } }}>{email.date}</Typography>
+                </Box>
+                    </Box>
+                  )}
+                />
+                {!loading && emails.length === 0 && (
+                  <EmptyState
+                    icon={<MailOutlineIcon />}
+                    title="No emails found"
+                    description="Try a broader query, change the selected space, or clear the filters."
+                    actionLabel="Clear filters"
+                    onAction={clearFieldSearch}
+                  />
+                )}
               </Stack>
+              {emails.length >= limit && (
+                <Button fullWidth variant="outlined" onClick={loadMore} disabled={loading} sx={{ mt: 2 }}>
+                  {loading ? 'Loading...' : 'Load more emails'}
+                </Button>
+              )}
             </CardContent>
           </Card>
         </Grid>

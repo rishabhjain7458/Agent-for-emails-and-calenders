@@ -6,6 +6,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import { PageHeader } from '../components/PageHeader';
+import { EmptyState } from '../components/EmptyState';
+import { WindowedList } from '../components/WindowedList';
 import { completeTask, createTask, getTasks, removeTask } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
 import type { Task } from '../types';
@@ -138,7 +140,11 @@ export function TasksPage() {
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.75, fontWeight: 800 }}>Pending</Typography>
                   <Stack divider={<Divider flexItem />} spacing={0}>
-                    {pendingTasks.map((task) => (
+                    <WindowedList
+                      items={pendingTasks}
+                      estimateSize={86}
+                      maxVisible={48}
+                      renderItem={(task) => (
                       <Box
                         key={task.id}
                         onTouchStart={(event) => setTouchStartX(event.touches[0]?.clientX ?? null)}
@@ -158,8 +164,15 @@ export function TasksPage() {
                     <DeleteIcon />
                   </IconButton>
                       </Box>
-                    ))}
-                    {!loading && pendingTasks.length === 0 && <Alert severity="info">No pending tasks.</Alert>}
+                      )}
+                    />
+                    {!loading && pendingTasks.length === 0 && (
+                      <EmptyState
+                        icon={<PlaylistAddCheckIcon />}
+                        title="No pending tasks"
+                        description="Create a task or switch spaces to see more work."
+                      />
+                    )}
                   </Stack>
                 </Box>
 
@@ -167,7 +180,11 @@ export function TasksPage() {
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.75, fontWeight: 800 }}>Completed</Typography>
                     <Stack divider={<Divider flexItem />} spacing={0}>
-                      {completedTasks.map((task) => (
+                      <WindowedList
+                        items={completedTasks}
+                        estimateSize={78}
+                        maxVisible={36}
+                        renderItem={(task) => (
                         <Box
                           key={task.id}
                           onTouchStart={(event) => setTouchStartX(event.touches[0]?.clientX ?? null)}
@@ -187,7 +204,8 @@ export function TasksPage() {
                             <DeleteIcon />
                           </IconButton>
                         </Box>
-                      ))}
+                        )}
+                      />
                     </Stack>
                   </Box>
                 )}

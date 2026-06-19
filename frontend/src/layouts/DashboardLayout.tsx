@@ -75,6 +75,25 @@ export function DashboardLayout() {
     });
   }
 
+  function runCommand(value: string) {
+    const command = value.trim();
+    if (!command) return;
+    const lower = command.toLowerCase();
+    if (lower.startsWith('task:') || lower.startsWith('todo:')) {
+      navigate(`/tasks?title=${encodeURIComponent(command.replace(/^(task|todo):/i, '').trim())}`);
+      return;
+    }
+    if (/\b(meeting|calendar|schedule|event)\b/i.test(command)) {
+      navigate(`/calendar?prompt=${encodeURIComponent(command)}`);
+      return;
+    }
+    if (/\b(summarize|draft|reply|plan|assistant|ai)\b/i.test(command)) {
+      navigate(`/assistant?prompt=${encodeURIComponent(command)}`);
+      return;
+    }
+    navigate(`/emails?query=${encodeURIComponent(command)}`);
+  }
+
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper', overflowX: 'hidden' }}>
       <Toolbar sx={{ px: drawerExpanded ? { xs: 2, sm: 3 } : 1.25, minHeight: { xs: 64, sm: 76 }, justifyContent: drawerExpanded ? 'space-between' : 'center' }}>
@@ -202,9 +221,10 @@ export function DashboardLayout() {
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 const value = (event.target as HTMLInputElement).value.trim();
-                if (value) navigate(`/emails?query=${encodeURIComponent(value)}`);
+                runCommand(value);
               }
             }}
+            helperText={isMobile ? undefined : 'Try: task: follow up, create meeting tomorrow, summarize unread, or from:name@example.com'}
           />
           {!isMobile && (
             <TextField

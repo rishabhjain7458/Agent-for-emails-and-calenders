@@ -2,10 +2,11 @@ import { Router } from 'express';
 import Joi from 'joi';
 import { archive, attachment, detail, draftReply, emailSummary, inbox, refineReply, remove, saveEmailDraft, sendEmailReply, summary, thread } from '../controllers/emailController.js';
 import { validateBody } from '../middleware/validate.js';
+import { cacheGet } from '../middleware/responseCache.js';
 
 export const emailRoutes = Router();
 
-emailRoutes.get('/', inbox);
+emailRoutes.get('/', cacheGet(45, (req) => req.query.dashboard === '1'), inbox);
 emailRoutes.get('/summary', summary);
 emailRoutes.get('/threads/:threadId', thread);
 emailRoutes.post('/send-reply', validateBody(Joi.object({

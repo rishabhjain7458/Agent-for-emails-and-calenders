@@ -2,10 +2,11 @@ import { Router } from 'express';
 import Joi from 'joi';
 import { complete, create, index, remove } from '../controllers/taskController.js';
 import { validateBody } from '../middleware/validate.js';
+import { cacheGet } from '../middleware/responseCache.js';
 
 export const taskRoutes = Router();
 
-taskRoutes.get('/', index);
+taskRoutes.get('/', cacheGet(30, (req) => req.query.dashboard === '1'), index);
 taskRoutes.post('/', validateBody(Joi.object({
   title: Joi.string().required(),
   dueDate: Joi.string().allow(null, '').optional(),
