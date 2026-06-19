@@ -228,7 +228,7 @@ function RichEmailBody({ html, text }: { html?: string; text?: string }) {
           <Button variant={mode === 'text' ? 'contained' : 'outlined'} onClick={() => setMode('text')}>Clean text</Button>
         </ButtonGroup>
       </Stack>
-      <Box sx={{ bgcolor: '#ffffff', border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
+      <Box sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
         {mode === 'rich' && hasHtml ? (
           <Box
             component="iframe"
@@ -468,7 +468,7 @@ export function EmailDetailPage() {
                 placeholder="Generate or write a reply. Nothing is sent until you approve it."
                 sx={{ '& .MuiOutlinedInput-root': { alignItems: 'flex-start' } }}
               />
-              <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: '#f8faff', p: { xs: 1.25, sm: 1.5 } }}>
+              <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'action.hover', p: { xs: 1.25, sm: 1.5 } }}>
                 <Stack spacing={1.5}>
                   <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
                     <Box>
@@ -491,11 +491,11 @@ export function EmailDetailPage() {
                           key={`${message.role}-${index}`}
                           sx={{
                             alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start',
-                            bgcolor: message.role === 'user' ? 'primary.main' : '#ffffff',
+                            bgcolor: message.role === 'user' ? 'primary.main' : 'background.paper',
                             border: message.role === 'assistant' ? '1px solid' : 0,
                             borderColor: 'divider',
                             borderRadius: 2,
-                            color: message.role === 'user' ? '#fff' : 'text.primary',
+                            color: message.role === 'user' ? 'primary.contrastText' : 'text.primary',
                             maxWidth: '82%',
                             px: 1.25,
                             py: 0.85

@@ -258,7 +258,7 @@ export function CalendarPage() {
         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 850 }}>{title}</Typography>
         <Stack spacing={1}>
           {items.map(({ event, starts }) => (
-            <Box key={event.id} onClick={() => setSelectedEvent(event)} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, bgcolor: '#fff', cursor: 'pointer', borderLeft: `4px solid ${colorForEvent(event)}`, boxShadow: `inset 0 3px 0 ${typeColorForEvent(event)}`, transition: 'transform 160ms ease, background 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(2px)' } } }}>
+            <Box key={event.id} onClick={() => setSelectedEvent(event)} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, bgcolor: 'background.paper', cursor: 'pointer', borderLeft: `4px solid ${colorForEvent(event)}`, boxShadow: `inset 0 3px 0 ${typeColorForEvent(event)}`, transition: 'transform 160ms ease, background 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(2px)' } } }}>
               <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.4 }}>
                 <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: typeColorForEvent(event), flex: '0 0 auto' }} />
                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>{typeLabelForEvent(event)}</Typography>

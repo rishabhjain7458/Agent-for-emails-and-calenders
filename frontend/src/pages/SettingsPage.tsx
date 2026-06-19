@@ -26,13 +26,13 @@ type ZohoSmtpPreset = 'india' | 'global' | 'europe' | 'custom';
 const socialPlatforms = Object.entries(socialPlatformLabels) as [SocialPlatform, string][];
 
 function socialCardStyle(platform?: string | null) {
-  if (platform === 'instagram') return { bg: '#fdf2f8', fg: '#c026d3' };
-  if (platform === 'facebook') return { bg: '#eff6ff', fg: '#2563eb' };
-  if (platform === 'linkedin') return { bg: '#eef6ff', fg: '#0a66c2' };
-  if (platform === 'x') return { bg: '#f4f4f5', fg: '#111827' };
-  if (platform === 'threads') return { bg: '#f5f3ff', fg: '#5b21b6' };
-  if (platform === 'reddit') return { bg: '#fff1ed', fg: '#ff4500' };
-  return { bg: '#f8faff', fg: '#2557d6' };
+  if (platform === 'instagram') return { bg: 'rgba(192, 38, 211, 0.14)', fg: '#c026d3' };
+  if (platform === 'facebook') return { bg: 'rgba(37, 99, 235, 0.14)', fg: '#2563eb' };
+  if (platform === 'linkedin') return { bg: 'rgba(10, 102, 194, 0.14)', fg: '#0a66c2' };
+  if (platform === 'x') return { bg: 'rgba(148, 163, 184, 0.16)', fg: '#8b98aa' };
+  if (platform === 'threads') return { bg: 'rgba(139, 92, 246, 0.15)', fg: '#8b5cf6' };
+  if (platform === 'reddit') return { bg: 'rgba(255, 69, 0, 0.14)', fg: '#ff4500' };
+  return { bg: 'rgba(37, 87, 214, 0.14)', fg: '#2557d6' };
 }
 
 function socialCardIcon(platform?: string | null) {
@@ -188,7 +188,7 @@ export function SettingsPage() {
   function cardColor(card: DashboardCard) {
     if (card.cardType === 'news') return { bg: '#fefce8', fg: '#a16207' };
     if (card.cardType === 'social') return socialCardStyle(card.platform);
-    return { bg: '#f8faff', fg: '#2557d6' };
+    return { bg: 'rgba(37, 87, 214, 0.14)', fg: '#2557d6' };
   }
 
   return (
@@ -228,7 +228,7 @@ export function SettingsPage() {
                   <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('microsoft')}>Connect Outlook</Button>
                   <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('zoho')}>Connect Zoho OAuth</Button>
                 </Stack>
-                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: '#f8faff', p: 1.5 }}>
+                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'action.hover', p: 1.5 }}>
                   <Stack spacing={1.25}>
                     <Box>
                       <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>Zoho via IMAP</Typography>
@@ -265,7 +265,7 @@ export function SettingsPage() {
                 </Box>
                 <Stack divider={<Divider flexItem />} spacing={0}>
                   {accounts.map((account) => (
-                    <Box key={account.id} sx={{ bgcolor: '#fff', border: '1px solid', borderColor: 'divider', borderRadius: 2, display: 'flex', alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.25, mb: 1, p: 1.25 }}>
+                    <Box key={account.id} sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 2, display: 'flex', alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.25, mb: 1, p: 1.25 }}>
                       <Box sx={{ minWidth: 0 }}>
                         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                           <Typography sx={{ fontWeight: 800, overflowWrap: 'anywhere' }}>{account.email}</Typography>
@@ -329,7 +329,7 @@ export function SettingsPage() {
                     const colors = cardColor(card);
                     return (
                     <Grid item xs={12} md={6} lg={4} key={card.id}>
-                      <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: '#fff', p: 1.5 }}>
+                      <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper', p: 1.5 }}>
                         <Stack direction="row" spacing={1.25} alignItems="center">
                           <Box sx={{ bgcolor: colors.bg, borderRadius: 1.5, color: colors.fg, display: 'grid', flex: '0 0 auto', height: 42, placeItems: 'center', width: 42 }}>
                             {cardIcon(card)}

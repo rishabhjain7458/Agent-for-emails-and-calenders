@@ -90,14 +90,14 @@ function mergeCardOrder(ids: string[], order: string[]) {
 }
 
 function linkCardMeta(card: LinkDashboardCard) {
-  if (card.cardType === 'news') return { accent: '#a16207', accentBg: '#fefce8', label: 'News', icon: <NewspaperIcon /> };
-  if (card.platform === 'instagram') return { accent: '#c026d3', accentBg: '#fdf2f8', label: socialPlatformLabels.instagram, icon: <InstagramIcon /> };
-  if (card.platform === 'facebook') return { accent: '#2563eb', accentBg: '#eff6ff', label: socialPlatformLabels.facebook, icon: <FacebookIcon /> };
-  if (card.platform === 'linkedin') return { accent: '#0a66c2', accentBg: '#eef6ff', label: socialPlatformLabels.linkedin, icon: <LinkedInIcon /> };
-  if (card.platform === 'x') return { accent: '#111827', accentBg: '#f4f4f5', label: socialPlatformLabels.x, icon: <XIcon /> };
-  if (card.platform === 'threads') return { accent: '#5b21b6', accentBg: '#f5f3ff', label: socialPlatformLabels.threads, icon: <AlternateEmailIcon /> };
-  if (card.platform === 'reddit') return { accent: '#ff4500', accentBg: '#fff1ed', label: socialPlatformLabels.reddit, icon: <RedditIcon /> };
-  return { accent: '#2557d6', accentBg: '#f8faff', label: 'Custom link', icon: <OpenInNewIcon /> };
+  if (card.cardType === 'news') return { accent: '#a16207', accentBg: 'rgba(161, 98, 7, 0.14)', label: 'News', icon: <NewspaperIcon /> };
+  if (card.platform === 'instagram') return { accent: '#c026d3', accentBg: 'rgba(192, 38, 211, 0.14)', label: socialPlatformLabels.instagram, icon: <InstagramIcon /> };
+  if (card.platform === 'facebook') return { accent: '#2563eb', accentBg: 'rgba(37, 99, 235, 0.14)', label: socialPlatformLabels.facebook, icon: <FacebookIcon /> };
+  if (card.platform === 'linkedin') return { accent: '#0a66c2', accentBg: 'rgba(10, 102, 194, 0.14)', label: socialPlatformLabels.linkedin, icon: <LinkedInIcon /> };
+  if (card.platform === 'x') return { accent: '#8b98aa', accentBg: 'rgba(148, 163, 184, 0.16)', label: socialPlatformLabels.x, icon: <XIcon /> };
+  if (card.platform === 'threads') return { accent: '#8b5cf6', accentBg: 'rgba(139, 92, 246, 0.15)', label: socialPlatformLabels.threads, icon: <AlternateEmailIcon /> };
+  if (card.platform === 'reddit') return { accent: '#ff4500', accentBg: 'rgba(255, 69, 0, 0.14)', label: socialPlatformLabels.reddit, icon: <RedditIcon /> };
+  return { accent: '#2557d6', accentBg: 'rgba(37, 87, 214, 0.14)', label: 'Custom link', icon: <OpenInNewIcon /> };
 }
 
 function percentage(value: number, total: number) {
@@ -142,7 +142,7 @@ function DonutMetric({ value, total, color, label }: { value: number; total: num
           justifyContent: 'center',
           position: 'relative',
           width: 86,
-          '&::after': { bgcolor: '#fff', borderRadius: '50%', content: '""', height: 58, position: 'absolute', width: 58 }
+          '&::after': { bgcolor: 'background.paper', borderRadius: '50%', content: '""', height: 58, position: 'absolute', width: 58 }
         }}
       >
         <Typography sx={{ color, fontWeight: 950, position: 'relative', zIndex: 1 }}>{pct}%</Typography>
@@ -159,7 +159,7 @@ function SignalTile({ label, value, helper, color, icon }: { label: string; valu
   return (
     <Box
       sx={{
-        bgcolor: '#fff',
+        bgcolor: 'background.paper',
         border: '1px solid',
         borderColor: `${color}30`,
         borderRadius: 2,
@@ -380,7 +380,7 @@ export function DashboardPage() {
                       <Box
                         key={card.id}
                         sx={{
-                          bgcolor: isCombined ? 'primary.main' : '#ffffff',
+                          bgcolor: isCombined ? 'primary.main' : 'background.paper',
                           border: '1px solid',
                           borderColor: isCombined ? 'primary.main' : 'divider',
                           borderRadius: 2,
@@ -398,7 +398,7 @@ export function DashboardPage() {
                             <Stack spacing={0.85}>
                               <Stack direction="row" justifyContent="space-between" alignItems="center">
                                 <LayersIcon />
-                                {isCombined && <Chip size="small" label="Active" sx={{ bgcolor: '#fff', color: 'primary.main', fontWeight: 800 }} />}
+                                {isCombined && <Chip size="small" label="Active" sx={{ bgcolor: 'background.paper', color: 'primary.main', fontWeight: 800 }} />}
                               </Stack>
                               <Box>
                                 <Typography sx={{ fontWeight: 900 }}>Combined</Typography>
@@ -424,7 +424,7 @@ export function DashboardPage() {
                       <Box
                         key={card.id}
                         sx={{
-                          bgcolor: '#fff',
+                          bgcolor: 'background.paper',
                           border: '1px solid',
                           borderColor: 'divider',
                           borderRadius: 2,
@@ -469,7 +469,7 @@ export function DashboardPage() {
                     <Box
                       key={card.id}
                       sx={{
-                        bgcolor: active ? `${account.color}10` : '#ffffff',
+                        bgcolor: active ? `${account.color}18` : 'background.paper',
                         border: '1px solid',
                         borderColor: active ? account.color : 'divider',
                         borderRadius: 2,
@@ -692,13 +692,13 @@ export function DashboardPage() {
                     <DonutMetric value={scopedCompletedTasks.length} total={scopedAllTasks.length} color={selectedSpaceColor} label="Completed tasks" />
                     <Grid container spacing={1}>
                       <Grid item xs={6}>
-                        <Box sx={{ bgcolor: '#f8faff', borderRadius: 2, p: 1.25 }}>
+                        <Box sx={{ bgcolor: 'action.hover', borderRadius: 2, p: 1.25 }}>
                           <Typography variant="h5" sx={{ fontWeight: 950 }}>{scopedTasks.length}</Typography>
                           <Typography variant="caption" color="text.secondary">Pending</Typography>
                         </Box>
                       </Grid>
                       <Grid item xs={6}>
-                        <Box sx={{ bgcolor: scopedOverdueTasks.length ? '#fff7ed' : '#f0fdf4', borderRadius: 2, p: 1.25 }}>
+                        <Box sx={{ bgcolor: scopedOverdueTasks.length ? 'rgba(244, 184, 96, 0.16)' : 'rgba(19, 122, 80, 0.14)', borderRadius: 2, p: 1.25 }}>
                           <Typography variant="h5" sx={{ fontWeight: 950 }}>{scopedOverdueTasks.length}</Typography>
                           <Typography variant="caption" color="text.secondary">Overdue</Typography>
                         </Box>
@@ -722,13 +722,13 @@ export function DashboardPage() {
                     ))}
                     <Grid container spacing={1}>
                       <Grid item xs={6}>
-                        <Box sx={{ bgcolor: '#f8faff', borderRadius: 2, p: 1.25 }}>
+                        <Box sx={{ bgcolor: 'action.hover', borderRadius: 2, p: 1.25 }}>
                           <Typography variant="h5" sx={{ fontWeight: 950 }}>{nextDayEvents.length}</Typography>
                           <Typography variant="caption" color="text.secondary">Next 24h</Typography>
                         </Box>
                       </Grid>
                       <Grid item xs={6}>
-                        <Box sx={{ bgcolor: '#f8faff', borderRadius: 2, p: 1.25 }}>
+                        <Box sx={{ bgcolor: 'action.hover', borderRadius: 2, p: 1.25 }}>
                           <Typography variant="h5" sx={{ fontWeight: 950 }}>{nextSevenDayEvents.length}</Typography>
                           <Typography variant="caption" color="text.secondary">Next 7d</Typography>
                         </Box>
@@ -738,7 +738,7 @@ export function DashboardPage() {
                 </Box>
               </Grid>
               <Grid item xs={12}>
-                <Box sx={{ bgcolor: '#f8faff', border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
+                <Box sx={{ bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
                   <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems={{ xs: 'stretch', md: 'center' }} justifyContent="space-between">
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                       <Chip label={`${importantUnreadRate}% important unread`} color={importantUnreadRate > 40 ? 'warning' : 'default'} />

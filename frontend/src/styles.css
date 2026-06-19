@@ -90,11 +90,28 @@ body::before {
 [data-theme="dark"] .MuiCard-root,
 [data-theme="dark"] .MuiPaper-root {
   background-color: #111a2c;
+  color: #edf3ff;
+}
+
+[data-theme="dark"] .MuiBox-root {
+  color: inherit;
 }
 
 [data-theme="dark"] .MuiOutlinedInput-root,
 [data-theme="dark"] .MuiButton-outlined {
   background-color: #111a2c !important;
+}
+
+[data-theme="dark"] .MuiChip-root {
+  color: inherit;
+}
+
+[data-theme="dark"] .MuiAlert-standardInfo,
+[data-theme="dark"] .MuiAlert-standardSuccess,
+[data-theme="dark"] .MuiAlert-standardWarning,
+[data-theme="dark"] .MuiAlert-standardError {
+  background-color: #17243a;
+  color: #edf3ff;
 }
 
 [data-theme="dark"] .MuiButton-outlined:hover {
