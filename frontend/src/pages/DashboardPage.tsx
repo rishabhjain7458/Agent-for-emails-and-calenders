@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, FormControlLabel, Grid, LinearProgress, Stack, Switch, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -29,7 +29,6 @@ import type { CalendarEvent, DashboardCard as LinkDashboardCard, EmailMessage, T
 import { socialPlatformLabels } from '../utils/socialAccounts';
 
 const accountPalette = ['#2557d6', '#0f9f8f', '#b86b00', '#8b5cf6', '#e0476b', '#168053'];
-const dashboardWidgetStorageKey = 'o-connect-dashboard-widgets';
 
 type MixedDashboardCard =
   | { id: string; kind: 'combined' }
@@ -205,11 +204,13 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [linkCards, setLinkCards] = useState<LinkDashboardCard[]>([]);
   const [cardOrder, setCardOrder] = useState<string[]>([]);
+  const [cardOrderLoaded, setCardOrderLoaded] = useState(false);
+  const [cardOrderSaving, setCardOrderSaving] = useState(false);
+  const [cardOrderError, setCardOrderError] = useState('');
   const [focusMode, setFocusMode] = useState(() => localStorage.getItem('o-connect-focus-mode') === 'true');
-  const [visibleWidgets, setVisibleWidgets] = useState<Record<string, boolean>>(() => {
-    const stored = localStorage.getItem(dashboardWidgetStorageKey);
-    return stored ? JSON.parse(stored) : { workspace: true, analysis: true, shortcuts: true };
-  });
+  const workspaceRef = useRef<HTMLDivElement | null>(null);
+  const analysisRef = useRef<HTMLDivElement | null>(null);
+  const shortcutsRef = useRef<HTMLDivElement | null>(null);
 
   async function loadDashboard() {
     setLoading(true);
@@ -243,6 +244,10 @@ export function DashboardPage() {
     getDashboardCards().then((result) => {
       setLinkCards(result.cards);
       setCardOrder(result.cardOrder);
+      setCardOrderLoaded(true);
+    }).catch(() => {
+      setCardOrderLoaded(true);
+      setCardOrderError('Dashboard card order could not be loaded.');
     });
   }, []);
 
@@ -279,14 +284,15 @@ export function DashboardPage() {
   ], [accountSpaces, linkCards]);
 
   useEffect(() => {
+    if (!cardOrderLoaded) return;
     const ids = dashboardCards.map((card) => card.id);
     setCardOrder((current) => {
       const next = mergeCardOrder(ids, current);
       if (next.join('|') === current.join('|')) return current;
-      updateDashboardCardOrder(next).catch(() => undefined);
+      updateDashboardCardOrder(next).catch(() => setCardOrderError('Dashboard card order could not be saved.'));
       return next;
     });
-  }, [dashboardCards]);
+  }, [cardOrderLoaded, dashboardCards]);
 
   const orderedDashboardCards = useMemo(() => {
     const order = mergeCardOrder(dashboardCards.map((card) => card.id), cardOrder);
@@ -353,29 +359,39 @@ export function DashboardPage() {
     loadDashboard();
   }
 
+  function scrollToSection(section: 'workspace' | 'analysis' | 'shortcuts') {
+    const target = section === 'workspace' ? workspaceRef.current : section === 'analysis' ? analysisRef.current : shortcutsRef.current;
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   function toggleFocusMode(checked: boolean) {
     setFocusMode(checked);
     localStorage.setItem('o-connect-focus-mode', String(checked));
+    if (checked && isCombined && accountSpaces[0]) {
+      setActiveSpaceId(accountSpaces[0].id);
+    }
   }
 
-  function toggleWidget(key: string) {
-    setVisibleWidgets((current) => {
-      const next = { ...current, [key]: current[key] === false };
-      localStorage.setItem(dashboardWidgetStorageKey, JSON.stringify(next));
-      return next;
-    });
-  }
-
-  function moveDashboardCard(id: string, direction: -1 | 1) {
+  async function moveDashboardCard(id: string, direction: -1 | 1) {
     const ids = orderedDashboardCards.map((card) => card.id);
     const currentIndex = ids.indexOf(id);
     const nextIndex = currentIndex + direction;
     if (currentIndex < 0 || nextIndex < 0 || nextIndex >= ids.length) return;
     const next = [...ids];
     [next[currentIndex], next[nextIndex]] = [next[nextIndex], next[currentIndex]];
+    setCardOrderError('');
     setCardOrder(next);
-    updateDashboardCardOrder(next).catch(() => undefined);
+    setCardOrderSaving(true);
+    try {
+      setCardOrder(await updateDashboardCardOrder(next));
+    } catch {
+      setCardOrderError('Dashboard card order could not be saved. Please try again.');
+    } finally {
+      setCardOrderSaving(false);
+    }
   }
+
+  const visibleDashboardCards = orderedDashboardCards.filter((card) => !(focusMode && selectedSpace && card.kind === 'space' && card.account.id !== selectedSpace.id));
 
   return (
     <>
@@ -385,7 +401,9 @@ export function DashboardPage() {
         action={<Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadDashboard}>Refresh</Button>}
       />
       {errors.length > 0 && <Alert sx={{ mb: 2 }} severity="warning">{errors.join(' ')}</Alert>}
+      {cardOrderError && <Alert sx={{ mb: 2 }} severity="warning">{cardOrderError}</Alert>}
       {loading && <LinearProgress sx={{ mb: 2 }} />}
+      {cardOrderSaving && <LinearProgress sx={{ mb: 2 }} color="secondary" />}
 
       <Stack spacing={2.5}>
         <Card className="premium-panel" sx={{ overflow: 'hidden' }}>
@@ -399,7 +417,7 @@ export function DashboardPage() {
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
                 <FormControlLabel control={<Switch checked={focusMode} onChange={(event) => toggleFocusMode(event.target.checked)} />} label="Focus mode" />
                 {(['workspace', 'analysis', 'shortcuts'] as const).map((key) => (
-                  <Chip key={key} label={key} color={visibleWidgets[key] === false ? 'default' : 'primary'} variant={visibleWidgets[key] === false ? 'outlined' : 'filled'} onClick={() => toggleWidget(key)} />
+                  <Chip key={key} label={key} color="primary" variant="filled" onClick={() => scrollToSection(key)} />
                 ))}
               </Stack>
             </Stack>
@@ -409,9 +427,9 @@ export function DashboardPage() {
                 <Typography color="text.secondary" variant="body2">Email spaces and social profiles in one sequence.</Typography>
               </Box>
               <Box className="scroll-thin" sx={{ display: 'flex', gap: 1.25, overflowX: 'auto', pb: 0.5 }}>
-                {orderedDashboardCards.filter((card) => !(focusMode && selectedSpace && card.kind === 'space' && card.account.id !== selectedSpace.id)).map((card, index) => {
+                {visibleDashboardCards.map((card, index) => {
                   const isFirst = index === 0;
-                  const isLast = index === orderedDashboardCards.length - 1;
+                  const isLast = index === visibleDashboardCards.length - 1;
                   if (card.kind === 'combined') {
                     return (
                       <Box
@@ -561,8 +579,7 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        {visibleWidgets.workspace !== false && (
-        <Card className="premium-panel" sx={{ borderColor: selectedSpaceColor, overflow: 'hidden' }}>
+        <Card ref={workspaceRef} className="premium-panel" sx={{ borderColor: selectedSpaceColor, overflow: 'hidden', scrollMarginTop: 96 }}>
           <Box sx={{ bgcolor: selectedSpace ? `${selectedSpaceColor}10` : 'rgba(37,87,214,0.08)', borderBottom: '1px solid', borderColor: 'divider', p: { xs: 2, md: 2.5 } }}>
             <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2}>
               <Box sx={{ minWidth: 0 }}>
@@ -650,10 +667,8 @@ export function DashboardPage() {
             </Grid>
           </CardContent>
         </Card>
-        )}
 
-        {visibleWidgets.analysis !== false && !focusMode && (
-        <Card className="premium-panel">
+        <Card ref={analysisRef} className="premium-panel" sx={{ scrollMarginTop: 96 }}>
           <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
             <Stack direction={{ xs: 'column', lg: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 2.25 }}>
               <Box sx={{ maxWidth: 620 }}>
@@ -797,10 +812,8 @@ export function DashboardPage() {
             </Grid>
           </CardContent>
         </Card>
-        )}
 
-        {visibleWidgets.shortcuts !== false && (
-        <Card className="premium-panel">
+        <Card ref={shortcutsRef} className="premium-panel" sx={{ scrollMarginTop: 96 }}>
           <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
             <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={2}>
               <Box>
@@ -818,7 +831,6 @@ export function DashboardPage() {
             </Stack>
           </CardContent>
         </Card>
-        )}
 
       </Stack>
     </>
