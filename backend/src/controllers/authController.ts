@@ -47,6 +47,7 @@ type SocialConnectState = {
   user: AuthUser;
   mobile?: boolean;
   codeVerifier?: string;
+  redirectUri?: string;
 };
 
 function isMobileRequest(req: Request) {
@@ -61,8 +62,8 @@ function signLoginState(provider: 'google' | 'microsoft' | 'zoho', mobile = fals
   return jwt.sign({ mode: 'login', provider, mobile }, env.JWT_SECRET, { expiresIn: '10m' });
 }
 
-function signSocialConnectState(user: AuthUser, provider: SocialPlatform, mobile = false, codeVerifier?: string) {
-  return jwt.sign({ mode: 'social-connect', provider, user, mobile, codeVerifier }, env.JWT_SECRET, { expiresIn: '10m' });
+function signSocialConnectState(user: AuthUser, provider: SocialPlatform, mobile = false, codeVerifier?: string, redirectUri?: string) {
+  return jwt.sign({ mode: 'social-connect', provider, user, mobile, codeVerifier, redirectUri }, env.JWT_SECRET, { expiresIn: '10m' });
 }
 
 function readOAuthState(value: unknown, provider: 'google' | 'microsoft' | 'zoho') {
@@ -102,6 +103,18 @@ function redirectAfterConnect(provider: 'google' | 'microsoft' | 'zoho', mobile 
 function redirectAfterSocialConnect(provider: SocialPlatform, mobile = false) {
   const baseUrl = mobile ? env.MOBILE_APP_URL : env.FRONTEND_URL;
   return `${baseUrl}/settings?connected=${provider}`;
+}
+
+function requestOrigin(req: Request) {
+  const forwardedProto = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]?.trim();
+  const forwardedHost = String(req.headers['x-forwarded-host'] ?? '').split(',')[0]?.trim();
+  const protocol = forwardedProto || req.protocol || 'https';
+  const host = forwardedHost || req.get('host');
+  return `${protocol}://${host}`;
+}
+
+function socialRedirectUri(req: Request, platform: SocialPlatform) {
+  return `${requestOrigin(req)}/api/auth/social/${platform}/callback`;
 }
 
 function isPrimaryAccount(user: AuthUser, provider: 'google' | 'microsoft' | 'zoho', email: string) {
@@ -316,8 +329,9 @@ export function socialConnect(req: Request, res: Response, next: NextFunction) {
     const platform = String(req.params.platform ?? '');
     if (!supportedSocialPlatform(platform)) throw new HttpError(404, 'Unsupported social platform.');
     const verifier = platform === 'x' ? socialCodeVerifier() : undefined;
-    const state = signSocialConnectState(req.user!, platform, isMobileRequest(req), verifier);
-    send(res, { url: getSocialAuthUrl(platform, state, verifier) });
+    const redirectUri = socialRedirectUri(req, platform);
+    const state = signSocialConnectState(req.user!, platform, isMobileRequest(req), verifier, redirectUri);
+    send(res, { url: getSocialAuthUrl(platform, state, verifier, redirectUri), redirectUri });
   } catch (error) {
     next(error);
   }
@@ -329,7 +343,7 @@ export async function socialCallback(req: Request, res: Response, next: NextFunc
     if (!supportedSocialPlatform(platform)) throw new HttpError(404, 'Unsupported social platform.');
     const connectState = readSocialConnectState(req.query.state, platform);
     if (!connectState) throw new HttpError(401, 'Social connect session expired. Please try again.');
-    const { tokens, profile } = await exchangeSocialCode(platform, String(req.query.code ?? ''), connectState.codeVerifier);
+    const { tokens, profile } = await exchangeSocialCode(platform, String(req.query.code ?? ''), connectState.codeVerifier, connectState.redirectUri ?? socialRedirectUri(req, platform));
     const connection = await upsertSocialConnection({
       tenantId: connectState.user.tenantId,
       userId: connectState.user.id,

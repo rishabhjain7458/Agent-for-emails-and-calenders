@@ -24,7 +24,7 @@ type CardFormType = 'social' | 'news' | 'custom_link';
 type ZohoSmtpPreset = 'india' | 'global' | 'europe' | 'custom';
 
 const socialPlatforms = Object.entries(socialPlatformLabels) as [SocialPlatform, string][];
-const oauthSocialPlatforms = socialPlatforms.filter(([platform]) => platform !== 'threads') as [Exclude<SocialPlatform, 'threads'>, string][];
+const oauthSocialPlatforms = socialPlatforms.filter(([platform]) => !['instagram', 'threads'].includes(platform)) as [Exclude<SocialPlatform, 'instagram' | 'threads'>, string][];
 
 function socialCardStyle(platform?: string | null) {
   if (platform === 'instagram') return { bg: 'rgba(192, 38, 211, 0.14)', fg: '#c026d3' };
@@ -108,7 +108,7 @@ export function SettingsPage() {
     window.location.href = url;
   }
 
-  async function connectSocial(platform: Exclude<SocialPlatform, 'threads'>) {
+  async function connectSocial(platform: Exclude<SocialPlatform, 'instagram' | 'threads'>) {
     const isNative = Capacitor.isNativePlatform();
     const url = await getSocialConnectUrl(platform, isNative);
     if (isNative) {
@@ -309,7 +309,7 @@ export function SettingsPage() {
                   <Stack spacing={1.25}>
                     <Box>
                       <Typography sx={{ fontWeight: 900 }}>Connect social accounts</Typography>
-                      <Typography color="text.secondary" variant="body2">OAuth creates a dashboard card and saves the profile image when the provider returns one.</Typography>
+                    <Typography color="text.secondary" variant="body2">OAuth creates a dashboard card and saves the profile image when the provider returns one. Instagram and Threads can be added as manual profile cards.</Typography>
                     </Box>
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                       {oauthSocialPlatforms.map(([platform, label]) => (

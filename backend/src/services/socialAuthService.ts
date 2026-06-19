@@ -32,7 +32,7 @@ const platformLabels: Record<SocialPlatform, string> = {
   reddit: 'Reddit'
 };
 
-function configFor(platform: SocialPlatform): ProviderConfig {
+function configFor(platform: SocialPlatform, redirectUri?: string): ProviderConfig {
   const configs: Record<SocialPlatform, ProviderConfig> = {
     facebook: { clientId: env.FACEBOOK_CLIENT_ID, clientSecret: env.FACEBOOK_CLIENT_SECRET, redirectUri: env.FACEBOOK_REDIRECT_URI },
     instagram: { clientId: env.INSTAGRAM_CLIENT_ID, clientSecret: env.INSTAGRAM_CLIENT_SECRET, redirectUri: env.INSTAGRAM_REDIRECT_URI },
@@ -44,7 +44,7 @@ function configFor(platform: SocialPlatform): ProviderConfig {
   if (!config.clientId || !config.clientSecret) {
     throw new HttpError(400, `${platformLabels[platform]} OAuth is not configured. Add ${platform.toUpperCase()}_CLIENT_ID and ${platform.toUpperCase()}_CLIENT_SECRET.`);
   }
-  return config;
+  return { ...config, redirectUri: redirectUri || config.redirectUri };
 }
 
 export function supportedSocialPlatform(value: string): value is SocialPlatform {
@@ -59,8 +59,8 @@ function codeChallenge(verifier: string) {
   return crypto.createHash('sha256').update(verifier).digest('base64url');
 }
 
-export function getSocialAuthUrl(platform: SocialPlatform, state: string, codeVerifier?: string) {
-  const config = configFor(platform);
+export function getSocialAuthUrl(platform: SocialPlatform, state: string, codeVerifier?: string, redirectUri?: string) {
+  const config = configFor(platform, redirectUri);
   if (platform === 'facebook') {
     const params = new URLSearchParams({
       client_id: config.clientId,
@@ -123,8 +123,8 @@ export function socialTokenExpiry(tokens: SocialTokens) {
   return tokenExpiry(tokens);
 }
 
-export async function exchangeSocialCode(platform: SocialPlatform, code: string, codeVerifier?: string): Promise<{ tokens: SocialTokens; profile: SocialProfile }> {
-  const config = configFor(platform);
+export async function exchangeSocialCode(platform: SocialPlatform, code: string, codeVerifier?: string, redirectUri?: string): Promise<{ tokens: SocialTokens; profile: SocialProfile }> {
+  const config = configFor(platform, redirectUri);
   let tokens: SocialTokens;
 
   if (platform === 'facebook') {
