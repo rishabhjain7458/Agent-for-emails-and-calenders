@@ -79,7 +79,7 @@ export function getSocialAuthUrl(platform: SocialPlatform, state: string, codeVe
       scope: 'instagram_business_basic',
       state
     });
-    return `https://www.instagram.com/oauth/authorize?${params.toString()}`;
+    return `https://api.instagram.com/oauth/authorize?${params.toString()}`;
   }
   if (platform === 'linkedin') {
     const params = new URLSearchParams({
