@@ -74,13 +74,13 @@ export function createAppTheme(mode: AppThemeMode) {
       styleOverrides: {
         root: {
           borderRadius: 8,
-          border: isDark ? '1px solid rgba(58, 75, 105, 0.92)' : '1px solid rgba(214, 223, 236, 0.92)',
-          boxShadow: isDark ? '0 14px 34px rgba(0, 0, 0, 0.24)' : '0 14px 34px rgba(24, 35, 56, 0.06)',
+          border: isDark ? '1px solid rgba(58, 75, 105, 0.92)' : '1px solid rgba(205, 216, 232, 0.9)',
+          boxShadow: isDark ? '0 14px 34px rgba(0, 0, 0, 0.24)' : '0 12px 30px rgba(24, 35, 56, 0.055)',
           position: 'relative',
           transition: 'transform 190ms ease, box-shadow 190ms ease, border-color 190ms ease, background-color 190ms ease',
           '&:hover': {
             borderColor: isDark ? '#3b4c68' : '#cdd9ea',
-            boxShadow: isDark ? '0 20px 48px rgba(0, 0, 0, 0.34)' : '0 20px 48px rgba(24, 35, 56, 0.095)',
+            boxShadow: isDark ? '0 20px 48px rgba(0, 0, 0, 0.34)' : '0 18px 42px rgba(24, 35, 56, 0.085)',
             transform: 'translateY(-2px)'
           }
         }
