@@ -258,13 +258,14 @@ export function EmailsPage() {
     <Stack spacing={2}>
       <Box>
         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Quick filters</Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+        <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
           {emailFilters.map((filter) => (
             <Button
+              size="small"
               key={filter.query}
               variant={query === filter.query ? 'contained' : 'outlined'}
               onClick={() => applyFilter(filter.query)}
-              sx={{ minHeight: 42, px: 1.5 }}
+              sx={{ minHeight: 34, px: 1.2, borderRadius: 999 }}
             >
               {filter.label}
             </Button>
@@ -285,36 +286,39 @@ export function EmailsPage() {
           </Stack>
         </Box>
       )}
-      <Grid container spacing={1.5} alignItems="flex-start">
-        <Grid item xs={12} md={3}>
-          <Alert severity="info" sx={{ height: '100%', alignItems: 'center' }}>Space: {isCombined ? 'Combined' : activeSpace?.email ?? 'Selected account'}</Alert>
+      <Grid container spacing={1.25} alignItems="flex-start">
+        <Grid item xs={12} md={2.5}>
+          <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, px: 1.25, py: 0.9, bgcolor: 'background.default' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>Searching</Typography>
+            <Typography variant="body2" noWrap sx={{ fontWeight: 850 }}>{isCombined ? 'Combined workspace' : activeSpace?.email ?? 'Selected account'}</Typography>
+          </Box>
         </Grid>
         <Grid item xs={12} sm={4} md={3}>
-          <TextField fullWidth label="Sender" value={senderSearch} onChange={(event) => setSenderSearch(event.target.value)} placeholder="name@example.com" />
+          <TextField size="small" fullWidth label="Sender" value={senderSearch} onChange={(event) => setSenderSearch(event.target.value)} placeholder="name@example.com" />
         </Grid>
         <Grid item xs={12} sm={4} md={3}>
-          <TextField fullWidth label="Subject contains" value={subjectSearch} onChange={(event) => setSubjectSearch(event.target.value)} placeholder="invoice, approval" />
+          <TextField size="small" fullWidth label="Subject contains" value={subjectSearch} onChange={(event) => setSubjectSearch(event.target.value)} placeholder="invoice, approval" />
         </Grid>
-        <Grid item xs={12} sm={4} md={3}>
-          <TextField fullWidth label="Body contains" value={bodySearch} onChange={(event) => setBodySearch(event.target.value)} placeholder="words inside email" />
+        <Grid item xs={12} sm={4} md={3.5}>
+          <TextField size="small" fullWidth label="Body contains" value={bodySearch} onChange={(event) => setBodySearch(event.target.value)} placeholder="words inside email" />
         </Grid>
         <Grid item xs={12} sm={6} md={2}>
-          <TextField fullWidth label="From date" type="date" value={dateFrom} InputLabelProps={{ shrink: true }} onChange={(event) => setDateFrom(event.target.value)} />
+          <TextField size="small" fullWidth label="From date" type="date" value={dateFrom} InputLabelProps={{ shrink: true }} onChange={(event) => setDateFrom(event.target.value)} />
         </Grid>
         <Grid item xs={12} sm={6} md={2}>
-          <TextField fullWidth label="To date" type="date" value={dateTo} InputLabelProps={{ shrink: true }} onChange={(event) => setDateTo(event.target.value)} />
+          <TextField size="small" fullWidth label="To date" type="date" value={dateTo} InputLabelProps={{ shrink: true }} onChange={(event) => setDateTo(event.target.value)} />
         </Grid>
         <Grid item xs={12} md={4}>
-          <TextField fullWidth label="Advanced mail query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="in:inbox from:name@example.com newer_than:7d" />
+          <TextField size="small" fullWidth label="Advanced mail query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="in:inbox from:name@example.com newer_than:7d" />
         </Grid>
         <Grid item xs={12} md={2}>
-          <TextField fullWidth label="Save as" value={savedSearchName} onChange={(event) => setSavedSearchName(event.target.value)} placeholder="Invoices" />
+          <TextField size="small" fullWidth label="Save as" value={savedSearchName} onChange={(event) => setSavedSearchName(event.target.value)} placeholder="Invoices" />
         </Grid>
         <Grid item xs={12} md={2}>
           <Stack direction="row" spacing={1}>
-            <Button fullWidth variant="contained" startIcon={<SearchIcon />} onClick={searchWithFields}>Search</Button>
-            <Button variant="outlined" startIcon={<SaveIcon />} onClick={saveCurrentSearch}>Save</Button>
-            <Button variant="outlined" onClick={clearFieldSearch}>Clear</Button>
+            <Button size="small" fullWidth variant="contained" startIcon={<SearchIcon />} onClick={searchWithFields}>Search</Button>
+            <Button size="small" variant="outlined" startIcon={<SaveIcon />} onClick={saveCurrentSearch}>Save</Button>
+            <Button size="small" variant="outlined" onClick={clearFieldSearch}>Clear</Button>
           </Stack>
         </Grid>
       </Grid>
@@ -330,10 +334,10 @@ export function EmailsPage() {
     <>
       <PageHeader
         title="Emails"
-        subtitle="Search connected inboxes, inspect clean email details, and draft approved replies."
+        subtitle="Search connected inboxes and open clean email details."
       />
       {isMobile && (
-        <Button fullWidth variant="contained" startIcon={<FilterAltIcon />} onClick={() => setFilterOpen(true)} sx={{ mb: 2 }}>
+        <Button fullWidth variant="contained" startIcon={<FilterAltIcon />} onClick={() => setFilterOpen(true)} sx={{ mb: 1.5 }}>
           Search and filters
         </Button>
       )}
@@ -343,16 +347,16 @@ export function EmailsPage() {
           {filterContent}
         </Box>
       </Drawer>
-      <Grid container spacing={2.5}>
+      <Grid container spacing={2}>
         <Grid item xs={12} sx={{ display: { xs: 'none', md: 'block' } }}>
           <Card className="premium-panel">
-            <CardContent>
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
                 <Box>
-                  <Typography variant="h6">Email Search</Typography>
-                  <Typography color="text.secondary" variant="body2">Filter by account, sender, subject, body text, date, or advanced mail operators.</Typography>
+                  <Typography variant="h6" sx={{ fontSize: '1.08rem' }}>Email Search</Typography>
+                  <Typography color="text.secondary" variant="body2">Filter by sender, subject, body, date, or Gmail-style operators.</Typography>
                 </Box>
-                <Chip icon={<FilterAltIcon />} label="Filters" color="primary" variant="outlined" />
+                <Chip size="small" icon={<FilterAltIcon />} label={`${emails.length} results`} color="primary" variant="outlined" />
               </Stack>
               {desktopFilterContent}
             </CardContent>
@@ -366,18 +370,18 @@ export function EmailsPage() {
         <Grid item xs={12}>
           <Card className="premium-panel">
             {loading && <LinearProgress />}
-            <CardContent>
+            <CardContent sx={{ p: { xs: 1.25, md: 2 } }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between" sx={{ mb: 1.5 }} spacing={1.25}>
                 <Box>
-                  <Typography variant="h6">Inbox Results</Typography>
-                  <Typography color="text.secondary" variant="body2">{emails.length} messages returned across connected inboxes</Typography>
+                  <Typography variant="h6" sx={{ fontSize: '1.08rem' }}>Inbox Results</Typography>
+                  <Typography color="text.secondary" variant="body2">{emails.length} messages in {isCombined ? 'combined workspace' : activeSpace?.email ?? 'selected space'}</Typography>
                 </Box>
                 <MailOutlineIcon color="primary" />
               </Stack>
               <Stack divider={<Divider flexItem />} spacing={0}>
                 <WindowedList
                   items={emails}
-                  estimateSize={118}
+                  estimateSize={104}
                   maxVisible={48}
                   renderItem={(email) => (
                     <Box
@@ -394,7 +398,7 @@ export function EmailsPage() {
                   }
                   setTouchStartX(null);
                 }}
-                sx={{ display: 'block', textDecoration: 'none', color: 'inherit', py: 1.6, px: 1, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease, box-shadow 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(4px)' }, boxShadow: 'inset 3px 0 0 #2557d6' } }}
+                sx={{ display: 'block', textDecoration: 'none', color: 'inherit', py: 1.25, px: { xs: 0.75, sm: 1 }, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease, box-shadow 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(3px)' }, boxShadow: 'inset 3px 0 0 #2557d6' } }}
               >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: { xs: 0.75, sm: 2 }, alignItems: 'flex-start', flexDirection: { xs: 'column', sm: 'row' } }}>
                     <Box sx={{ minWidth: 0, width: '100%' }}>
