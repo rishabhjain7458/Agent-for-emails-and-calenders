@@ -425,11 +425,15 @@ export function DashboardPage() {
     }
   }
 
-  async function moveDashboardCard(id: string, direction: -1 | 1) {
+  async function moveDashboardCard(id: string, direction: -1 | 1, scopeIds?: string[]) {
     const ids = orderedDashboardCards.map((card) => card.id);
+    const orderedScopeIds = scopeIds?.filter((scopeId) => ids.includes(scopeId)) ?? ids;
+    const currentScopeIndex = orderedScopeIds.indexOf(id);
+    const nextScopeIndex = currentScopeIndex + direction;
+    if (currentScopeIndex < 0 || nextScopeIndex < 0 || nextScopeIndex >= orderedScopeIds.length) return;
     const currentIndex = ids.indexOf(id);
-    const nextIndex = currentIndex + direction;
-    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= ids.length) return;
+    const nextIndex = ids.indexOf(orderedScopeIds[nextScopeIndex]);
+    if (currentIndex < 0 || nextIndex < 0) return;
     const next = [...ids];
     [next[currentIndex], next[nextIndex]] = [next[nextIndex], next[currentIndex]];
     setCardOrderError('');
@@ -445,6 +449,8 @@ export function DashboardPage() {
   }
 
   const visibleDashboardCards = orderedDashboardCards.filter((card) => !(focusMode && selectedSpace && card.kind === 'space' && card.account.id !== selectedSpace.id));
+  const visibleMailCards = visibleDashboardCards.filter((card) => card.kind !== 'link');
+  const visibleLinkCards = visibleDashboardCards.filter((card) => card.kind === 'link');
 
   return (
     <>
@@ -486,10 +492,9 @@ export function DashboardPage() {
                   border: '1px solid',
                   borderColor: 'divider',
                   borderRadius: 2.5,
-                  display: 'grid',
-                  gap: 0.85,
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 246px), 318px))',
-                  justifyContent: { xs: 'stretch', sm: 'center' },
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1.35,
                   maxHeight: { xs: 334, md: 286 },
                   maxWidth: 1080,
                   minWidth: 0,
@@ -503,9 +508,30 @@ export function DashboardPage() {
                   '&::-webkit-scrollbar-track': { bgcolor: 'transparent' }
                 }}
               >
-                {visibleDashboardCards.map((card, index) => {
+                {[
+                  { key: 'mail', title: 'Mail spaces', helper: 'Choose the inbox workspace first.', cards: visibleMailCards },
+                  { key: 'social', title: 'Social & links', helper: 'Open saved profiles and websites.', cards: visibleLinkCards }
+                ].map((group) => group.cards.length > 0 && (
+                  <Box key={group.key}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.75, px: 0.35 }}>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontSize: '0.78rem', fontWeight: 950, letterSpacing: 0, textTransform: 'uppercase' }}>{group.title}</Typography>
+                        <Typography variant="caption" color="text.secondary" noWrap>{group.helper}</Typography>
+                      </Box>
+                      <Chip size="small" label={group.cards.length} variant="outlined" sx={{ height: 22 }} />
+                    </Stack>
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gap: 0.85,
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 246px), 318px))',
+                        justifyContent: { xs: 'stretch', sm: 'center' }
+                      }}
+                    >
+                {group.cards.map((card, index) => {
                   const isFirst = index === 0;
-                  const isLast = index === visibleDashboardCards.length - 1;
+                  const isLast = index === group.cards.length - 1;
+                  const scopeIds = group.cards.map((item) => item.id);
                   if (card.kind === 'combined') {
                     return (
                       <Box
@@ -538,7 +564,7 @@ export function DashboardPage() {
                               </Typography>
                             </Box>
                           </Box>
-                          <CardMoveControls disabledLeft={isFirst} disabledRight={isLast} onLeft={() => moveDashboardCard(card.id, -1)} onRight={() => moveDashboardCard(card.id, 1)} />
+                          <CardMoveControls disabledLeft={isFirst} disabledRight={isLast} onLeft={() => moveDashboardCard(card.id, -1, scopeIds)} onRight={() => moveDashboardCard(card.id, 1, scopeIds)} />
                         </Stack>
                       </Box>
                     );
@@ -589,7 +615,7 @@ export function DashboardPage() {
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.72rem', fontWeight: 800 }} noWrap>{meta.label} · #{index + 1}</Typography>
                             </Box>
                           </Box>
-                          <CardMoveControls disabledLeft={isFirst} disabledRight={isLast} onLeft={() => moveDashboardCard(card.id, -1)} onRight={() => moveDashboardCard(card.id, 1)} />
+                          <CardMoveControls disabledLeft={isFirst} disabledRight={isLast} onLeft={() => moveDashboardCard(card.id, -1, scopeIds)} onRight={() => moveDashboardCard(card.id, 1, scopeIds)} />
                         </Stack>
                       </Box>
                     );
@@ -629,11 +655,14 @@ export function DashboardPage() {
                             </Typography>
                           </Box>
                         </Box>
-                        <CardMoveControls disabledLeft={isFirst} disabledRight={isLast} onLeft={() => moveDashboardCard(card.id, -1)} onRight={() => moveDashboardCard(card.id, 1)} />
+                        <CardMoveControls disabledLeft={isFirst} disabledRight={isLast} onLeft={() => moveDashboardCard(card.id, -1, scopeIds)} onRight={() => moveDashboardCard(card.id, 1, scopeIds)} />
                       </Stack>
                     </Box>
                   );
                 })}
+                    </Box>
+                  </Box>
+                ))}
               </Box>
             </Stack>
           </CardContent>
