@@ -12,13 +12,14 @@ import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
 import RedditIcon from '@mui/icons-material/Reddit';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
+import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import { PageHeader } from '../components/PageHeader';
 import { connectImapAccount, createDashboardCard, deleteDashboardCard, disconnectAccount, getConnectedAccounts, getConnectAccountUrl, getDashboardCards, getSettings, updateSettings } from '../api/endpoints';
 import type { ConnectedAccount, DashboardCard } from '../types';
 import { normalizeSocialUrl, socialPlatformLabels, type SocialPlatform } from '../utils/socialAccounts';
 import { useSpace } from '../contexts/SpaceContext';
 
-type CardFormType = 'social' | 'news' | 'custom_link';
+type CardFormType = 'social' | 'news' | 'custom_link' | 'portal';
 type ZohoSmtpPreset = 'india' | 'global' | 'europe' | 'custom';
 
 const socialPlatforms = Object.entries(socialPlatformLabels) as [SocialPlatform, string][];
@@ -41,6 +42,13 @@ function socialCardIcon(platform?: string | null) {
   if (platform === 'threads') return <AlternateEmailIcon />;
   if (platform === 'reddit') return <RedditIcon />;
   return <LinkIcon />;
+}
+
+function cardTypeName(type: CardFormType) {
+  if (type === 'news') return 'News website';
+  if (type === 'portal') return 'Portal';
+  if (type === 'custom_link') return 'Custom link';
+  return `${socialPlatformLabels.instagram} account`;
 }
 
 function accountProviderLabel(provider: ConnectedAccount['provider']) {
@@ -163,7 +171,7 @@ export function SettingsPage() {
     await createDashboardCard({
       cardType,
       platform: cardType === 'social' ? socialPlatform : cardType,
-      label: cardLabel.trim() || (cardType === 'news' ? 'News website' : cardType === 'custom_link' ? 'Custom link' : `${socialPlatformLabels[socialPlatform]} account`),
+      label: cardLabel.trim() || (cardType === 'social' ? `${socialPlatformLabels[socialPlatform]} account` : cardTypeName(cardType)),
       url
     });
     setDashboardCards((await getDashboardCards()).cards);
@@ -180,12 +188,14 @@ export function SettingsPage() {
 
   function cardIcon(card: DashboardCard) {
     if (card.cardType === 'news') return <NewspaperIcon />;
+    if (card.cardType === 'portal') return <BusinessCenterIcon />;
     if (card.cardType === 'social') return socialCardIcon(card.platform);
     return <LinkIcon />;
   }
 
   function cardColor(card: DashboardCard) {
     if (card.cardType === 'news') return { bg: '#fefce8', fg: '#a16207' };
+    if (card.cardType === 'portal') return { bg: 'rgba(14, 116, 144, 0.14)', fg: '#0e7490' };
     if (card.cardType === 'social') return socialCardStyle(card.platform);
     return { bg: 'rgba(37, 87, 214, 0.14)', fg: '#2557d6' };
   }
@@ -288,7 +298,7 @@ export function SettingsPage() {
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.5}>
                   <Box>
                     <Typography variant="h6">Dashboard Link Cards</Typography>
-                    <Typography color="text.secondary" variant="body2">Add social profiles, news sites, and custom links for this workspace.</Typography>
+                    <Typography color="text.secondary" variant="body2">Add social profiles, portals, news sites, and custom links for this workspace.</Typography>
                   </Box>
                   <Chip icon={<LinkIcon />} label={`${dashboardCards.length} saved`} variant="outlined" />
                 </Stack>
@@ -304,6 +314,7 @@ export function SettingsPage() {
                   <Grid item xs={12} sm={3}>
                     <TextField fullWidth select label="Card type" value={cardType} onChange={(event) => setCardType(event.target.value as CardFormType)}>
                       <MenuItem value="social">Social</MenuItem>
+                      <MenuItem value="portal">Portal</MenuItem>
                       <MenuItem value="news">News</MenuItem>
                       <MenuItem value="custom_link">Custom link</MenuItem>
                     </TextField>
@@ -316,11 +327,11 @@ export function SettingsPage() {
                         ))}
                       </TextField>
                     ) : (
-                      <TextField fullWidth label="Card name" value={cardLabel} onChange={(event) => setCardLabel(event.target.value)} placeholder={cardType === 'news' ? 'BBC News, TechCrunch' : 'Client portal'} />
+                      <TextField fullWidth label="Card name" value={cardLabel} onChange={(event) => setCardLabel(event.target.value)} placeholder={cardType === 'news' ? 'BBC News, TechCrunch' : cardType === 'portal' ? 'School portal, CRM, HRMS' : 'Client portal'} />
                     )}
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <TextField fullWidth label={cardType === 'social' ? 'Username or profile URL' : 'Website URL'} value={cardUrl} onChange={(event) => setCardUrl(event.target.value)} placeholder={cardType === 'social' ? '@username or https://...' : 'https://example.com'} />
+                    <TextField fullWidth label={cardType === 'social' ? 'Username or profile URL' : 'Website URL'} value={cardUrl} onChange={(event) => setCardUrl(event.target.value)} placeholder={cardType === 'social' ? '@username or https://...' : cardType === 'portal' ? 'https://portal.example.com' : 'https://example.com'} />
                   </Grid>
                   <Grid item xs={12} sm={2}>
                     <Button fullWidth variant="contained" startIcon={<LinkIcon />} onClick={addDashboardCard} sx={{ minHeight: 54 }}>Add</Button>

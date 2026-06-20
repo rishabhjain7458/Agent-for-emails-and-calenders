@@ -22,6 +22,7 @@ import NewspaperIcon from '@mui/icons-material/Newspaper';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import DonutLargeIcon from '@mui/icons-material/DonutLarge';
 import InsightsIcon from '@mui/icons-material/Insights';
+import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import { PageHeader } from '../components/PageHeader';
 import { completeTask, getDashboardCards, getEmails, getEvents, getTasks, updateDashboardCardOrder } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
@@ -90,6 +91,7 @@ function mergeCardOrder(ids: string[], order: string[]) {
 }
 
 function linkCardMeta(card: LinkDashboardCard) {
+  if (card.cardType === 'portal') return { accent: '#0e7490', accentBg: 'rgba(14, 116, 144, 0.14)', label: 'Portal', icon: <BusinessCenterIcon /> };
   if (card.cardType === 'news') return { accent: '#a16207', accentBg: 'rgba(161, 98, 7, 0.14)', label: 'News', icon: <NewspaperIcon /> };
   if (card.platform === 'instagram') return { accent: '#c026d3', accentBg: 'rgba(192, 38, 211, 0.14)', label: socialPlatformLabels.instagram, icon: <InstagramIcon /> };
   if (card.platform === 'facebook') return { accent: '#2563eb', accentBg: 'rgba(37, 99, 235, 0.14)', label: socialPlatformLabels.facebook, icon: <FacebookIcon /> };
@@ -450,7 +452,8 @@ export function DashboardPage() {
 
   const visibleDashboardCards = orderedDashboardCards.filter((card) => !(focusMode && selectedSpace && card.kind === 'space' && card.account.id !== selectedSpace.id));
   const visibleMailCards = visibleDashboardCards.filter((card) => card.kind !== 'link');
-  const visibleLinkCards = visibleDashboardCards.filter((card) => card.kind === 'link');
+  const visiblePortalCards = visibleDashboardCards.filter((card) => card.kind === 'link' && card.account.cardType === 'portal');
+  const visibleLinkCards = visibleDashboardCards.filter((card) => card.kind === 'link' && card.account.cardType !== 'portal');
 
   return (
     <>
@@ -507,6 +510,7 @@ export function DashboardPage() {
               >
                 {[
                   { key: 'mail', title: 'Mail spaces', helper: 'Choose the inbox workspace first.', cards: visibleMailCards },
+                  { key: 'portal', title: 'Portals', helper: 'Open work portals and client systems.', cards: visiblePortalCards },
                   { key: 'social', title: 'Social & links', helper: 'Open saved profiles and websites.', cards: visibleLinkCards }
                 ].map((group) => group.cards.length > 0 && (
                   <Box

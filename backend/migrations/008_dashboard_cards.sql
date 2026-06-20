@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS dashboard_cards (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  card_type TEXT NOT NULL CHECK (card_type IN ('social', 'news', 'custom_link')),
+  card_type TEXT NOT NULL CHECK (card_type IN ('social', 'news', 'custom_link', 'portal')),
   platform TEXT,
   label TEXT NOT NULL,
   url TEXT NOT NULL,
