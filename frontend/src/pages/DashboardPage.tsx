@@ -35,6 +35,23 @@ type MixedDashboardCard =
   | { id: string; kind: 'space'; account: ReturnType<typeof useSpace>['spaces'][number] & { color: string; emails: number; tasks: number } }
   | { id: string; kind: 'link'; account: LinkDashboardCard };
 
+type CardSectionKey = 'mail' | 'portal' | 'social' | 'news' | 'custom';
+
+const defaultSectionOrder: CardSectionKey[] = ['mail', 'portal', 'social', 'news', 'custom'];
+const sectionOrderStorageKey = 'o-connect-dashboard-section-order';
+
+function readSectionOrder() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(sectionOrderStorageKey) || '[]');
+    if (!Array.isArray(stored)) return defaultSectionOrder;
+    const allowed = new Set(defaultSectionOrder);
+    const valid = stored.filter((key): key is CardSectionKey => allowed.has(key));
+    return [...valid, ...defaultSectionOrder.filter((key) => !valid.includes(key))];
+  } catch {
+    return defaultSectionOrder;
+  }
+}
+
 function eventStart(event: CalendarEvent) {
   const value = event.start?.dateTime ?? event.start?.date;
   if (!value) return null;
@@ -230,9 +247,9 @@ function SignalTile({ label, value, helper, color, icon }: { label: string; valu
 function DragHandle() {
   return (
     <Tooltip title="Drag to reorder">
-      <Box sx={{ alignItems: 'center', bottom: 7, color: 'text.secondary', display: 'flex', gap: 0.25, justifyContent: 'center', left: 0, opacity: 0.68, position: 'absolute', right: 0 }}>
-        <DragIndicatorIcon sx={{ fontSize: 18 }} />
-        <Typography variant="caption" sx={{ fontSize: '0.62rem', fontWeight: 850 }}>drag</Typography>
+      <Box sx={{ alignItems: 'center', bottom: 8, color: 'text.secondary', display: 'flex', gap: 0.2, justifyContent: 'center', left: 0, opacity: 0.62, position: 'absolute', right: 0 }}>
+        <DragIndicatorIcon sx={{ fontSize: 17 }} />
+        <Typography variant="caption" sx={{ fontSize: '0.58rem', fontWeight: 850 }}>drag</Typography>
       </Box>
     </Tooltip>
   );
@@ -252,6 +269,8 @@ export function DashboardPage() {
   const [cardOrderSaving, setCardOrderSaving] = useState(false);
   const [cardOrderError, setCardOrderError] = useState('');
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
+  const [draggedSectionKey, setDraggedSectionKey] = useState<CardSectionKey | null>(null);
+  const [sectionOrder, setSectionOrder] = useState<CardSectionKey[]>(readSectionOrder);
   const [focusMode, setFocusMode] = useState(() => localStorage.getItem('o-connect-focus-mode') === 'true');
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const analysisRef = useRef<HTMLDivElement | null>(null);
@@ -448,7 +467,33 @@ export function DashboardPage() {
   const visibleDashboardCards = orderedDashboardCards.filter((card) => !(focusMode && selectedSpace && card.kind === 'space' && card.account.id !== selectedSpace.id));
   const visibleMailCards = visibleDashboardCards.filter((card) => card.kind !== 'link');
   const visiblePortalCards = visibleDashboardCards.filter((card) => card.kind === 'link' && card.account.cardType === 'portal');
-  const visibleLinkCards = visibleDashboardCards.filter((card) => card.kind === 'link' && card.account.cardType !== 'portal');
+  const visibleSocialCards = visibleDashboardCards.filter((card) => card.kind === 'link' && card.account.cardType === 'social');
+  const visibleNewsCards = visibleDashboardCards.filter((card) => card.kind === 'link' && card.account.cardType === 'news');
+  const visibleCustomCards = visibleDashboardCards.filter((card) => card.kind === 'link' && card.account.cardType === 'custom_link');
+  const cardSections = [
+    { key: 'mail' as const, title: 'Mail spaces', helper: 'Choose the inbox workspace first.', cards: visibleMailCards },
+    { key: 'portal' as const, title: 'Portals', helper: 'Open work portals and client systems.', cards: visiblePortalCards },
+    { key: 'social' as const, title: 'Social media', helper: 'Open saved social profiles.', cards: visibleSocialCards },
+    { key: 'news' as const, title: 'News', helper: 'Open saved news sources.', cards: visibleNewsCards },
+    { key: 'custom' as const, title: 'Custom links', helper: 'Open other saved websites.', cards: visibleCustomCards }
+  ];
+  const orderedCardSections = sectionOrder
+    .map((key) => cardSections.find((section) => section.key === key))
+    .filter((section): section is typeof cardSections[number] => Boolean(section))
+    .filter((section) => section.cards.length > 0);
+
+  function reorderCardSection(dragKey: CardSectionKey, targetKey: CardSectionKey) {
+    if (dragKey === targetKey) return;
+    const current = sectionOrder.filter((key) => defaultSectionOrder.includes(key));
+    const from = current.indexOf(dragKey);
+    const to = current.indexOf(targetKey);
+    if (from < 0 || to < 0) return;
+    const next = [...current];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setSectionOrder(next);
+    localStorage.setItem(sectionOrderStorageKey, JSON.stringify(next));
+  }
 
   return (
     <>
@@ -456,13 +501,14 @@ export function DashboardPage() {
         title="Dashboard"
         subtitle="Pick a space, then work from a focused view."
         action={<Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadDashboard}>Refresh</Button>}
+        compact
       />
       {errors.length > 0 && <Alert sx={{ mb: 2 }} severity="warning">{errors.join(' ')}</Alert>}
       {cardOrderError && <Alert sx={{ mb: 2 }} severity="warning">{cardOrderError}</Alert>}
       {loading && <LinearProgress sx={{ mb: 2 }} />}
       {cardOrderSaving && <LinearProgress sx={{ mb: 2 }} color="secondary" />}
 
-      <Stack spacing={2.5}>
+      <Stack spacing={1.5}>
         <Card
           className="premium-panel"
           sx={{
@@ -474,64 +520,91 @@ export function DashboardPage() {
             overflow: 'hidden'
           }}
         >
-          <CardContent sx={{ p: { xs: 2, md: 2.25 } }}>
-            <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'stretch', md: 'center' }} justifyContent="flex-end" spacing={1.5} sx={{ mb: 2 }}>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
-                <FormControlLabel control={<Switch checked={focusMode} onChange={(event) => toggleFocusMode(event.target.checked)} />} label="Focus mode" />
-                {(['workspace', 'analysis', 'shortcuts'] as const).map((key) => (
-                  <Chip key={key} label={key} color="primary" variant="filled" onClick={() => scrollToSection(key)} />
-                ))}
-              </Stack>
-            </Stack>
-            <Stack spacing={1.4} sx={{ width: '100%' }}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1} alignItems={{ xs: 'stretch', sm: 'flex-end' }}>
+          <CardContent sx={{ p: { xs: 1, md: 1.2 } }}>
+            <Stack spacing={1} sx={{ width: '100%' }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={0.75} alignItems={{ xs: 'stretch', sm: 'center' }}>
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="h5" sx={{ fontWeight: 900 }}>Cards</Typography>
-                  <Typography color="text.secondary" variant="body2">Choose a workspace or open a saved profile without crowding the dashboard.</Typography>
+                  <Typography sx={{ fontSize: { xs: '1.05rem', sm: '1.18rem' }, fontWeight: 950, lineHeight: 1.05 }}>Cards</Typography>
+                  <Typography color="text.secondary" sx={{ fontSize: '0.78rem', lineHeight: 1.25 }}>Choose a workspace or saved profile.</Typography>
                 </Box>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent={{ xs: 'flex-start', sm: 'flex-end' }} useFlexGap>
+                  <FormControlLabel control={<Switch checked={focusMode} onChange={(event) => toggleFocusMode(event.target.checked)} size="small" />} label="Focus mode" sx={{ mr: 0 }} />
                   <Chip size="small" label={`${visibleDashboardCards.length} cards`} variant="outlined" />
                   <Chip size="small" label="Order saved" color={cardOrderSaving ? 'default' : 'success'} variant="outlined" />
+                  {(['workspace', 'analysis', 'shortcuts'] as const).map((key) => (
+                    <Chip key={key} size="small" label={key} color="primary" variant="filled" onClick={() => scrollToSection(key)} />
+                  ))}
                 </Stack>
               </Stack>
               <Box
                 sx={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 1.5,
+                  gap: 1,
                   minWidth: 0,
                   width: '100%'
                 }}
               >
-                {[
-                  { key: 'mail', title: 'Mail spaces', helper: 'Choose the inbox workspace first.', cards: visibleMailCards },
-                  { key: 'portal', title: 'Portals', helper: 'Open work portals and client systems.', cards: visiblePortalCards },
-                  { key: 'social', title: 'Social & links', helper: 'Open saved profiles and websites.', cards: visibleLinkCards }
-                ].map((group) => group.cards.length > 0 && (
+                {orderedCardSections.map((group) => (
                   <Box
                     key={group.key}
+                    onDragOver={(event) => {
+                      if (draggedSectionKey) {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = 'move';
+                      }
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const dragKey = (event.dataTransfer.getData('text/section') || draggedSectionKey) as CardSectionKey | null;
+                      if (dragKey) reorderCardSection(dragKey, group.key);
+                      setDraggedSectionKey(null);
+                    }}
                     sx={{
                       bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(17, 26, 44, 0.66)' : 'rgba(248, 251, 255, 0.86)',
                       border: '1px solid',
                       borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(51, 68, 95, 0.75)' : 'rgba(214, 224, 239, 0.92)',
                       borderRadius: 2,
                       boxShadow: (theme) => theme.palette.mode === 'dark' ? 'none' : '0 10px 24px rgba(30, 41, 59, 0.04)',
-                      p: { xs: 1, md: 1.15 },
+                      opacity: draggedSectionKey === group.key ? 0.62 : 1,
+                      p: { xs: 0.85, md: 0.95 },
+                      transition: 'opacity 150ms ease, border-color 150ms ease, transform 150ms ease',
                       width: '100%'
                     }}
                   >
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.75, px: 0.35 }}>
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography sx={{ fontSize: '0.78rem', fontWeight: 950, letterSpacing: 0, textTransform: 'uppercase' }}>{group.title}</Typography>
-                        <Typography variant="caption" color="text.secondary" noWrap>{group.helper}</Typography>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.7, px: 0.25 }}>
+                      <Box sx={{ alignItems: 'center', display: 'flex', gap: 0.8, minWidth: 0 }}>
+                        <Tooltip title="Drag section to reorder">
+                          <Box
+                            draggable
+                            onDragStart={(event) => {
+                              setDraggedSectionKey(group.key);
+                              event.dataTransfer.effectAllowed = 'move';
+                              event.dataTransfer.setData('text/section', group.key);
+                            }}
+                            onDragEnd={() => setDraggedSectionKey(null)}
+                            sx={{ alignItems: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 1.25, color: 'text.secondary', cursor: 'grab', display: 'flex', height: 26, justifyContent: 'center', opacity: 0.78, width: 26, '&:active': { cursor: 'grabbing' } }}
+                          >
+                            <DragIndicatorIcon sx={{ fontSize: 18 }} />
+                          </Box>
+                        </Tooltip>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography sx={{ fontSize: '0.76rem', fontWeight: 950, letterSpacing: 0, textTransform: 'uppercase' }}>{group.title}</Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }} noWrap>{group.helper}</Typography>
+                        </Box>
                       </Box>
                       <Chip size="small" label={group.cards.length} variant="outlined" sx={{ height: 22 }} />
                     </Stack>
                     <Box
                       sx={{
                         display: 'grid',
-                        gap: 1,
-                        gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(auto-fill, minmax(138px, 1fr))', lg: 'repeat(auto-fill, minmax(150px, 1fr))' }
+                        gap: 0.9,
+                        gridTemplateColumns: {
+                          xs: 'repeat(2, minmax(0, 1fr))',
+                          sm: 'repeat(auto-fill, minmax(156px, 176px))',
+                          lg: 'repeat(auto-fill, minmax(164px, 184px))'
+                        },
+                        justifyContent: 'start'
                       }}
                     >
                 {group.cards.map((card, index) => {
@@ -539,6 +612,7 @@ export function DashboardPage() {
                   const dragProps = {
                     draggable: true,
                     onDragStart: (event: DragEvent<HTMLDivElement>) => {
+                      event.stopPropagation();
                       setDraggedCardId(card.id);
                       event.dataTransfer.effectAllowed = 'move';
                       event.dataTransfer.setData('text/plain', card.id);
@@ -546,11 +620,13 @@ export function DashboardPage() {
                     onDragEnd: () => setDraggedCardId(null),
                     onDragOver: (event: DragEvent<HTMLDivElement>) => {
                       if (draggedCardId && scopeIds.includes(draggedCardId)) {
+                        event.stopPropagation();
                         event.preventDefault();
                         event.dataTransfer.dropEffect = 'move';
                       }
                     },
                     onDrop: (event: DragEvent<HTMLDivElement>) => {
+                      event.stopPropagation();
                       event.preventDefault();
                       const dragId = event.dataTransfer.getData('text/plain') || draggedCardId;
                       if (dragId) reorderDashboardCard(dragId, card.id, scopeIds);
@@ -569,9 +645,9 @@ export function DashboardPage() {
                           borderRadius: 2,
                           boxShadow: isCombined ? '0 10px 22px rgba(37,87,214,0.18)' : 'none',
                           color: isCombined ? '#fff' : 'text.primary',
-                          height: 126,
-                          p: 1.15,
-                          pb: 4,
+                          height: { xs: 112, sm: 118 },
+                          p: 1,
+                          pb: 3.6,
                           position: 'relative',
                           cursor: 'grab',
                           opacity: draggedCardId === card.id ? 0.56 : 1,
@@ -582,7 +658,7 @@ export function DashboardPage() {
                       >
                         <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
                           <Box component="button" type="button" onClick={() => setActiveSpaceId('combined')} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0, width: '100%' }}>
-                            <Box sx={{ bgcolor: isCombined ? 'rgba(255,255,255,0.16)' : 'action.hover', borderRadius: 2, display: 'grid', height: 42, placeItems: 'center', width: 42 }}>
+                            <Box sx={{ bgcolor: isCombined ? 'rgba(255,255,255,0.16)' : 'action.hover', borderRadius: 2, display: 'grid', height: 38, placeItems: 'center', width: 38 }}>
                               <LayersIcon fontSize="small" />
                             </Box>
                             <Box sx={{ minWidth: 0 }}>
@@ -614,9 +690,9 @@ export function DashboardPage() {
                           borderColor: meta.accent,
                           borderRadius: 2,
                           color: 'inherit',
-                          height: 126,
-                          p: 1.15,
-                          pb: 4,
+                          height: { xs: 112, sm: 118 },
+                          p: 1,
+                          pb: 3.6,
                           position: 'relative',
                           cursor: 'grab',
                           opacity: draggedCardId === card.id ? 0.56 : 1,
@@ -628,7 +704,7 @@ export function DashboardPage() {
                       >
                         <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
                           <Box component="a" href={dashboardCardUrl(card.account)} target="_blank" rel="noreferrer" sx={{ alignItems: 'center', color: 'inherit', display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0, textDecoration: 'none', width: '100%' }}>
-                            <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}45`, borderRadius: '50%', color: meta.accent, display: 'grid', flex: '0 0 auto', height: 44, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 44 }}>
+                            <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}45`, borderRadius: '50%', color: meta.accent, display: 'grid', flex: '0 0 auto', height: 40, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 40 }}>
                               {card.account.cardType === 'social' ? (
                                 <Typography sx={{ color: meta.accent, fontSize: '0.95rem', fontWeight: 950 }}>{avatarInitial(card.account)}</Typography>
                               ) : meta.icon}
@@ -649,7 +725,7 @@ export function DashboardPage() {
                                 <Typography sx={{ display: '-webkit-box', fontSize: '0.82rem', fontWeight: 900, lineHeight: 1.12, overflow: 'hidden', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{card.account.label}</Typography>
                                 <OpenInNewIcon sx={{ color: meta.accent, flex: '0 0 auto', fontSize: 13 }} />
                               </Stack>
-                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.67rem', fontWeight: 800 }} noWrap>{meta.label} · #{index + 1}</Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.66rem', fontWeight: 800 }} noWrap>{meta.label} · #{index + 1}</Typography>
                             </Box>
                           </Box>
                           <DragHandle />
@@ -671,10 +747,10 @@ export function DashboardPage() {
                         borderRadius: 2,
                         boxShadow: active ? `inset 4px 0 0 ${account.color}, 0 10px 22px ${account.color}18` : `inset 4px 0 0 ${account.color}`,
                         color: 'text.primary',
-                        height: 126,
+                        height: { xs: 112, sm: 118 },
                         overflow: 'hidden',
-                        p: 1.15,
-                        pb: 4,
+                        p: 1,
+                        pb: 3.6,
                         position: 'relative',
                         cursor: 'grab',
                         opacity: draggedCardId === card.id ? 0.56 : 1,
@@ -686,12 +762,12 @@ export function DashboardPage() {
                     >
                       <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
                         <Box component="button" type="button" onClick={() => setActiveSpaceId(account.id)} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0, width: '100%' }}>
-                          <Box sx={{ border: '1px solid', borderColor: account.color, borderRadius: 2, color: account.color, display: 'grid', height: 42, placeItems: 'center', width: 42 }}>
+                          <Box sx={{ border: '1px solid', borderColor: account.color, borderRadius: 2, color: account.color, display: 'grid', height: 38, placeItems: 'center', width: 38 }}>
                             <MailIcon fontSize="small" />
                           </Box>
                           <Box sx={{ minWidth: 0 }}>
                             <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
-                              <Typography sx={{ display: '-webkit-box', fontSize: '0.78rem', fontWeight: 900, lineHeight: 1.12, overflow: 'hidden', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{account.email}</Typography>
+                              <Typography sx={{ display: '-webkit-box', fontSize: '0.75rem', fontWeight: 900, lineHeight: 1.12, overflow: 'hidden', overflowWrap: 'anywhere', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{account.email}</Typography>
                               {active && <Chip size="small" label="Active" sx={{ bgcolor: account.color, color: '#fff', flex: '0 0 auto', fontWeight: 800, height: 22 }} />}
                             </Stack>
                             <Typography variant="caption" sx={{ color: account.color, display: 'block', fontSize: '0.67rem', fontWeight: 900 }} noWrap>
