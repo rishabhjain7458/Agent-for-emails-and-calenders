@@ -469,12 +469,37 @@ export function DashboardPage() {
                 ))}
               </Stack>
             </Stack>
-            <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.5} alignItems={{ xs: 'stretch', lg: 'center' }}>
-              <Box sx={{ minWidth: { lg: 260 } }}>
-                <Typography variant="h5" sx={{ fontWeight: 900 }}>Cards</Typography>
-                <Typography color="text.secondary" variant="body2">Email spaces and social profiles in one sequence.</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, minWidth: 0 }}>
+            <Stack spacing={1.4}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1} alignItems={{ xs: 'stretch', sm: 'flex-end' }}>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 900 }}>Cards</Typography>
+                  <Typography color="text.secondary" variant="body2">Choose a workspace or open a saved profile without crowding the dashboard.</Typography>
+                </Box>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <Chip size="small" label={`${visibleDashboardCards.length} cards`} variant="outlined" />
+                  <Chip size="small" label="Order saved" color={cardOrderSaving ? 'default' : 'success'} variant="outlined" />
+                </Stack>
+              </Stack>
+              <Box
+                sx={{
+                  bgcolor: 'rgba(148, 163, 184, 0.08)',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 2.5,
+                  display: 'grid',
+                  gap: 1,
+                  gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(3, minmax(0, 1fr))' },
+                  maxHeight: { xs: 360, md: 332 },
+                  minWidth: 0,
+                  overflowY: 'auto',
+                  p: 1,
+                  pr: { xs: 1, md: 1.25 },
+                  scrollBehavior: 'smooth',
+                  '&::-webkit-scrollbar': { width: 8 },
+                  '&::-webkit-scrollbar-thumb': { bgcolor: 'divider', borderRadius: 999 },
+                  '&::-webkit-scrollbar-track': { bgcolor: 'transparent' }
+                }}
+              >
                 {visibleDashboardCards.map((card, index) => {
                   const isFirst = index === 0;
                   const isLast = index === visibleDashboardCards.length - 1;
@@ -489,9 +514,8 @@ export function DashboardPage() {
                           borderRadius: 2,
                           boxShadow: isCombined ? '0 10px 22px rgba(37,87,214,0.18)' : 'none',
                           color: isCombined ? '#fff' : 'text.primary',
-                          flex: { xs: '1 1 100%', sm: '0 1 285px' },
-                          minHeight: 62,
-                          p: 0.85,
+                          minHeight: 58,
+                          p: 0.8,
                           transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
                           '&:hover': { transform: { sm: 'translateY(-2px)' }, borderColor: 'primary.main' }
                         }}
@@ -529,9 +553,8 @@ export function DashboardPage() {
                           borderColor: meta.accent,
                           borderRadius: 2,
                           color: 'inherit',
-                          flex: { xs: '1 1 100%', sm: '0 1 285px' },
-                          minHeight: 62,
-                          p: 0.85,
+                          minHeight: 58,
+                          p: 0.8,
                           transition: 'transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
                           boxShadow: `inset 4px 0 0 ${meta.accent}`,
                           '&:hover': { boxShadow: `inset 4px 0 0 ${meta.accent}, 0 12px 24px rgba(24,35,56,0.09)`, transform: { sm: 'translateY(-2px)' } }
@@ -539,7 +562,7 @@ export function DashboardPage() {
                       >
                         <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%' }}>
                           <Box component="a" href={dashboardCardUrl(card.account)} target="_blank" rel="noreferrer" sx={{ alignItems: 'center', color: 'inherit', display: 'flex', flex: 1, gap: 1, minWidth: 0, textDecoration: 'none' }}>
-                            <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}45`, borderRadius: '50%', color: meta.accent, display: 'grid', flex: '0 0 auto', height: 36, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 36 }}>
+                            <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}45`, borderRadius: '50%', color: meta.accent, display: 'grid', flex: '0 0 auto', height: 34, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 34 }}>
                               {card.account.cardType === 'social' ? (
                                 <Typography sx={{ color: meta.accent, fontSize: '0.9rem', fontWeight: 950 }}>{avatarInitial(card.account)}</Typography>
                               ) : meta.icon}
@@ -581,10 +604,9 @@ export function DashboardPage() {
                         borderRadius: 2,
                         boxShadow: active ? `inset 4px 0 0 ${account.color}, 0 10px 22px ${account.color}18` : `inset 4px 0 0 ${account.color}`,
                         color: 'text.primary',
-                        flex: { xs: '1 1 100%', sm: '0 1 300px' },
-                        minHeight: 62,
+                        minHeight: 58,
                         overflow: 'hidden',
-                        p: 0.85,
+                        p: 0.8,
                         position: 'relative',
                         textAlign: 'left',
                         transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
