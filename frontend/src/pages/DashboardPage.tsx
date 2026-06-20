@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, FormControlLabel, Grid, IconButton, LinearProgress, Stack, Switch, Tooltip, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -16,13 +16,12 @@ import XIcon from '@mui/icons-material/X';
 import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
 import RedditIcon from '@mui/icons-material/Reddit';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import DonutLargeIcon from '@mui/icons-material/DonutLarge';
 import InsightsIcon from '@mui/icons-material/Insights';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { PageHeader } from '../components/PageHeader';
 import { completeTask, getDashboardCards, getEmails, getEvents, getTasks, updateDashboardCardOrder } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
@@ -228,24 +227,14 @@ function SignalTile({ label, value, helper, color, icon }: { label: string; valu
   );
 }
 
-function CardMoveControls({ disabledLeft, disabledRight, onLeft, onRight }: { disabledLeft: boolean; disabledRight: boolean; onLeft: () => void; onRight: () => void }) {
+function DragHandle() {
   return (
-    <Stack direction="row" spacing={0.25} sx={{ bottom: 6, flex: '0 0 auto', justifyContent: 'center', left: 0, position: 'absolute', right: 0 }}>
-      <Tooltip title="Move left">
-        <span>
-          <IconButton size="small" disabled={disabledLeft} onClick={onLeft} sx={{ height: 24, width: 24 }}>
-            <ArrowBackIcon sx={{ fontSize: 17 }} />
-          </IconButton>
-        </span>
-      </Tooltip>
-      <Tooltip title="Move right">
-        <span>
-          <IconButton size="small" disabled={disabledRight} onClick={onRight} sx={{ height: 24, width: 24 }}>
-            <ArrowForwardIcon sx={{ fontSize: 17 }} />
-          </IconButton>
-        </span>
-      </Tooltip>
-    </Stack>
+    <Tooltip title="Drag to reorder">
+      <Box sx={{ alignItems: 'center', bottom: 7, color: 'text.secondary', display: 'flex', gap: 0.25, justifyContent: 'center', left: 0, opacity: 0.68, position: 'absolute', right: 0 }}>
+        <DragIndicatorIcon sx={{ fontSize: 18 }} />
+        <Typography variant="caption" sx={{ fontSize: '0.62rem', fontWeight: 850 }}>drag</Typography>
+      </Box>
+    </Tooltip>
   );
 }
 
@@ -262,6 +251,7 @@ export function DashboardPage() {
   const [cardOrderLoaded, setCardOrderLoaded] = useState(false);
   const [cardOrderSaving, setCardOrderSaving] = useState(false);
   const [cardOrderError, setCardOrderError] = useState('');
+  const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(() => localStorage.getItem('o-connect-focus-mode') === 'true');
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const analysisRef = useRef<HTMLDivElement | null>(null);
@@ -427,17 +417,7 @@ export function DashboardPage() {
     }
   }
 
-  async function moveDashboardCard(id: string, direction: -1 | 1, scopeIds?: string[]) {
-    const ids = orderedDashboardCards.map((card) => card.id);
-    const orderedScopeIds = scopeIds?.filter((scopeId) => ids.includes(scopeId)) ?? ids;
-    const currentScopeIndex = orderedScopeIds.indexOf(id);
-    const nextScopeIndex = currentScopeIndex + direction;
-    if (currentScopeIndex < 0 || nextScopeIndex < 0 || nextScopeIndex >= orderedScopeIds.length) return;
-    const currentIndex = ids.indexOf(id);
-    const nextIndex = ids.indexOf(orderedScopeIds[nextScopeIndex]);
-    if (currentIndex < 0 || nextIndex < 0) return;
-    const next = [...ids];
-    [next[currentIndex], next[nextIndex]] = [next[nextIndex], next[currentIndex]];
+  async function saveDashboardCardOrder(next: string[]) {
     setCardOrderError('');
     setCardOrder(next);
     setCardOrderSaving(true);
@@ -448,6 +428,21 @@ export function DashboardPage() {
     } finally {
       setCardOrderSaving(false);
     }
+  }
+
+  async function reorderDashboardCard(dragId: string, targetId: string, scopeIds: string[]) {
+    if (dragId === targetId || !scopeIds.includes(dragId) || !scopeIds.includes(targetId)) return;
+    const ids = orderedDashboardCards.map((card) => card.id);
+    const scoped = ids.filter((id) => scopeIds.includes(id));
+    const from = scoped.indexOf(dragId);
+    const to = scoped.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    const reorderedScope = [...scoped];
+    const [moved] = reorderedScope.splice(from, 1);
+    reorderedScope.splice(to, 0, moved);
+    let scopeIndex = 0;
+    const next = ids.map((id) => scopeIds.includes(id) ? reorderedScope[scopeIndex++] : id);
+    await saveDashboardCardOrder(next);
   }
 
   const visibleDashboardCards = orderedDashboardCards.filter((card) => !(focusMode && selectedSpace && card.kind === 'space' && card.account.id !== selectedSpace.id));
@@ -540,13 +535,33 @@ export function DashboardPage() {
                       }}
                     >
                 {group.cards.map((card, index) => {
-                  const isFirst = index === 0;
-                  const isLast = index === group.cards.length - 1;
                   const scopeIds = group.cards.map((item) => item.id);
+                  const dragProps = {
+                    draggable: true,
+                    onDragStart: (event: DragEvent<HTMLDivElement>) => {
+                      setDraggedCardId(card.id);
+                      event.dataTransfer.effectAllowed = 'move';
+                      event.dataTransfer.setData('text/plain', card.id);
+                    },
+                    onDragEnd: () => setDraggedCardId(null),
+                    onDragOver: (event: DragEvent<HTMLDivElement>) => {
+                      if (draggedCardId && scopeIds.includes(draggedCardId)) {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = 'move';
+                      }
+                    },
+                    onDrop: (event: DragEvent<HTMLDivElement>) => {
+                      event.preventDefault();
+                      const dragId = event.dataTransfer.getData('text/plain') || draggedCardId;
+                      if (dragId) reorderDashboardCard(dragId, card.id, scopeIds);
+                      setDraggedCardId(null);
+                    }
+                  };
                   if (card.kind === 'combined') {
                     return (
                       <Box
                         key={card.id}
+                        {...dragProps}
                         sx={{
                           bgcolor: isCombined ? 'primary.main' : 'background.paper',
                           border: '1px solid',
@@ -558,7 +573,10 @@ export function DashboardPage() {
                           p: 1.15,
                           pb: 4,
                           position: 'relative',
+                          cursor: 'grab',
+                          opacity: draggedCardId === card.id ? 0.56 : 1,
                           transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
+                          '&:active': { cursor: 'grabbing' },
                           '&:hover': { transform: { sm: 'translateY(-2px)' }, borderColor: 'primary.main' }
                         }}
                       >
@@ -569,7 +587,7 @@ export function DashboardPage() {
                             </Box>
                             <Box sx={{ minWidth: 0 }}>
                               <Stack direction="row" spacing={0.55} alignItems="center" justifyContent="center">
-                                <Typography sx={{ fontSize: '0.9rem', fontWeight: 950, lineHeight: 1.1 }} noWrap>Combined</Typography>
+                                <Typography sx={{ fontSize: '0.9rem', fontWeight: 950, lineHeight: 1.1 }}>Combined</Typography>
                                 {isCombined && <Chip size="small" label="Active" sx={{ bgcolor: 'background.paper', color: 'primary.main', fontWeight: 800, height: 22 }} />}
                               </Stack>
                               <Typography variant="caption" sx={{ display: 'block', fontSize: '0.68rem', fontWeight: 800, opacity: 0.82 }} noWrap>
@@ -577,7 +595,7 @@ export function DashboardPage() {
                               </Typography>
                             </Box>
                           </Box>
-                          <CardMoveControls disabledLeft={isFirst} disabledRight={isLast} onLeft={() => moveDashboardCard(card.id, -1, scopeIds)} onRight={() => moveDashboardCard(card.id, 1, scopeIds)} />
+                          <DragHandle />
                         </Stack>
                       </Box>
                     );
@@ -589,6 +607,7 @@ export function DashboardPage() {
                     return (
                       <Box
                         key={card.id}
+                        {...dragProps}
                         sx={{
                           bgcolor: 'background.paper',
                           border: '1px solid',
@@ -599,7 +618,10 @@ export function DashboardPage() {
                           p: 1.15,
                           pb: 4,
                           position: 'relative',
+                          cursor: 'grab',
+                          opacity: draggedCardId === card.id ? 0.56 : 1,
                           transition: 'transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
+                          '&:active': { cursor: 'grabbing' },
                           boxShadow: `inset 4px 0 0 ${meta.accent}`,
                           '&:hover': { boxShadow: `inset 4px 0 0 ${meta.accent}, 0 12px 24px rgba(24,35,56,0.09)`, transform: { sm: 'translateY(-2px)' } }
                         }}
@@ -624,13 +646,13 @@ export function DashboardPage() {
                             </Box>
                             <Box sx={{ minWidth: 0 }}>
                               <Stack direction="row" spacing={0.4} alignItems="center" justifyContent="center">
-                                <Typography sx={{ fontSize: '0.82rem', fontWeight: 900, lineHeight: 1.1 }} noWrap>{card.account.label}</Typography>
+                                <Typography sx={{ display: '-webkit-box', fontSize: '0.82rem', fontWeight: 900, lineHeight: 1.12, overflow: 'hidden', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{card.account.label}</Typography>
                                 <OpenInNewIcon sx={{ color: meta.accent, flex: '0 0 auto', fontSize: 13 }} />
                               </Stack>
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.67rem', fontWeight: 800 }} noWrap>{meta.label} · #{index + 1}</Typography>
                             </Box>
                           </Box>
-                          <CardMoveControls disabledLeft={isFirst} disabledRight={isLast} onLeft={() => moveDashboardCard(card.id, -1, scopeIds)} onRight={() => moveDashboardCard(card.id, 1, scopeIds)} />
+                          <DragHandle />
                         </Stack>
                       </Box>
                     );
@@ -641,6 +663,7 @@ export function DashboardPage() {
                   return (
                     <Box
                       key={card.id}
+                      {...dragProps}
                       sx={{
                         bgcolor: active ? `${account.color}18` : 'background.paper',
                         border: '1px solid',
@@ -653,8 +676,11 @@ export function DashboardPage() {
                         p: 1.15,
                         pb: 4,
                         position: 'relative',
+                        cursor: 'grab',
+                        opacity: draggedCardId === card.id ? 0.56 : 1,
                         textAlign: 'left',
                         transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
+                        '&:active': { cursor: 'grabbing' },
                         '&:hover': { borderColor: account.color, transform: { sm: 'translateY(-2px)' } }
                       }}
                     >
@@ -665,7 +691,7 @@ export function DashboardPage() {
                           </Box>
                           <Box sx={{ minWidth: 0 }}>
                             <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
-                              <Typography sx={{ fontSize: '0.82rem', fontWeight: 900, lineHeight: 1.1 }} noWrap>{account.email}</Typography>
+                              <Typography sx={{ display: '-webkit-box', fontSize: '0.78rem', fontWeight: 900, lineHeight: 1.12, overflow: 'hidden', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{account.email}</Typography>
                               {active && <Chip size="small" label="Active" sx={{ bgcolor: account.color, color: '#fff', flex: '0 0 auto', fontWeight: 800, height: 22 }} />}
                             </Stack>
                             <Typography variant="caption" sx={{ color: account.color, display: 'block', fontSize: '0.67rem', fontWeight: 900 }} noWrap>
@@ -673,7 +699,7 @@ export function DashboardPage() {
                             </Typography>
                           </Box>
                         </Box>
-                        <CardMoveControls disabledLeft={isFirst} disabledRight={isLast} onLeft={() => moveDashboardCard(card.id, -1, scopeIds)} onRight={() => moveDashboardCard(card.id, 1, scopeIds)} />
+                        <DragHandle />
                       </Stack>
                     </Box>
                   );
