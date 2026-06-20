@@ -228,7 +228,7 @@ function SignalTile({ label, value, helper, color, icon }: { label: string; valu
 
 function CardMoveControls({ disabledLeft, disabledRight, onLeft, onRight }: { disabledLeft: boolean; disabledRight: boolean; onLeft: () => void; onRight: () => void }) {
   return (
-    <Stack direction="row" spacing={0.25} sx={{ flex: '0 0 auto' }}>
+    <Stack direction="row" spacing={0.25} sx={{ bottom: 7, flex: '0 0 auto', position: 'absolute', right: 8 }}>
       <Tooltip title="Move left">
         <span>
           <IconButton size="small" disabled={disabledLeft} onClick={onLeft} sx={{ height: 28, width: 28 }}>
@@ -531,8 +531,8 @@ export function DashboardPage() {
                     <Box
                       sx={{
                         display: 'grid',
-                        gap: 0.85,
-                        gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fill, minmax(270px, 1fr))' }
+                        gap: 1,
+                        gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fill, minmax(230px, 1fr))' }
                       }}
                     >
                 {group.cards.map((card, index) => {
@@ -550,13 +550,15 @@ export function DashboardPage() {
                           borderRadius: 2,
                           boxShadow: isCombined ? '0 10px 22px rgba(37,87,214,0.18)' : 'none',
                           color: isCombined ? '#fff' : 'text.primary',
-                          minHeight: 52,
-                          p: 0.7,
+                          height: 96,
+                          p: 1.1,
+                          pb: 4.4,
+                          position: 'relative',
                           transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
                           '&:hover': { transform: { sm: 'translateY(-2px)' }, borderColor: 'primary.main' }
                         }}
                       >
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%' }}>
+                        <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ height: '100%' }}>
                           <Box component="button" type="button" onClick={() => setActiveSpaceId('combined')} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flex: 1, gap: 1, minWidth: 0 }}>
                             <Box sx={{ display: 'grid', flex: '0 0 auto', placeItems: 'center' }}>
                               <LayersIcon fontSize="small" />
@@ -589,15 +591,17 @@ export function DashboardPage() {
                           borderColor: meta.accent,
                           borderRadius: 2,
                           color: 'inherit',
-                          minHeight: 52,
-                          p: 0.7,
+                          height: 96,
+                          p: 1.1,
+                          pb: 4.4,
+                          position: 'relative',
                           transition: 'transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
                           boxShadow: `inset 4px 0 0 ${meta.accent}`,
                           '&:hover': { boxShadow: `inset 4px 0 0 ${meta.accent}, 0 12px 24px rgba(24,35,56,0.09)`, transform: { sm: 'translateY(-2px)' } }
                         }}
                       >
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%' }}>
-                          <Box component="a" href={dashboardCardUrl(card.account)} target="_blank" rel="noreferrer" sx={{ alignItems: 'center', color: 'inherit', display: 'flex', flex: 1, gap: 1, minWidth: 0, textDecoration: 'none' }}>
+                        <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ height: '100%' }}>
+                          <Box component="a" href={dashboardCardUrl(card.account)} target="_blank" rel="noreferrer" sx={{ alignItems: 'flex-start', color: 'inherit', display: 'flex', flex: 1, gap: 1, minWidth: 0, textDecoration: 'none' }}>
                             <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}45`, borderRadius: '50%', color: meta.accent, display: 'grid', flex: '0 0 auto', height: 30, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 30 }}>
                               {card.account.cardType === 'social' ? (
                                 <Typography sx={{ color: meta.accent, fontSize: '0.82rem', fontWeight: 950 }}>{avatarInitial(card.account)}</Typography>
@@ -640,17 +644,18 @@ export function DashboardPage() {
                         borderRadius: 2,
                         boxShadow: active ? `inset 4px 0 0 ${account.color}, 0 10px 22px ${account.color}18` : `inset 4px 0 0 ${account.color}`,
                         color: 'text.primary',
-                        minHeight: 52,
+                        height: 96,
                         overflow: 'hidden',
-                        p: 0.7,
+                        p: 1.1,
+                        pb: 4.4,
                         position: 'relative',
                         textAlign: 'left',
                         transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
                         '&:hover': { borderColor: account.color, transform: { sm: 'translateY(-2px)' } }
                       }}
                     >
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%', pl: 0.35 }}>
-                        <Box component="button" type="button" onClick={() => setActiveSpaceId(account.id)} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flex: 1, gap: 1, minWidth: 0 }}>
+                      <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ height: '100%', pl: 0.35 }}>
+                        <Box component="button" type="button" onClick={() => setActiveSpaceId(account.id)} sx={{ all: 'unset', alignItems: 'flex-start', cursor: 'pointer', display: 'flex', flex: 1, gap: 1, minWidth: 0 }}>
                           <Chip size="small" label={providerLabel(account.provider)} variant="outlined" sx={{ borderColor: account.color, color: account.color, flex: '0 0 auto', fontSize: '0.72rem', fontWeight: 800, height: 24, maxWidth: 82 }} />
                           <Box sx={{ minWidth: 0 }}>
                             <Stack direction="row" spacing={0.65} alignItems="center">
