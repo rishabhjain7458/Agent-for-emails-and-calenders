@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Alert, Box, Button, Card, CardContent, Chip, Divider, FormControlLabel, Grid, MenuItem, Stack, Switch, TextField, Typography } from '@mui/material';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Card, CardContent, Chip, FormControlLabel, Grid, MenuItem, Stack, Switch, TextField, Typography } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LinkIcon from '@mui/icons-material/Link';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import LinkedInIcon from '@mui/icons-material/LinkedIn';
@@ -69,6 +70,59 @@ function cardUrlPlaceholder(type: CardFormType) {
 
 function accountProviderLabel(provider: ConnectedAccount['provider']) {
   return provider === 'microsoft' ? 'Outlook' : provider === 'imap' ? 'IMAP Mail' : provider === 'zoho' ? 'Zoho Mail' : 'Gmail';
+}
+
+function SettingsSection({ title, subtitle, chip, children }: { title: string; subtitle: string; chip?: ReactNode; children: ReactNode }) {
+  return (
+    <Card
+      className="premium-panel"
+      sx={{
+        borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(64, 82, 112, 0.72)' : 'rgba(210, 220, 236, 0.9)',
+        overflow: 'hidden'
+      }}
+    >
+      <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+        <Stack spacing={1.75}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1}>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ fontSize: '1.02rem', fontWeight: 950, lineHeight: 1.15 }}>{title}</Typography>
+              <Typography color="text.secondary" sx={{ fontSize: '0.82rem', lineHeight: 1.35 }}>{subtitle}</Typography>
+            </Box>
+            {chip}
+          </Stack>
+          {children}
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CompactRow({ icon, title, subtitle, action }: { icon: ReactNode; title: string; subtitle: string; action?: ReactNode }) {
+  return (
+    <Box
+      sx={{
+        alignItems: { xs: 'stretch', sm: 'center' },
+        bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(17,26,44,0.64)' : 'rgba(255,255,255,0.82)',
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 2,
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: 1.25,
+        justifyContent: 'space-between',
+        p: 1.25
+      }}
+    >
+      <Stack direction="row" spacing={1.15} alignItems="center" sx={{ minWidth: 0 }}>
+        {icon}
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontWeight: 900, overflowWrap: 'anywhere' }}>{title}</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }} noWrap>{subtitle}</Typography>
+        </Box>
+      </Stack>
+      {action}
+    </Box>
+  );
 }
 
 export function SettingsPage() {
@@ -220,178 +274,148 @@ export function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Configure tenant-aware assistant preferences." />
+      <PageHeader title="Settings" subtitle="Manage accounts, assistant defaults, and dashboard shortcuts." compact />
       {notice && <Alert sx={{ mb: 2 }} severity="success">{notice}</Alert>}
-      <Grid container spacing={2.5}>
-        <Grid item xs={12} md={7}>
-          <Card className="premium-panel">
-            <CardContent>
-              <Stack spacing={2}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Box>
-                    <Typography variant="h6">AI & Workspace</Typography>
-                    <Typography color="text.secondary" variant="body2">Personalize assistant behavior and tenant defaults.</Typography>
-                  </Box>
-                  <Chip icon={<SettingsIcon />} label="Tenant scoped" variant="outlined" />
-                </Stack>
-                <TextField label="Gemini API Key" type="password" value={geminiApiKey} onChange={(event) => setGeminiApiKey(event.target.value)} />
-                <TextField label="Timezone" value={timezone} onChange={(event) => setTimezone(event.target.value)} />
-                <FormControlLabel control={<Switch checked={ignorePromotions} onChange={(event) => setIgnorePromotions(event.target.checked)} />} label="Ignore promotions in AI email summaries" />
-                <Button variant="contained" startIcon={<SaveIcon />} onClick={save}>Save Settings</Button>
-              </Stack>
-            </CardContent>
-          </Card>
+      <Grid container spacing={2}>
+        <Grid item xs={12} lg={4}>
+          <SettingsSection
+            title="Assistant"
+            subtitle="Core AI and workspace defaults."
+            chip={<Chip size="small" icon={<SettingsIcon />} label="Tenant scoped" variant="outlined" />}
+          >
+            <Stack spacing={1.25}>
+              <TextField size="small" label="Gemini API Key" type="password" value={geminiApiKey} onChange={(event) => setGeminiApiKey(event.target.value)} />
+              <TextField size="small" label="Timezone" value={timezone} onChange={(event) => setTimezone(event.target.value)} />
+              <Box sx={{ bgcolor: 'action.hover', borderRadius: 2, px: 1.25, py: 0.5 }}>
+                <FormControlLabel control={<Switch checked={ignorePromotions} onChange={(event) => setIgnorePromotions(event.target.checked)} size="small" />} label="Ignore promotions in AI summaries" />
+              </Box>
+              <Button variant="contained" startIcon={<SaveIcon />} onClick={save}>Save Settings</Button>
+            </Stack>
+          </SettingsSection>
         </Grid>
-        <Grid item xs={12} md={5}>
-          <Card className="premium-panel">
-            <CardContent>
-              <Stack spacing={2}>
-                <Box>
-                  <Typography variant="h6">Connected Inboxes</Typography>
-                  <Typography color="text.secondary" variant="body2">Add extra Gmail, Outlook, or Zoho Mail inboxes for this signed-in user.</Typography>
-                </Box>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                  <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('google')}>Connect Gmail</Button>
-                  <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('microsoft')}>Connect Outlook</Button>
-                  <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('zoho')}>Connect Zoho OAuth</Button>
-                </Stack>
-                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'action.hover', p: 1.5 }}>
-                  <Stack spacing={1.25}>
-                    <Box>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>Zoho via IMAP</Typography>
-                      <Typography variant="caption" color="text.secondary">Use a Zoho app password. OAuth remains available above.</Typography>
-                    </Box>
-                    <TextField size="small" label="Zoho email" value={imapEmail} onChange={(event) => setImapEmail(event.target.value)} />
-                    <TextField size="small" label="App password" type="password" value={imapPassword} onChange={(event) => setImapPassword(event.target.value)} />
-                    <TextField size="small" label="Display name" value={imapName} onChange={(event) => setImapName(event.target.value)} placeholder="Optional" />
-                    <TextField size="small" select label="Zoho server region" value={smtpPreset} onChange={(event) => applySmtpPreset(event.target.value as ZohoSmtpPreset)}>
-                      <MenuItem value="india">India (.in)</MenuItem>
-                      <MenuItem value="global">Global (.com)</MenuItem>
-                      <MenuItem value="europe">Europe (.eu)</MenuItem>
-                      <MenuItem value="custom">Custom hosts</MenuItem>
-                    </TextField>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                      <TextField size="small" label="IMAP host" value={imapHost} onChange={(event) => { setSmtpPreset('custom'); setImapHost(event.target.value); }} />
-                      <TextField size="small" label="SMTP host" value={smtpHost} onChange={(event) => { setSmtpPreset('custom'); setSmtpHost(event.target.value); }} />
-                    </Stack>
-                    <TextField size="small" select label="SMTP port" value={smtpPort} onChange={(event) => setSmtpPort(event.target.value)}>
-                      <MenuItem value="465">465 SSL</MenuItem>
-                      <MenuItem value="587">587 TLS</MenuItem>
-                    </TextField>
-                    <Button variant="contained" startIcon={<LinkIcon />} onClick={connectZohoImap}>Connect Zoho IMAP</Button>
-                  </Stack>
-                </Box>
-                <Box>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-                    <Box>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>Manage connected accounts</Typography>
-                      <Typography variant="caption" color="text.secondary">Your primary login account is managed by logout. Extra inboxes can be disconnected here.</Typography>
-                    </Box>
-                    <Chip size="small" label={`${accounts.length} connected`} variant="outlined" />
-                  </Stack>
-                </Box>
-                <Stack divider={<Divider flexItem />} spacing={0}>
+
+        <Grid item xs={12} lg={8}>
+          <SettingsSection
+            title="Connected Inboxes"
+            subtitle="Connect Gmail, Outlook, Zoho OAuth, or Zoho IMAP."
+            chip={<Chip size="small" label={`${accounts.length} connected`} variant="outlined" />}
+          >
+            <Stack spacing={1.5}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" useFlexGap>
+                <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('google')}>Gmail</Button>
+                <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('microsoft')}>Outlook</Button>
+                <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('zoho')}>Zoho OAuth</Button>
+              </Stack>
+
+              <Accordion disableGutters elevation={0} sx={{ bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: '8px !important', '&::before': { display: 'none' } }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Box>
+                    <Typography sx={{ fontWeight: 900 }}>Zoho via IMAP</Typography>
+                    <Typography variant="caption" color="text.secondary">Advanced fallback using a Zoho app password.</Typography>
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails sx={{ pt: 0 }}>
+                  <Grid container spacing={1.25}>
+                    <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="Zoho email" value={imapEmail} onChange={(event) => setImapEmail(event.target.value)} /></Grid>
+                    <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="App password" type="password" value={imapPassword} onChange={(event) => setImapPassword(event.target.value)} /></Grid>
+                    <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="Display name" value={imapName} onChange={(event) => setImapName(event.target.value)} placeholder="Optional" /></Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField fullWidth size="small" select label="Zoho server region" value={smtpPreset} onChange={(event) => applySmtpPreset(event.target.value as ZohoSmtpPreset)}>
+                        <MenuItem value="india">India (.in)</MenuItem>
+                        <MenuItem value="global">Global (.com)</MenuItem>
+                        <MenuItem value="europe">Europe (.eu)</MenuItem>
+                        <MenuItem value="custom">Custom hosts</MenuItem>
+                      </TextField>
+                    </Grid>
+                    <Grid item xs={12} sm={5}><TextField fullWidth size="small" label="IMAP host" value={imapHost} onChange={(event) => { setSmtpPreset('custom'); setImapHost(event.target.value); }} /></Grid>
+                    <Grid item xs={12} sm={5}><TextField fullWidth size="small" label="SMTP host" value={smtpHost} onChange={(event) => { setSmtpPreset('custom'); setSmtpHost(event.target.value); }} /></Grid>
+                    <Grid item xs={12} sm={2}>
+                      <TextField fullWidth size="small" select label="SMTP port" value={smtpPort} onChange={(event) => setSmtpPort(event.target.value)}>
+                        <MenuItem value="465">465 SSL</MenuItem>
+                        <MenuItem value="587">587 TLS</MenuItem>
+                      </TextField>
+                    </Grid>
+                    <Grid item xs={12}><Button variant="contained" startIcon={<LinkIcon />} onClick={connectZohoImap}>Connect Zoho IMAP</Button></Grid>
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 950, mb: 1 }}>Accounts</Typography>
+                <Stack spacing={1}>
                   {accounts.map((account) => (
-                    <Box key={account.id} sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 2, display: 'flex', alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.25, mb: 1, p: 1.25 }}>
-                      <Box sx={{ minWidth: 0 }}>
-                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                          <Typography sx={{ fontWeight: 800, overflowWrap: 'anywhere' }}>{account.email}</Typography>
-                          <Chip size="small" label={accountProviderLabel(account.provider)} variant="outlined" />
-                        </Stack>
-                        {account.name && <Typography variant="body2" color="text.secondary">{account.name}</Typography>}
-                      </Box>
-                      <Button color="error" variant="outlined" startIcon={<DeleteIcon />} onClick={() => removeAccount(account.id)} sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}>Disconnect account</Button>
-                    </Box>
+                    <CompactRow
+                      key={account.id}
+                      icon={<Box sx={{ bgcolor: 'primary.main', borderRadius: 1.5, color: '#fff', display: 'grid', height: 36, placeItems: 'center', width: 36 }}><LinkIcon fontSize="small" /></Box>}
+                      title={account.email}
+                      subtitle={`${accountProviderLabel(account.provider)}${account.name ? ` · ${account.name}` : ''}`}
+                      action={<Button color="error" variant="text" startIcon={<DeleteIcon />} onClick={() => removeAccount(account.id)} sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}>Disconnect</Button>}
+                    />
                   ))}
                   {accounts.length === 0 && <Alert severity="info">No extra inboxes connected yet. Connect Gmail, Outlook, Zoho OAuth, or Zoho IMAP above.</Alert>}
                 </Stack>
-              </Stack>
-            </CardContent>
-          </Card>
+              </Box>
+            </Stack>
+          </SettingsSection>
         </Grid>
+
         <Grid item xs={12}>
-          <Card className="premium-panel">
-            <CardContent>
-              <Stack spacing={2}>
-                <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.5}>
-                  <Box>
-                    <Typography variant="h6">Dashboard Link Cards</Typography>
-                    <Typography color="text.secondary" variant="body2">Add social profiles, media, portals, news sites, and custom links for this workspace.</Typography>
-                  </Box>
-                  <Chip icon={<LinkIcon />} label={`${dashboardCards.length} saved`} variant="outlined" />
-                </Stack>
-                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'action.hover', p: 1.5 }}>
+          <SettingsSection
+            title="Dashboard Cards"
+            subtitle="Saved shortcuts are grouped automatically on the dashboard."
+            chip={<Chip size="small" icon={<LinkIcon />} label={`${dashboardCards.length} saved`} variant="outlined" />}
+          >
+            <Grid container spacing={2}>
+              <Grid item xs={12} lg={4}>
+                <Box sx={{ bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
                   <Stack spacing={1.25}>
-                    <Box>
-                      <Typography sx={{ fontWeight: 900 }}>Dashboard shortcut cards</Typography>
-                      <Typography color="text.secondary" variant="body2">Add a URL or username. Cards are grouped automatically on the dashboard.</Typography>
-                    </Box>
-                  </Stack>
-                </Box>
-                <Grid container spacing={1.25} alignItems="flex-start">
-                  <Grid item xs={12} sm={3}>
-                    <TextField fullWidth select label="Card type" value={cardType} onChange={(event) => setCardType(event.target.value as CardFormType)}>
+                    <Typography sx={{ fontWeight: 950 }}>Add shortcut</Typography>
+                    <TextField fullWidth size="small" select label="Card type" value={cardType} onChange={(event) => setCardType(event.target.value as CardFormType)}>
                       <MenuItem value="social">Social</MenuItem>
                       <MenuItem value="portal">Portal</MenuItem>
                       <MenuItem value="media">Media</MenuItem>
                       <MenuItem value="news">News</MenuItem>
                       <MenuItem value="custom_link">Custom link</MenuItem>
                     </TextField>
-                  </Grid>
-                  <Grid item xs={12} sm={3}>
                     {cardType === 'social' ? (
-                      <TextField fullWidth select label="Platform" value={socialPlatform} onChange={(event) => setSocialPlatform(event.target.value as SocialPlatform)}>
+                      <TextField fullWidth size="small" select label="Platform" value={socialPlatform} onChange={(event) => setSocialPlatform(event.target.value as SocialPlatform)}>
                         {socialPlatforms.map(([platform, label]) => (
                           <MenuItem key={platform} value={platform}>{label}</MenuItem>
                         ))}
                       </TextField>
                     ) : (
-                      <TextField fullWidth label="Card name" value={cardLabel} onChange={(event) => setCardLabel(event.target.value)} placeholder={cardNamePlaceholder(cardType)} />
+                      <TextField fullWidth size="small" label="Card name" value={cardLabel} onChange={(event) => setCardLabel(event.target.value)} placeholder={cardNamePlaceholder(cardType)} />
                     )}
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TextField fullWidth label={cardType === 'social' ? 'Username or profile URL' : 'Website URL'} value={cardUrl} onChange={(event) => setCardUrl(event.target.value)} placeholder={cardUrlPlaceholder(cardType)} />
-                  </Grid>
-                  <Grid item xs={12} sm={2}>
-                    <Button fullWidth variant="contained" startIcon={<LinkIcon />} onClick={addDashboardCard} sx={{ minHeight: 54 }}>Add</Button>
-                  </Grid>
-                  {cardType === 'social' && (
-                    <Grid item xs={12} sm={3}>
-                      <TextField fullWidth label="Card name" value={cardLabel} onChange={(event) => setCardLabel(event.target.value)} placeholder="Brand page, personal, client" />
-                    </Grid>
-                  )}
-                </Grid>
-                <Grid container spacing={1.5}>
+                    <TextField fullWidth size="small" label={cardType === 'social' ? 'Username or profile URL' : 'Website URL'} value={cardUrl} onChange={(event) => setCardUrl(event.target.value)} placeholder={cardUrlPlaceholder(cardType)} />
+                    {cardType === 'social' && <TextField fullWidth size="small" label="Card name" value={cardLabel} onChange={(event) => setCardLabel(event.target.value)} placeholder="Brand page, personal, client" />}
+                    <Button fullWidth variant="contained" startIcon={<LinkIcon />} onClick={addDashboardCard}>Add card</Button>
+                  </Stack>
+                </Box>
+              </Grid>
+              <Grid item xs={12} lg={8}>
+                <Stack spacing={1}>
                   {dashboardCards.map((card) => {
                     const colors = cardColor(card);
                     return (
-                    <Grid item xs={12} md={6} lg={4} key={card.id}>
-                      <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper', p: 1.5 }}>
-                        <Stack direction="row" spacing={1.25} alignItems="center">
-                          <Box sx={{ bgcolor: colors.bg, borderRadius: 1.5, color: colors.fg, display: 'grid', flex: '0 0 auto', height: 42, placeItems: 'center', width: 42 }}>
-                            {cardIcon(card)}
-                          </Box>
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography sx={{ fontWeight: 850 }} noWrap>{card.label}</Typography>
-                            <Typography variant="caption" color="text.secondary" noWrap>{card.url}</Typography>
-                          </Box>
-                        </Stack>
-                        <Stack direction="row" spacing={1} sx={{ mt: 1.25 }} flexWrap="wrap" useFlexGap>
-                          <Button fullWidth variant="outlined" href={card.url} target="_blank" rel="noreferrer" startIcon={<OpenInNewIcon />}>Open</Button>
-                          <Button color="error" variant="text" startIcon={<DeleteIcon />} onClick={() => removeDashboardCard(card.id)}>Remove</Button>
-                        </Stack>
-                      </Box>
-                    </Grid>
-                  );})}
-                  {dashboardCards.length === 0 && (
-                    <Grid item xs={12}>
-                      <Alert severity="info">No dashboard link cards added yet.</Alert>
-                    </Grid>
-                  )}
-                </Grid>
-              </Stack>
-            </CardContent>
-          </Card>
+                      <CompactRow
+                        key={card.id}
+                        icon={<Box sx={{ bgcolor: colors.bg, border: '1px solid', borderColor: `${colors.fg}24`, borderRadius: 1.5, color: colors.fg, display: 'grid', flex: '0 0 auto', height: 38, placeItems: 'center', width: 38 }}>{cardIcon(card)}</Box>}
+                        title={card.label}
+                        subtitle={`${cardTypeName(card.cardType)} · ${card.url}`}
+                        action={(
+                          <Stack direction="row" spacing={0.75} sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}>
+                            <Button variant="outlined" href={card.url} target="_blank" rel="noreferrer" startIcon={<OpenInNewIcon />}>Open</Button>
+                            <Button color="error" variant="text" startIcon={<DeleteIcon />} onClick={() => removeDashboardCard(card.id)}>Remove</Button>
+                          </Stack>
+                        )}
+                      />
+                    );
+                  })}
+                  {dashboardCards.length === 0 && <Alert severity="info">No dashboard cards added yet.</Alert>}
+                </Stack>
+              </Grid>
+            </Grid>
+          </SettingsSection>
         </Grid>
       </Grid>
     </>
