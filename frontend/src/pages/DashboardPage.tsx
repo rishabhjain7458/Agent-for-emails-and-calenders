@@ -172,8 +172,18 @@ function ChartBar({ label, value, total, color }: { label: string; value: number
         <Typography variant="body2" sx={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</Typography>
         <Typography variant="caption" color="text.secondary">{value}</Typography>
       </Stack>
-      <Box sx={{ bgcolor: '#edf2fb', borderRadius: 999, height: 9, overflow: 'hidden' }}>
-        <Box sx={{ bgcolor: color, borderRadius: 999, height: '100%', transition: 'width 260ms ease', width: `${pct}%` }} />
+      <Box sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(148, 163, 184, 0.16)' : '#edf2fb', borderRadius: 999, height: 9, overflow: 'hidden' }}>
+        <Box
+          sx={{
+            background: `linear-gradient(90deg, ${color}, ${color}c4)`,
+            borderRadius: 999,
+            boxShadow: `0 0 18px ${color}2e`,
+            height: '100%',
+            transformOrigin: 'left center',
+            animation: 'bar-grow 680ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
+            width: `${pct}%`
+          }}
+        />
       </Box>
     </Box>
   );
@@ -186,15 +196,17 @@ function DonutMetric({ value, total, color, label }: { value: number; total: num
       <Box
         sx={{
           alignItems: 'center',
-          background: `conic-gradient(${color} 0deg ${pct * 3.6}deg, #e8eef8 ${pct * 3.6}deg 360deg)`,
+          background: `conic-gradient(${color} 0deg ${pct * 3.6}deg, rgba(148,163,184,0.18) ${pct * 3.6}deg 360deg)`,
           borderRadius: '50%',
+          boxShadow: `0 14px 34px ${color}1f`,
           display: 'flex',
           flex: '0 0 auto',
           height: 86,
           justifyContent: 'center',
           position: 'relative',
           width: 86,
-          '&::after': { bgcolor: 'background.paper', borderRadius: '50%', content: '""', height: 58, position: 'absolute', width: 58 }
+          animation: 'donut-pop 620ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
+          '&::after': { bgcolor: 'background.paper', borderRadius: '50%', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)', content: '""', height: 58, position: 'absolute', width: 58 }
         }}
       >
         <Typography sx={{ color, fontWeight: 950, position: 'relative', zIndex: 1 }}>{pct}%</Typography>
@@ -211,36 +223,80 @@ function SignalTile({ label, value, helper, color, icon }: { label: string; valu
   return (
     <Box
       sx={{
-        bgcolor: 'background.paper',
+        background: (theme) => theme.palette.mode === 'dark'
+          ? `linear-gradient(145deg, rgba(17,26,44,0.96), rgba(17,26,44,0.82)), linear-gradient(135deg, ${color}1f, transparent 54%)`
+          : `linear-gradient(145deg, rgba(255,255,255,0.99), rgba(248,251,255,0.94)), linear-gradient(135deg, ${color}12, transparent 58%)`,
         border: '1px solid',
-        borderColor: `${color}30`,
+        borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(80, 96, 128, 0.62)' : 'rgba(210, 220, 236, 0.92)',
         borderRadius: 2,
-        boxShadow: `0 16px 34px ${color}12`,
+        boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 18px 42px rgba(0,0,0,0.22)' : '0 16px 34px rgba(30, 41, 59, 0.065)',
         minHeight: 118,
         overflow: 'hidden',
         p: 1.65,
         position: 'relative',
+        transition: 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
+        '&:hover': {
+          borderColor: `${color}55`,
+          boxShadow: `0 20px 42px ${color}18`,
+          transform: { sm: 'translateY(-2px)' }
+        },
         '&::after': {
-          bgcolor: `${color}10`,
-          borderRadius: '50%',
+          background: `linear-gradient(135deg, ${color}14, transparent)`,
+          borderRadius: 999,
           content: '""',
-          height: 96,
+          height: 118,
           position: 'absolute',
-          right: -34,
-          top: -34,
-          width: 96
+          right: -54,
+          top: -56,
+          width: 118
         }
       }}
     >
       <Stack spacing={1.15} sx={{ position: 'relative', zIndex: 1 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
           <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 850, textTransform: 'uppercase' }}>{label}</Typography>
-          <Box sx={{ bgcolor: `${color}14`, borderRadius: 1.5, color, display: 'grid', height: 34, placeItems: 'center', width: 34 }}>
+          <Box sx={{ bgcolor: `${color}12`, border: '1px solid', borderColor: `${color}24`, borderRadius: 1.5, color, display: 'grid', height: 34, placeItems: 'center', width: 34 }}>
             {icon}
           </Box>
         </Stack>
         <Typography variant="h4" sx={{ color, fontWeight: 950, lineHeight: 1 }}>{value}</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.35 }}>{helper}</Typography>
+      </Stack>
+    </Box>
+  );
+}
+
+function AnalysisPanel({ title, subtitle, icon, children }: { title: string; subtitle: string; icon: ReactNode; children: ReactNode }) {
+  return (
+    <Box
+      sx={{
+        background: (theme) => theme.palette.mode === 'dark'
+          ? 'linear-gradient(145deg, rgba(17,26,44,0.9), rgba(14,22,38,0.72))'
+          : 'linear-gradient(145deg, rgba(255,255,255,0.96), rgba(248,251,255,0.9))',
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 2,
+        boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 18px 42px rgba(0,0,0,0.2)' : '0 14px 34px rgba(30,41,59,0.055)',
+        height: '100%',
+        overflow: 'hidden',
+        p: 2,
+        position: 'relative',
+        transition: 'transform 180ms ease, box-shadow 180ms ease',
+        '&:hover': {
+          boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 22px 52px rgba(0,0,0,0.28)' : '0 20px 44px rgba(30,41,59,0.08)',
+          transform: { sm: 'translateY(-2px)' }
+        }
+      }}
+    >
+      <Stack spacing={1.5} sx={{ position: 'relative', zIndex: 1 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Box>
+            <Typography sx={{ fontWeight: 950 }}>{title}</Typography>
+            <Typography variant="caption" color="text.secondary">{subtitle}</Typography>
+          </Box>
+          {icon}
+        </Stack>
+        {children}
       </Stack>
     </Box>
   );
@@ -418,6 +474,7 @@ export function DashboardPage() {
     }, {})
   ).sort((a, b) => b[1] - a[1]);
   const importantUnreadRate = percentage(priorityEmails.length, scopedEmails.length);
+  const focusScore = Math.max(0, Math.min(100, 100 - importantUnreadRate - scopedOverdueTasks.length * 12 - nextDayEvents.length * 4));
 
   async function quickComplete(task: Task) {
     setTasks((current) => current.map((item) => item.id === task.id ? { ...item, status: 'completed' } : item));
@@ -643,11 +700,13 @@ export function DashboardPage() {
                         key={card.id}
                         {...dragProps}
                         sx={{
-                          bgcolor: isCombined ? 'primary.main' : 'background.paper',
+                          background: isCombined
+                            ? 'linear-gradient(145deg, #2557d6, #214fc4)'
+                            : (theme) => theme.palette.mode === 'dark' ? 'rgba(17,26,44,0.86)' : 'rgba(255,255,255,0.96)',
                           border: '1px solid',
-                          borderColor: isCombined ? 'primary.main' : 'divider',
+                          borderColor: isCombined ? 'rgba(37,87,214,0.58)' : 'divider',
                           borderRadius: 2,
-                          boxShadow: isCombined ? '0 10px 22px rgba(37,87,214,0.18)' : 'none',
+                          boxShadow: isCombined ? '0 16px 34px rgba(37,87,214,0.2)' : '0 8px 20px rgba(30,41,59,0.035)',
                           color: isCombined ? '#fff' : 'text.primary',
                           height: { xs: 112, sm: 118 },
                           p: 1,
@@ -655,9 +714,18 @@ export function DashboardPage() {
                           position: 'relative',
                           cursor: 'grab',
                           opacity: draggedCardId === card.id ? 0.56 : 1,
-                          transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
+                          transition: 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease',
                           '&:active': { cursor: 'grabbing' },
-                          '&:hover': { transform: { sm: 'translateY(-2px)' }, borderColor: 'primary.main' }
+                          '&::before': {
+                            background: isCombined ? 'rgba(255,255,255,0.34)' : 'linear-gradient(90deg, rgba(37,87,214,0.4), transparent)',
+                            content: '""',
+                            height: 3,
+                            left: 14,
+                            position: 'absolute',
+                            right: 14,
+                            top: 0
+                          },
+                          '&:hover': { boxShadow: isCombined ? '0 20px 42px rgba(37,87,214,0.24)' : '0 14px 30px rgba(30,41,59,0.08)', transform: { sm: 'translateY(-2px)' }, borderColor: 'rgba(37,87,214,0.42)' }
                         }}
                       >
                         <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
@@ -689,9 +757,11 @@ export function DashboardPage() {
                         key={card.id}
                         {...dragProps}
                         sx={{
-                          bgcolor: 'background.paper',
+                          background: (theme) => theme.palette.mode === 'dark'
+                            ? `linear-gradient(145deg, rgba(17,26,44,0.9), rgba(14,22,38,0.76)), linear-gradient(135deg, ${meta.accent}14, transparent 56%)`
+                            : `linear-gradient(145deg, rgba(255,255,255,0.98), rgba(249,251,255,0.92)), linear-gradient(135deg, ${meta.accent}0f, transparent 58%)`,
                           border: '1px solid',
-                          borderColor: meta.accent,
+                          borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(80, 96, 128, 0.64)' : 'rgba(208, 218, 234, 0.96)',
                           borderRadius: 2,
                           color: 'inherit',
                           height: { xs: 112, sm: 118 },
@@ -700,15 +770,24 @@ export function DashboardPage() {
                           position: 'relative',
                           cursor: 'grab',
                           opacity: draggedCardId === card.id ? 0.56 : 1,
-                          transition: 'transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
+                          transition: 'transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease',
                           '&:active': { cursor: 'grabbing' },
-                          boxShadow: `inset 4px 0 0 ${meta.accent}`,
-                          '&:hover': { boxShadow: `inset 4px 0 0 ${meta.accent}, 0 12px 24px rgba(24,35,56,0.09)`, transform: { sm: 'translateY(-2px)' } }
+                          boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 10px 24px rgba(0,0,0,0.18)' : '0 8px 20px rgba(30,41,59,0.04)',
+                          '&::before': {
+                            background: `linear-gradient(90deg, ${meta.accent}8f, ${meta.accent}16)`,
+                            content: '""',
+                            height: 3,
+                            left: 14,
+                            position: 'absolute',
+                            right: 14,
+                            top: 0
+                          },
+                          '&:hover': { borderColor: `${meta.accent}5c`, boxShadow: `0 16px 34px ${meta.accent}18`, transform: { sm: 'translateY(-2px)' } }
                         }}
                       >
                         <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
                           <Box component="a" href={dashboardCardUrl(card.account)} target="_blank" rel="noreferrer" sx={{ alignItems: 'center', color: 'inherit', display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0, textDecoration: 'none', width: '100%' }}>
-                            <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}45`, borderRadius: '50%', color: meta.accent, display: 'grid', flex: '0 0 auto', height: 40, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 40 }}>
+                            <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}28`, borderRadius: '50%', boxShadow: `0 8px 18px ${meta.accent}12`, color: meta.accent, display: 'grid', flex: '0 0 auto', height: 40, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 40 }}>
                               {card.account.cardType === 'social' ? (
                                 <Typography sx={{ color: meta.accent, fontSize: '0.95rem', fontWeight: 950 }}>{avatarInitial(card.account)}</Typography>
                               ) : meta.icon}
@@ -742,14 +821,18 @@ export function DashboardPage() {
                   const active = activeSpaceId === account.id;
                   return (
                     <Box
-                      key={card.id}
-                      {...dragProps}
-                      sx={{
-                        bgcolor: active ? `${account.color}18` : 'background.paper',
+                        key={card.id}
+                        {...dragProps}
+                        sx={{
+                        background: (theme) => active
+                          ? theme.palette.mode === 'dark'
+                            ? `linear-gradient(145deg, ${account.color}24, rgba(17,26,44,0.9))`
+                            : `linear-gradient(145deg, ${account.color}16, rgba(255,255,255,0.96))`
+                          : theme.palette.mode === 'dark' ? 'rgba(17,26,44,0.86)' : 'rgba(255,255,255,0.96)',
                         border: '1px solid',
-                        borderColor: active ? account.color : 'divider',
+                        borderColor: active ? `${account.color}55` : 'divider',
                         borderRadius: 2,
-                        boxShadow: active ? `inset 4px 0 0 ${account.color}, 0 10px 22px ${account.color}18` : `inset 4px 0 0 ${account.color}`,
+                        boxShadow: active ? `0 14px 30px ${account.color}16` : '0 8px 20px rgba(30,41,59,0.035)',
                         color: 'text.primary',
                         height: { xs: 112, sm: 118 },
                         overflow: 'hidden',
@@ -759,14 +842,23 @@ export function DashboardPage() {
                         cursor: 'grab',
                         opacity: draggedCardId === card.id ? 0.56 : 1,
                         textAlign: 'left',
-                        transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
+                        transition: 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
                         '&:active': { cursor: 'grabbing' },
-                        '&:hover': { borderColor: account.color, transform: { sm: 'translateY(-2px)' } }
+                        '&::before': {
+                          background: `linear-gradient(90deg, ${account.color}88, ${account.color}16)`,
+                          content: '""',
+                          height: 3,
+                          left: 14,
+                          position: 'absolute',
+                          right: 14,
+                          top: 0
+                        },
+                        '&:hover': { borderColor: `${account.color}66`, boxShadow: `0 16px 34px ${account.color}14`, transform: { sm: 'translateY(-2px)' } }
                       }}
                     >
                       <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
                         <Box component="button" type="button" onClick={() => setActiveSpaceId(account.id)} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0, width: '100%' }}>
-                          <Box sx={{ border: '1px solid', borderColor: account.color, borderRadius: 2, color: account.color, display: 'grid', height: 38, placeItems: 'center', width: 38 }}>
+                          <Box sx={{ bgcolor: `${account.color}10`, border: '1px solid', borderColor: `${account.color}2d`, borderRadius: 2, color: account.color, display: 'grid', height: 38, placeItems: 'center', width: 38 }}>
                             <MailIcon fontSize="small" />
                           </Box>
                           <Box sx={{ minWidth: 0 }}>
@@ -881,19 +973,77 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card ref={analysisRef} className="premium-panel" sx={{ scrollMarginTop: 96 }}>
+        <Card
+          ref={analysisRef}
+          className="premium-panel"
+          sx={{
+            background: (theme) => theme.palette.mode === 'dark'
+              ? 'linear-gradient(145deg, rgba(17,26,44,0.94), rgba(12,20,34,0.82))'
+              : 'linear-gradient(145deg, rgba(255,255,255,0.99), rgba(246,250,255,0.92))',
+            overflow: 'hidden',
+            position: 'relative',
+            scrollMarginTop: 96,
+            '&::after': {
+              background: `radial-gradient(circle at 88% 8%, ${selectedSpaceColor}16, transparent 32%)`,
+              content: '""',
+              inset: 0,
+              pointerEvents: 'none',
+              position: 'absolute'
+            }
+          }}
+        >
           <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
-            <Stack direction={{ xs: 'column', lg: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 2.25 }}>
+            <Stack direction={{ xs: 'column', lg: 'row' }} justifyContent="space-between" spacing={2} sx={{ mb: 2.25, position: 'relative', zIndex: 1 }}>
               <Box sx={{ maxWidth: 620 }}>
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <AnalyticsIcon color="primary" />
+                  <Box sx={{ bgcolor: `${selectedSpaceColor}12`, border: '1px solid', borderColor: `${selectedSpaceColor}28`, borderRadius: 1.5, color: selectedSpaceColor, display: 'grid', height: 36, placeItems: 'center', width: 36 }}>
+                    <AnalyticsIcon fontSize="small" />
+                  </Box>
                   <Typography variant="h5" sx={{ fontWeight: 950 }}>Workspace Analysis</Typography>
                 </Stack>
                 <Typography color="text.secondary" sx={{ mt: 0.45 }}>Live operational signals from connected inboxes, calendars, and tasks, scoped to the selected space.</Typography>
               </Box>
               <Chip icon={<InsightsIcon />} label={selectedSpace ? providerLabel(selectedSpace.provider) : 'Combined analysis'} color="primary" variant="outlined" sx={{ alignSelf: { xs: 'flex-start', md: 'center' } }} />
             </Stack>
-            <Grid container spacing={2}>
+            <Grid container spacing={2} sx={{ position: 'relative', zIndex: 1 }}>
+              <Grid item xs={12} lg={4}>
+                <Box
+                  sx={{
+                    background: `linear-gradient(145deg, ${selectedSpaceColor}18, rgba(255,255,255,0.92))`,
+                    border: '1px solid',
+                    borderColor: `${selectedSpaceColor}2f`,
+                    borderRadius: 2,
+                    boxShadow: `0 18px 42px ${selectedSpaceColor}12`,
+                    height: '100%',
+                    overflow: 'hidden',
+                    p: 2,
+                    position: 'relative'
+                  }}
+                >
+                  <Stack spacing={1.6}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                      <Box>
+                        <Typography sx={{ fontSize: '0.78rem', fontWeight: 900, textTransform: 'uppercase' }} color="text.secondary">Today focus</Typography>
+                        <Typography variant="h3" sx={{ color: selectedSpaceColor, fontWeight: 950, lineHeight: 1, mt: 0.75 }}>{focusScore}</Typography>
+                      </Box>
+                      <Box sx={{ bgcolor: `${selectedSpaceColor}14`, border: '1px solid', borderColor: `${selectedSpaceColor}2f`, borderRadius: 2, color: selectedSpaceColor, display: 'grid', height: 44, placeItems: 'center', width: 44 }}>
+                        <InsightsIcon />
+                      </Box>
+                    </Stack>
+                    <Typography color="text.secondary" variant="body2">A quick pressure score from unread priority mail, overdue work, and meetings in the next 24 hours.</Typography>
+                    <Box sx={{ bgcolor: 'rgba(148,163,184,0.16)', borderRadius: 999, height: 10, overflow: 'hidden' }}>
+                      <Box sx={{ animation: 'bar-grow 720ms cubic-bezier(0.2,0.8,0.2,1) both', background: `linear-gradient(90deg, ${selectedSpaceColor}, #0f9f8f)`, borderRadius: 999, height: '100%', width: `${focusScore}%` }} />
+                    </Box>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      <Chip size="small" label={`${priorityEmails.length} priority`} />
+                      <Chip size="small" label={`${scopedOverdueTasks.length} overdue`} color={scopedOverdueTasks.length ? 'warning' : 'default'} />
+                      <Chip size="small" label={`${nextDayEvents.length} today`} />
+                    </Stack>
+                  </Stack>
+                </Box>
+              </Grid>
+              <Grid item xs={12} lg={8}>
+                <Grid container spacing={2}>
               <Grid item xs={12} sm={6} lg={3}>
                 <SignalTile
                   label="Unread"
@@ -930,33 +1080,18 @@ export function DashboardPage() {
                   icon={<TaskAltIcon fontSize="small" />}
                 />
               </Grid>
+                </Grid>
+              </Grid>
               <Grid item xs={12} md={4}>
-                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, height: '100%', p: 2 }}>
-                  <Stack spacing={1.5}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Box>
-                        <Typography sx={{ fontWeight: 900 }}>Mail Volume</Typography>
-                        <Typography variant="caption" color="text.secondary">Recent inbox, last 14 days</Typography>
-                      </Box>
-                      <MailIcon sx={{ color: selectedSpaceColor }} />
-                    </Stack>
+                <AnalysisPanel title="Mail Volume" subtitle="Recent inbox, last 14 days" icon={<MailIcon sx={{ color: selectedSpaceColor }} />}>
                     {accountAnalytics.map((item) => (
                       <ChartBar key={item.id} label={item.label} value={item.recentEmails} total={maxRecentEmails} color={item.color} />
                     ))}
                     {accountAnalytics.length === 0 && <Alert severity="info">No connected accounts to analyze yet.</Alert>}
-                  </Stack>
-                </Box>
+                </AnalysisPanel>
               </Grid>
               <Grid item xs={12} md={4}>
-                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, height: '100%', p: 2 }}>
-                  <Stack spacing={1.6}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Box>
-                        <Typography sx={{ fontWeight: 900 }}>Task Balance</Typography>
-                        <Typography variant="caption" color="text.secondary">Completion and urgency</Typography>
-                      </Box>
-                      <DonutLargeIcon sx={{ color: selectedSpaceColor }} />
-                    </Stack>
+                <AnalysisPanel title="Task Balance" subtitle="Completion and urgency" icon={<DonutLargeIcon sx={{ color: selectedSpaceColor }} />}>
                     <DonutMetric value={scopedCompletedTasks.length} total={scopedAllTasks.length} color={selectedSpaceColor} label="Completed tasks" />
                     <Grid container spacing={1}>
                       <Grid item xs={6}>
@@ -972,19 +1107,10 @@ export function DashboardPage() {
                         </Box>
                       </Grid>
                     </Grid>
-                  </Stack>
-                </Box>
+                </AnalysisPanel>
               </Grid>
               <Grid item xs={12} md={4}>
-                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, height: '100%', p: 2 }}>
-                  <Stack spacing={1.5}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Box>
-                        <Typography sx={{ fontWeight: 900 }}>Calendar Load</Typography>
-                        <Typography variant="caption" color="text.secondary">Upcoming events, next 7 days</Typography>
-                      </Box>
-                      <EventIcon sx={{ color: selectedSpaceColor }} />
-                    </Stack>
+                <AnalysisPanel title="Calendar Load" subtitle="Upcoming events, next 7 days" icon={<EventIcon sx={{ color: selectedSpaceColor }} />}>
                     {accountAnalytics.map((item) => (
                       <ChartBar key={item.id} label={item.label} value={item.events} total={maxUpcomingEvents} color={item.color} />
                     ))}
@@ -1002,11 +1128,10 @@ export function DashboardPage() {
                         </Box>
                       </Grid>
                     </Grid>
-                  </Stack>
-                </Box>
+                </AnalysisPanel>
               </Grid>
               <Grid item xs={12}>
-                <Box sx={{ bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
+                <Box sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(17,26,44,0.72)' : 'rgba(248,251,255,0.88)', border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
                   <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems={{ xs: 'stretch', md: 'center' }} justifyContent="space-between">
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                       <Chip label={`${importantUnreadRate}% important unread`} color={importantUnreadRate > 40 ? 'warning' : 'default'} />
