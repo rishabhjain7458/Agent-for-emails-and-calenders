@@ -470,13 +470,13 @@ export function DashboardPage() {
           sx={{
             background: (theme) => theme.palette.mode === 'dark'
               ? undefined
-              : 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.94) 100%)',
+              : 'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(248,251,255,0.96) 100%)',
             borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'rgba(194, 207, 228, 0.88)',
             boxShadow: (theme) => theme.palette.mode === 'dark' ? undefined : '0 18px 44px rgba(30, 41, 59, 0.075)',
             overflow: 'hidden'
           }}
         >
-          <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
+          <CardContent sx={{ p: { xs: 2, md: 2.25 } }}>
             <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'stretch', md: 'center' }} justifyContent="flex-end" spacing={1.5} sx={{ mb: 2 }}>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
                 <FormControlLabel control={<Switch checked={focusMode} onChange={(event) => toggleFocusMode(event.target.checked)} />} label="Focus mode" />
@@ -485,38 +485,24 @@ export function DashboardPage() {
                 ))}
               </Stack>
             </Stack>
-            <Stack spacing={1.4} sx={{ maxWidth: 1120, mx: 'auto', width: '100%' }}>
+            <Stack spacing={1.4} sx={{ width: '100%' }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1} alignItems={{ xs: 'stretch', sm: 'flex-end' }}>
                 <Box sx={{ minWidth: 0 }}>
                   <Typography variant="h5" sx={{ fontWeight: 900 }}>Cards</Typography>
                   <Typography color="text.secondary" variant="body2">Choose a workspace or open a saved profile without crowding the dashboard.</Typography>
                 </Box>
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent={{ xs: 'flex-start', sm: 'flex-end' }} useFlexGap>
                   <Chip size="small" label={`${visibleDashboardCards.length} cards`} variant="outlined" />
                   <Chip size="small" label="Order saved" color={cardOrderSaving ? 'default' : 'success'} variant="outlined" />
                 </Stack>
               </Stack>
               <Box
                 sx={{
-                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(15, 23, 42, 0.44)' : 'rgba(248, 251, 255, 0.82)',
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 2.5,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 1.35,
-                  maxHeight: { xs: 334, md: 286 },
-                  maxWidth: 1080,
+                  gap: 1.5,
                   minWidth: 0,
-                  mx: 'auto',
-                  overflowY: 'auto',
-                  p: 0.9,
-                  pr: { xs: 1, md: 1.25 },
-                  scrollBehavior: 'smooth',
-                  width: { xs: '100%', sm: 'fit-content' },
-                  '&::-webkit-scrollbar': { width: 8 },
-                  '&::-webkit-scrollbar-thumb': { bgcolor: 'divider', borderRadius: 999 },
-                  '&::-webkit-scrollbar-track': { bgcolor: 'transparent' }
+                  width: '100%'
                 }}
               >
                 {[
@@ -526,12 +512,13 @@ export function DashboardPage() {
                   <Box
                     key={group.key}
                     sx={{
-                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(17, 26, 44, 0.64)' : 'rgba(255, 255, 255, 0.74)',
+                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(17, 26, 44, 0.66)' : 'rgba(248, 251, 255, 0.86)',
                       border: '1px solid',
                       borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(51, 68, 95, 0.75)' : 'rgba(214, 224, 239, 0.92)',
                       borderRadius: 2,
-                      boxShadow: (theme) => theme.palette.mode === 'dark' ? 'none' : '0 10px 24px rgba(30, 41, 59, 0.045)',
-                      p: 0.85
+                      boxShadow: (theme) => theme.palette.mode === 'dark' ? 'none' : '0 10px 24px rgba(30, 41, 59, 0.04)',
+                      p: { xs: 1, md: 1.15 },
+                      width: '100%'
                     }}
                   >
                     <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.75, px: 0.35 }}>
@@ -545,8 +532,7 @@ export function DashboardPage() {
                       sx={{
                         display: 'grid',
                         gap: 0.85,
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 246px), 318px))',
-                        justifyContent: { xs: 'stretch', sm: 'center' }
+                        gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fill, minmax(270px, 1fr))' }
                       }}
                     >
                 {group.cards.map((card, index) => {
