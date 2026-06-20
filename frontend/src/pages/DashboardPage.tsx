@@ -228,18 +228,18 @@ function SignalTile({ label, value, helper, color, icon }: { label: string; valu
 
 function CardMoveControls({ disabledLeft, disabledRight, onLeft, onRight }: { disabledLeft: boolean; disabledRight: boolean; onLeft: () => void; onRight: () => void }) {
   return (
-    <Stack direction="row" spacing={0.25} sx={{ bottom: 7, flex: '0 0 auto', position: 'absolute', right: 8 }}>
+    <Stack direction="row" spacing={0.25} sx={{ bottom: 6, flex: '0 0 auto', justifyContent: 'center', left: 0, position: 'absolute', right: 0 }}>
       <Tooltip title="Move left">
         <span>
-          <IconButton size="small" disabled={disabledLeft} onClick={onLeft} sx={{ height: 28, width: 28 }}>
-            <ArrowBackIcon fontSize="small" />
+          <IconButton size="small" disabled={disabledLeft} onClick={onLeft} sx={{ height: 24, width: 24 }}>
+            <ArrowBackIcon sx={{ fontSize: 17 }} />
           </IconButton>
         </span>
       </Tooltip>
       <Tooltip title="Move right">
         <span>
-          <IconButton size="small" disabled={disabledRight} onClick={onRight} sx={{ height: 28, width: 28 }}>
-            <ArrowForwardIcon fontSize="small" />
+          <IconButton size="small" disabled={disabledRight} onClick={onRight} sx={{ height: 24, width: 24 }}>
+            <ArrowForwardIcon sx={{ fontSize: 17 }} />
           </IconButton>
         </span>
       </Tooltip>
@@ -532,7 +532,7 @@ export function DashboardPage() {
                       sx={{
                         display: 'grid',
                         gap: 1,
-                        gridTemplateColumns: { xs: '1fr', sm: 'repeat(auto-fill, minmax(230px, 1fr))' }
+                        gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(auto-fill, minmax(138px, 1fr))', lg: 'repeat(auto-fill, minmax(150px, 1fr))' }
                       }}
                     >
                 {group.cards.map((card, index) => {
@@ -550,25 +550,25 @@ export function DashboardPage() {
                           borderRadius: 2,
                           boxShadow: isCombined ? '0 10px 22px rgba(37,87,214,0.18)' : 'none',
                           color: isCombined ? '#fff' : 'text.primary',
-                          height: 96,
-                          p: 1.1,
-                          pb: 4.4,
+                          height: 126,
+                          p: 1.15,
+                          pb: 4,
                           position: 'relative',
                           transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
                           '&:hover': { transform: { sm: 'translateY(-2px)' }, borderColor: 'primary.main' }
                         }}
                       >
-                        <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ height: '100%' }}>
-                          <Box component="button" type="button" onClick={() => setActiveSpaceId('combined')} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flex: 1, gap: 1, minWidth: 0 }}>
-                            <Box sx={{ display: 'grid', flex: '0 0 auto', placeItems: 'center' }}>
+                        <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
+                          <Box component="button" type="button" onClick={() => setActiveSpaceId('combined')} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0, width: '100%' }}>
+                            <Box sx={{ bgcolor: isCombined ? 'rgba(255,255,255,0.16)' : 'action.hover', borderRadius: 2, display: 'grid', height: 42, placeItems: 'center', width: 42 }}>
                               <LayersIcon fontSize="small" />
                             </Box>
                             <Box sx={{ minWidth: 0 }}>
-                              <Stack direction="row" spacing={0.65} alignItems="center">
-                                <Typography sx={{ fontSize: '0.95rem', fontWeight: 900 }} noWrap>Combined</Typography>
+                              <Stack direction="row" spacing={0.55} alignItems="center" justifyContent="center">
+                                <Typography sx={{ fontSize: '0.9rem', fontWeight: 950, lineHeight: 1.1 }} noWrap>Combined</Typography>
                                 {isCombined && <Chip size="small" label="Active" sx={{ bgcolor: 'background.paper', color: 'primary.main', fontWeight: 800, height: 22 }} />}
                               </Stack>
-                              <Typography variant="caption" sx={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, opacity: 0.82 }} noWrap>
+                              <Typography variant="caption" sx={{ display: 'block', fontSize: '0.68rem', fontWeight: 800, opacity: 0.82 }} noWrap>
                                 {metricLabel(emails.length, 'email')} · {metricLabel(pendingTasks.length, 'task')}
                               </Typography>
                             </Box>
@@ -591,20 +591,20 @@ export function DashboardPage() {
                           borderColor: meta.accent,
                           borderRadius: 2,
                           color: 'inherit',
-                          height: 96,
-                          p: 1.1,
-                          pb: 4.4,
+                          height: 126,
+                          p: 1.15,
+                          pb: 4,
                           position: 'relative',
                           transition: 'transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
                           boxShadow: `inset 4px 0 0 ${meta.accent}`,
                           '&:hover': { boxShadow: `inset 4px 0 0 ${meta.accent}, 0 12px 24px rgba(24,35,56,0.09)`, transform: { sm: 'translateY(-2px)' } }
                         }}
                       >
-                        <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ height: '100%' }}>
-                          <Box component="a" href={dashboardCardUrl(card.account)} target="_blank" rel="noreferrer" sx={{ alignItems: 'flex-start', color: 'inherit', display: 'flex', flex: 1, gap: 1, minWidth: 0, textDecoration: 'none' }}>
-                            <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}45`, borderRadius: '50%', color: meta.accent, display: 'grid', flex: '0 0 auto', height: 30, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 30 }}>
+                        <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
+                          <Box component="a" href={dashboardCardUrl(card.account)} target="_blank" rel="noreferrer" sx={{ alignItems: 'center', color: 'inherit', display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0, textDecoration: 'none', width: '100%' }}>
+                            <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}45`, borderRadius: '50%', color: meta.accent, display: 'grid', flex: '0 0 auto', height: 44, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 44 }}>
                               {card.account.cardType === 'social' ? (
-                                <Typography sx={{ color: meta.accent, fontSize: '0.82rem', fontWeight: 950 }}>{avatarInitial(card.account)}</Typography>
+                                <Typography sx={{ color: meta.accent, fontSize: '0.95rem', fontWeight: 950 }}>{avatarInitial(card.account)}</Typography>
                               ) : meta.icon}
                               {avatarUrl && (
                                 <Box
@@ -619,11 +619,11 @@ export function DashboardPage() {
                               )}
                             </Box>
                             <Box sx={{ minWidth: 0 }}>
-                              <Stack direction="row" spacing={0.65} alignItems="center">
-                                <Typography sx={{ fontSize: '0.95rem', fontWeight: 900 }} noWrap>{card.account.label}</Typography>
-                                <OpenInNewIcon sx={{ color: meta.accent, flex: '0 0 auto', fontSize: 16 }} />
+                              <Stack direction="row" spacing={0.4} alignItems="center" justifyContent="center">
+                                <Typography sx={{ fontSize: '0.82rem', fontWeight: 900, lineHeight: 1.1 }} noWrap>{card.account.label}</Typography>
+                                <OpenInNewIcon sx={{ color: meta.accent, flex: '0 0 auto', fontSize: 13 }} />
                               </Stack>
-                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.72rem', fontWeight: 800 }} noWrap>{meta.label} · #{index + 1}</Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.67rem', fontWeight: 800 }} noWrap>{meta.label} · #{index + 1}</Typography>
                             </Box>
                           </Box>
                           <CardMoveControls disabledLeft={isFirst} disabledRight={isLast} onLeft={() => moveDashboardCard(card.id, -1, scopeIds)} onRight={() => moveDashboardCard(card.id, 1, scopeIds)} />
@@ -644,26 +644,28 @@ export function DashboardPage() {
                         borderRadius: 2,
                         boxShadow: active ? `inset 4px 0 0 ${account.color}, 0 10px 22px ${account.color}18` : `inset 4px 0 0 ${account.color}`,
                         color: 'text.primary',
-                        height: 96,
+                        height: 126,
                         overflow: 'hidden',
-                        p: 1.1,
-                        pb: 4.4,
+                        p: 1.15,
+                        pb: 4,
                         position: 'relative',
                         textAlign: 'left',
                         transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
                         '&:hover': { borderColor: account.color, transform: { sm: 'translateY(-2px)' } }
                       }}
                     >
-                      <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ height: '100%', pl: 0.35 }}>
-                        <Box component="button" type="button" onClick={() => setActiveSpaceId(account.id)} sx={{ all: 'unset', alignItems: 'flex-start', cursor: 'pointer', display: 'flex', flex: 1, gap: 1, minWidth: 0 }}>
-                          <Chip size="small" label={providerLabel(account.provider)} variant="outlined" sx={{ borderColor: account.color, color: account.color, flex: '0 0 auto', fontSize: '0.72rem', fontWeight: 800, height: 24, maxWidth: 82 }} />
+                      <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
+                        <Box component="button" type="button" onClick={() => setActiveSpaceId(account.id)} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0, width: '100%' }}>
+                          <Box sx={{ border: '1px solid', borderColor: account.color, borderRadius: 2, color: account.color, display: 'grid', height: 42, placeItems: 'center', width: 42 }}>
+                            <MailIcon fontSize="small" />
+                          </Box>
                           <Box sx={{ minWidth: 0 }}>
-                            <Stack direction="row" spacing={0.65} alignItems="center">
-                              <Typography sx={{ fontSize: '0.95rem', fontWeight: 900 }} noWrap>{account.email}</Typography>
+                            <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
+                              <Typography sx={{ fontSize: '0.82rem', fontWeight: 900, lineHeight: 1.1 }} noWrap>{account.email}</Typography>
                               {active && <Chip size="small" label="Active" sx={{ bgcolor: account.color, color: '#fff', flex: '0 0 auto', fontWeight: 800, height: 22 }} />}
                             </Stack>
-                            <Typography variant="caption" sx={{ color: account.color, display: 'block', fontSize: '0.72rem', fontWeight: 900 }} noWrap>
-                              {metricLabel(account.emails, 'email')} · {metricLabel(account.tasks, 'task')} · #{index + 1}
+                            <Typography variant="caption" sx={{ color: account.color, display: 'block', fontSize: '0.67rem', fontWeight: 900 }} noWrap>
+                              {providerLabel(account.provider)} · {metricLabel(account.emails, 'email')}
                             </Typography>
                           </Box>
                         </Box>
