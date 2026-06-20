@@ -7,7 +7,7 @@ export const dashboardCardRoutes = Router();
 
 dashboardCardRoutes.get('/', index);
 dashboardCardRoutes.post('/', validateBody(Joi.object({
-  cardType: Joi.string().valid('social', 'news', 'custom_link', 'portal').required(),
+  cardType: Joi.string().valid('social', 'news', 'custom_link', 'portal', 'media').required(),
   platform: Joi.string().allow('', null).optional(),
   label: Joi.string().trim().min(1).max(120).required(),
   url: Joi.string().uri({ scheme: ['http', 'https'] }).required(),

@@ -1,6 +1,6 @@
 import { pool } from '../db/pool.js';
 
-export type DashboardCardType = 'social' | 'news' | 'custom_link' | 'portal';
+export type DashboardCardType = 'social' | 'news' | 'custom_link' | 'portal' | 'media';
 
 export type DashboardCardInput = {
   cardType: DashboardCardType;

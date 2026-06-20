@@ -73,7 +73,7 @@ export type AssistantConversation = {
 
 export type DashboardCard = {
   id: string;
-  cardType: 'social' | 'news' | 'custom_link' | 'portal';
+  cardType: 'social' | 'news' | 'custom_link' | 'portal' | 'media';
   platform?: 'instagram' | 'facebook' | string | null;
   label: string;
   url: string;

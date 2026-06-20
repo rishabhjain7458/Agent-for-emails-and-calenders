@@ -13,13 +13,14 @@ import RedditIcon from '@mui/icons-material/Reddit';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
+import PermMediaIcon from '@mui/icons-material/PermMedia';
 import { PageHeader } from '../components/PageHeader';
 import { connectImapAccount, createDashboardCard, deleteDashboardCard, disconnectAccount, getConnectedAccounts, getConnectAccountUrl, getDashboardCards, getSettings, updateSettings } from '../api/endpoints';
 import type { ConnectedAccount, DashboardCard } from '../types';
 import { normalizeSocialUrl, socialPlatformLabels, type SocialPlatform } from '../utils/socialAccounts';
 import { useSpace } from '../contexts/SpaceContext';
 
-type CardFormType = 'social' | 'news' | 'custom_link' | 'portal';
+type CardFormType = 'social' | 'news' | 'custom_link' | 'portal' | 'media';
 type ZohoSmtpPreset = 'india' | 'global' | 'europe' | 'custom';
 
 const socialPlatforms = Object.entries(socialPlatformLabels) as [SocialPlatform, string][];
@@ -47,8 +48,23 @@ function socialCardIcon(platform?: string | null) {
 function cardTypeName(type: CardFormType) {
   if (type === 'news') return 'News website';
   if (type === 'portal') return 'Portal';
+  if (type === 'media') return 'Media';
   if (type === 'custom_link') return 'Custom link';
   return `${socialPlatformLabels.instagram} account`;
+}
+
+function cardNamePlaceholder(type: CardFormType) {
+  if (type === 'news') return 'BBC News, TechCrunch';
+  if (type === 'portal') return 'School portal, CRM, HRMS';
+  if (type === 'media') return 'YouTube, Netflix, Spotify';
+  return 'Client portal';
+}
+
+function cardUrlPlaceholder(type: CardFormType) {
+  if (type === 'social') return '@username or https://...';
+  if (type === 'portal') return 'https://portal.example.com';
+  if (type === 'media') return 'https://youtube.com/@channel';
+  return 'https://example.com';
 }
 
 function accountProviderLabel(provider: ConnectedAccount['provider']) {
@@ -189,6 +205,7 @@ export function SettingsPage() {
   function cardIcon(card: DashboardCard) {
     if (card.cardType === 'news') return <NewspaperIcon />;
     if (card.cardType === 'portal') return <BusinessCenterIcon />;
+    if (card.cardType === 'media') return <PermMediaIcon />;
     if (card.cardType === 'social') return socialCardIcon(card.platform);
     return <LinkIcon />;
   }
@@ -196,6 +213,7 @@ export function SettingsPage() {
   function cardColor(card: DashboardCard) {
     if (card.cardType === 'news') return { bg: '#fefce8', fg: '#a16207' };
     if (card.cardType === 'portal') return { bg: 'rgba(14, 116, 144, 0.14)', fg: '#0e7490' };
+    if (card.cardType === 'media') return { bg: 'rgba(225, 29, 72, 0.14)', fg: '#e11d48' };
     if (card.cardType === 'social') return socialCardStyle(card.platform);
     return { bg: 'rgba(37, 87, 214, 0.14)', fg: '#2557d6' };
   }
@@ -298,15 +316,15 @@ export function SettingsPage() {
                 <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1.5}>
                   <Box>
                     <Typography variant="h6">Dashboard Link Cards</Typography>
-                    <Typography color="text.secondary" variant="body2">Add social profiles, portals, news sites, and custom links for this workspace.</Typography>
+                    <Typography color="text.secondary" variant="body2">Add social profiles, media, portals, news sites, and custom links for this workspace.</Typography>
                   </Box>
                   <Chip icon={<LinkIcon />} label={`${dashboardCards.length} saved`} variant="outlined" />
                 </Stack>
                 <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'action.hover', p: 1.5 }}>
                   <Stack spacing={1.25}>
                     <Box>
-                      <Typography sx={{ fontWeight: 900 }}>Manual social profile cards</Typography>
-                      <Typography color="text.secondary" variant="body2">Add a username or profile link. The dashboard will show a profile-style image when one can be resolved.</Typography>
+                      <Typography sx={{ fontWeight: 900 }}>Dashboard shortcut cards</Typography>
+                      <Typography color="text.secondary" variant="body2">Add a URL or username. Cards are grouped automatically on the dashboard.</Typography>
                     </Box>
                   </Stack>
                 </Box>
@@ -315,6 +333,7 @@ export function SettingsPage() {
                     <TextField fullWidth select label="Card type" value={cardType} onChange={(event) => setCardType(event.target.value as CardFormType)}>
                       <MenuItem value="social">Social</MenuItem>
                       <MenuItem value="portal">Portal</MenuItem>
+                      <MenuItem value="media">Media</MenuItem>
                       <MenuItem value="news">News</MenuItem>
                       <MenuItem value="custom_link">Custom link</MenuItem>
                     </TextField>
@@ -327,11 +346,11 @@ export function SettingsPage() {
                         ))}
                       </TextField>
                     ) : (
-                      <TextField fullWidth label="Card name" value={cardLabel} onChange={(event) => setCardLabel(event.target.value)} placeholder={cardType === 'news' ? 'BBC News, TechCrunch' : cardType === 'portal' ? 'School portal, CRM, HRMS' : 'Client portal'} />
+                      <TextField fullWidth label="Card name" value={cardLabel} onChange={(event) => setCardLabel(event.target.value)} placeholder={cardNamePlaceholder(cardType)} />
                     )}
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <TextField fullWidth label={cardType === 'social' ? 'Username or profile URL' : 'Website URL'} value={cardUrl} onChange={(event) => setCardUrl(event.target.value)} placeholder={cardType === 'social' ? '@username or https://...' : cardType === 'portal' ? 'https://portal.example.com' : 'https://example.com'} />
+                    <TextField fullWidth label={cardType === 'social' ? 'Username or profile URL' : 'Website URL'} value={cardUrl} onChange={(event) => setCardUrl(event.target.value)} placeholder={cardUrlPlaceholder(cardType)} />
                   </Grid>
                   <Grid item xs={12} sm={2}>
                     <Button fullWidth variant="contained" startIcon={<LinkIcon />} onClick={addDashboardCard} sx={{ minHeight: 54 }}>Add</Button>

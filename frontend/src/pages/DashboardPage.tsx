@@ -22,6 +22,7 @@ import DonutLargeIcon from '@mui/icons-material/DonutLarge';
 import InsightsIcon from '@mui/icons-material/Insights';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import PermMediaIcon from '@mui/icons-material/PermMedia';
 import { PageHeader } from '../components/PageHeader';
 import { completeTask, getDashboardCards, getEmails, getEvents, getTasks, updateDashboardCardOrder } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
@@ -35,9 +36,9 @@ type MixedDashboardCard =
   | { id: string; kind: 'space'; account: ReturnType<typeof useSpace>['spaces'][number] & { color: string; emails: number; tasks: number } }
   | { id: string; kind: 'link'; account: LinkDashboardCard };
 
-type CardSectionKey = 'mail' | 'portal' | 'social' | 'news' | 'custom';
+type CardSectionKey = 'mail' | 'portal' | 'media' | 'social' | 'news' | 'custom';
 
-const defaultSectionOrder: CardSectionKey[] = ['mail', 'portal', 'social', 'news', 'custom'];
+const defaultSectionOrder: CardSectionKey[] = ['mail', 'portal', 'media', 'social', 'news', 'custom'];
 const sectionOrderStorageKey = 'o-connect-dashboard-section-order';
 
 function readSectionOrder() {
@@ -108,6 +109,7 @@ function mergeCardOrder(ids: string[], order: string[]) {
 
 function linkCardMeta(card: LinkDashboardCard) {
   if (card.cardType === 'portal') return { accent: '#0e7490', accentBg: 'rgba(14, 116, 144, 0.14)', label: 'Portal', icon: <BusinessCenterIcon /> };
+  if (card.cardType === 'media') return { accent: '#e11d48', accentBg: 'rgba(225, 29, 72, 0.14)', label: 'Media', icon: <PermMediaIcon /> };
   if (card.cardType === 'news') return { accent: '#a16207', accentBg: 'rgba(161, 98, 7, 0.14)', label: 'News', icon: <NewspaperIcon /> };
   if (card.platform === 'instagram') return { accent: '#c026d3', accentBg: 'rgba(192, 38, 211, 0.14)', label: socialPlatformLabels.instagram, icon: <InstagramIcon /> };
   if (card.platform === 'facebook') return { accent: '#2563eb', accentBg: 'rgba(37, 99, 235, 0.14)', label: socialPlatformLabels.facebook, icon: <FacebookIcon /> };
@@ -467,12 +469,14 @@ export function DashboardPage() {
   const visibleDashboardCards = orderedDashboardCards.filter((card) => !(focusMode && selectedSpace && card.kind === 'space' && card.account.id !== selectedSpace.id));
   const visibleMailCards = visibleDashboardCards.filter((card) => card.kind !== 'link');
   const visiblePortalCards = visibleDashboardCards.filter((card) => card.kind === 'link' && card.account.cardType === 'portal');
+  const visibleMediaCards = visibleDashboardCards.filter((card) => card.kind === 'link' && card.account.cardType === 'media');
   const visibleSocialCards = visibleDashboardCards.filter((card) => card.kind === 'link' && card.account.cardType === 'social');
   const visibleNewsCards = visibleDashboardCards.filter((card) => card.kind === 'link' && card.account.cardType === 'news');
   const visibleCustomCards = visibleDashboardCards.filter((card) => card.kind === 'link' && card.account.cardType === 'custom_link');
   const cardSections = [
     { key: 'mail' as const, title: 'Mail spaces', helper: 'Choose the inbox workspace first.', cards: visibleMailCards },
     { key: 'portal' as const, title: 'Portals', helper: 'Open work portals and client systems.', cards: visiblePortalCards },
+    { key: 'media' as const, title: 'Media', helper: 'Open saved channels, streaming pages, and media libraries.', cards: visibleMediaCards },
     { key: 'social' as const, title: 'Social media', helper: 'Open saved social profiles.', cards: visibleSocialCards },
     { key: 'news' as const, title: 'News', helper: 'Open saved news sources.', cards: visibleNewsCards },
     { key: 'custom' as const, title: 'Custom links', helper: 'Open other saved websites.', cards: visibleCustomCards }
