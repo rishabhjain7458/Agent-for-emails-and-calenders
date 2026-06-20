@@ -465,7 +465,17 @@ export function DashboardPage() {
       {cardOrderSaving && <LinearProgress sx={{ mb: 2 }} color="secondary" />}
 
       <Stack spacing={2.5}>
-        <Card className="premium-panel" sx={{ overflow: 'hidden' }}>
+        <Card
+          className="premium-panel"
+          sx={{
+            background: (theme) => theme.palette.mode === 'dark'
+              ? undefined
+              : 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.94) 100%)',
+            borderColor: (theme) => theme.palette.mode === 'dark' ? 'divider' : 'rgba(194, 207, 228, 0.88)',
+            boxShadow: (theme) => theme.palette.mode === 'dark' ? undefined : '0 18px 44px rgba(30, 41, 59, 0.075)',
+            overflow: 'hidden'
+          }}
+        >
           <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
             <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'stretch', md: 'center' }} justifyContent="flex-end" spacing={1.5} sx={{ mb: 2 }}>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
@@ -475,7 +485,7 @@ export function DashboardPage() {
                 ))}
               </Stack>
             </Stack>
-            <Stack spacing={1.4}>
+            <Stack spacing={1.4} sx={{ maxWidth: 1120, mx: 'auto', width: '100%' }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1} alignItems={{ xs: 'stretch', sm: 'flex-end' }}>
                 <Box sx={{ minWidth: 0 }}>
                   <Typography variant="h5" sx={{ fontWeight: 900 }}>Cards</Typography>
@@ -503,6 +513,7 @@ export function DashboardPage() {
                   p: 0.9,
                   pr: { xs: 1, md: 1.25 },
                   scrollBehavior: 'smooth',
+                  width: { xs: '100%', sm: 'fit-content' },
                   '&::-webkit-scrollbar': { width: 8 },
                   '&::-webkit-scrollbar-thumb': { bgcolor: 'divider', borderRadius: 999 },
                   '&::-webkit-scrollbar-track': { bgcolor: 'transparent' }
@@ -512,7 +523,17 @@ export function DashboardPage() {
                   { key: 'mail', title: 'Mail spaces', helper: 'Choose the inbox workspace first.', cards: visibleMailCards },
                   { key: 'social', title: 'Social & links', helper: 'Open saved profiles and websites.', cards: visibleLinkCards }
                 ].map((group) => group.cards.length > 0 && (
-                  <Box key={group.key}>
+                  <Box
+                    key={group.key}
+                    sx={{
+                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(17, 26, 44, 0.64)' : 'rgba(255, 255, 255, 0.74)',
+                      border: '1px solid',
+                      borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(51, 68, 95, 0.75)' : 'rgba(214, 224, 239, 0.92)',
+                      borderRadius: 2,
+                      boxShadow: (theme) => theme.palette.mode === 'dark' ? 'none' : '0 10px 24px rgba(30, 41, 59, 0.045)',
+                      p: 0.85
+                    }}
+                  >
                     <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.75, px: 0.35 }}>
                       <Box sx={{ minWidth: 0 }}>
                         <Typography sx={{ fontSize: '0.78rem', fontWeight: 950, letterSpacing: 0, textTransform: 'uppercase' }}>{group.title}</Typography>
