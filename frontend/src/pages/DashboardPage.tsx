@@ -21,6 +21,7 @@ import InsightsIcon from '@mui/icons-material/Insights';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import PermMediaIcon from '@mui/icons-material/PermMedia';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 import { completeTask, getDashboardCards, getEmails, getEvents, getTasks, updateDashboardCardOrder } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
 import type { CalendarEvent, DashboardCard as LinkDashboardCard, EmailMessage, Task } from '../types';
@@ -559,6 +560,7 @@ export function DashboardPage() {
                   <Typography color="text.secondary" sx={{ fontSize: '0.74rem', lineHeight: 1.2 }}>Choose a workspace or saved profile.</Typography>
                 </Box>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent={{ xs: 'flex-start', sm: 'flex-end' }} useFlexGap>
+                  <Button size="small" variant="contained" component={RouterLink} to="/assistant" startIcon={<SmartToyIcon />}>AI Assistant</Button>
                   <Button size="small" variant="outlined" startIcon={<RefreshIcon />} onClick={loadDashboard}>Refresh</Button>
                 </Stack>
               </Stack>

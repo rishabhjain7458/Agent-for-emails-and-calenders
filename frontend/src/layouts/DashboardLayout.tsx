@@ -29,7 +29,10 @@ import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LightModeIcon from '@mui/icons-material/LightMode';
 import { useAuth } from '../contexts/AuthContext';
+import { useThemeMode } from '../contexts/ThemeModeContext';
 
 const drawerWidth = 276;
 const collapsedDrawerWidth = 78;
@@ -47,6 +50,7 @@ export function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') !== 'false');
   const [sidebarHover, setSidebarHover] = useState(false);
   const { user, logout } = useAuth();
+  const { mode, toggleMode } = useThemeMode();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -169,14 +173,27 @@ export function DashboardLayout() {
           backdropFilter: 'blur(18px)'
         }}
       >
-        <Toolbar sx={{ gap: { xs: 0.75, sm: 1.35 }, justifyContent: 'flex-end', minHeight: { xs: 54, sm: 58 }, px: { xs: 1.25, sm: 2.25 } }}>
+        <Toolbar sx={{ gap: { xs: 0.75, sm: 1.35 }, minHeight: { xs: 58, sm: 62 }, px: { xs: 1.25, sm: 2.25 } }}>
           {isMobile && (
             <IconButton onClick={() => setOpen(true)} aria-label="Open navigation">
               <MenuIcon />
             </IconButton>
           )}
-          {isMobile && <Box sx={{ flex: 1 }} />}
-          {!isMobile && <Box sx={{ flex: 1 }} />}
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 950, lineHeight: 1.05 }} noWrap>
+              AI Executive Assistant
+            </Typography>
+            {!isMobile && (
+              <Typography variant="caption" color="text.secondary" noWrap>
+                Email, calendar, tasks, and AI in one workspace
+              </Typography>
+            )}
+          </Box>
+          <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+            <IconButton onClick={toggleMode} aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+              {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+            </IconButton>
+          </Tooltip>
           <Avatar sx={{ width: { xs: 32, sm: 36 }, height: { xs: 32, sm: 36 }, bgcolor: 'primary.main' }}>{user?.name?.[0] ?? 'U'}</Avatar>
           {!isMobile && <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 220 }}>{user?.email}</Typography>}
           <Tooltip title="Logout">

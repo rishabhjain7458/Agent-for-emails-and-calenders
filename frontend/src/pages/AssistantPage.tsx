@@ -11,7 +11,6 @@ import EventIcon from '@mui/icons-material/Event';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import { PageHeader } from '../components/PageHeader';
 import { chat, getAssistantConversation, getAssistantConversations } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
 import type { AssistantConversation } from '../types';
@@ -266,6 +265,11 @@ export function AssistantPage() {
 
     recognition.onerror = (event: any) => {
       setListening(false);
+      if (event.error === 'not-allowed') {
+        setSpeechMessage('Microphone permission is blocked.');
+        setError('Voice input needs microphone permission. Allow microphone access for this app in Android settings, then try again.');
+        return;
+      }
       setSpeechMessage('Voice input stopped.');
       setError(`Voice input error: ${event.error ?? 'Speech recognition failed.'}`);
     };
@@ -319,7 +323,20 @@ export function AssistantPage() {
     }
   }
 
-  function toggleListening() {
+  async function requestMicrophoneAccess() {
+    if (!navigator.mediaDevices?.getUserMedia) return true;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
+      return true;
+    } catch {
+      setSpeechMessage('Microphone permission is blocked.');
+      setError('Voice input needs microphone permission. Allow microphone access for this app in Android settings, then try again.');
+      return false;
+    }
+  }
+
+  async function toggleListening() {
     if (!recognitionRef.current) {
       setError('Voice input is not available in this browser.');
       return;
@@ -332,6 +349,8 @@ export function AssistantPage() {
 
     setError('');
     dictationBaseRef.current = input.trim();
+    const allowed = await requestMicrophoneAccess();
+    if (!allowed) return;
     try {
       recognitionRef.current.start();
     } catch (startError) {
@@ -342,9 +361,8 @@ export function AssistantPage() {
 
   return (
     <>
-      <PageHeader title="AI Assistant" subtitle="Ask for calendar, email, task, and general productivity help." />
       <Grid container spacing={2.5}>
-        <Grid item xs={12} md={3.5} lg={3}>
+        <Grid item xs={12} md={3.3} lg={2.8} sx={{ display: { xs: 'none', md: 'block' } }}>
           <Card className="premium-panel" sx={{ height: '100%' }}>
             <CardContent>
               <Stack spacing={2}>
@@ -386,15 +404,15 @@ export function AssistantPage() {
           </Card>
         </Grid>
         <Grid item xs={12} md={8.5} lg={9}>
-          <Card className="premium-panel">
-            <CardContent>
-          <Stack spacing={2} sx={{ minHeight: { xs: 'calc(100vh - 150px)', md: 560 } }}>
+          <Card className="premium-panel" sx={{ overflow: 'hidden' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2.25 } }}>
+          <Stack spacing={1.5} sx={{ minHeight: { xs: 'calc(100vh - 108px)', md: 620 } }}>
             {error && <Alert severity="error">{error}</Alert>}
             <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.25}>
               <Stack direction="row" spacing={1.25} alignItems="center">
-                <Avatar sx={{ bgcolor: 'primary.main', boxShadow: '0 12px 26px rgba(37, 87, 214, 0.24)' }}><SmartToyIcon /></Avatar>
+                <Avatar sx={{ width: { xs: 40, sm: 46 }, height: { xs: 40, sm: 46 }, bgcolor: 'primary.main', boxShadow: '0 12px 26px rgba(37, 87, 214, 0.24)' }}><SmartToyIcon /></Avatar>
                 <Box>
-                  <Typography variant="h6">Workspace Copilot</Typography>
+                  <Typography variant="h6" sx={{ fontSize: { xs: '1.12rem', sm: '1.25rem' }, lineHeight: 1.15 }}>Workspace Copilot</Typography>
                   <Typography variant="body2" color="text.secondary">
                     {isCombined ? 'Using every connected space.' : `Using ${activeSpace?.email ?? 'selected space'}.`}
                   </Typography>
@@ -405,12 +423,12 @@ export function AssistantPage() {
                 <Chip size="small" label={isCombined ? 'Combined workspace' : activeSpace?.email ?? 'Selected space'} color={isCombined ? 'default' : 'primary'} variant={isCombined ? 'outlined' : 'filled'} />
               </Stack>
             </Stack>
-            <Box className="scroll-thin" sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, p: { xs: 1.25, sm: 2 }, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'action.hover', minHeight: { xs: 300, sm: 340 }, maxHeight: { xs: 'none', md: 620 }, overflowY: 'auto' }}>
+            <Box className="scroll-thin" sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, p: { xs: 1.15, sm: 2 }, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'action.hover', minHeight: { xs: 260, sm: 340 }, maxHeight: { xs: 'none', md: 620 }, overflowY: 'auto' }}>
               {messages.length === 0 && (
-                <Box sx={{ my: 'auto', textAlign: 'center', mx: 'auto', maxWidth: 480 }}>
+                <Box sx={{ my: 'auto', textAlign: 'center', mx: 'auto', maxWidth: 460, py: { xs: 4, sm: 7 } }}>
                   <Avatar sx={{ bgcolor: 'secondary.light', color: 'secondary.dark', mx: 'auto', mb: 1.5 }}><AutoAwesomeIcon /></Avatar>
-                  <Typography variant="h6">What should we move forward?</Typography>
-                  <Typography color="text.secondary">Try asking for unread email priorities, a meeting plan, or a task breakdown.</Typography>
+                  <Typography variant="h6" sx={{ fontSize: { xs: '1.2rem', sm: '1.35rem' }, lineHeight: 1.18 }}>What should we move forward?</Typography>
+                  <Typography color="text.secondary" sx={{ mt: 0.75, fontSize: { xs: '0.92rem', sm: '1rem' } }}>Ask for unread priorities, a meeting plan, or a task breakdown.</Typography>
                 </Box>
               )}
               {messages.map((message, index) => (
@@ -428,12 +446,28 @@ export function AssistantPage() {
                 </Box>
               )}
             </Box>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="stretch" sx={{ position: 'sticky', bottom: 0, bgcolor: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(12px)', borderTop: '1px solid', borderColor: 'divider', mx: { xs: -2, sm: 0 }, px: { xs: 2, sm: 0 }, pt: 1.25, pb: { xs: 1, sm: 0 } }}>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1.25}
+              alignItems="stretch"
+              sx={{
+                position: 'sticky',
+                bottom: 0,
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(17,26,44,0.94)' : 'rgba(255,255,255,0.94)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 2,
+                p: { xs: 1, sm: 1.1 }
+              }}
+            >
               <TextField
                 fullWidth
+                multiline
+                maxRows={4}
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder={isCombined ? 'Ask across all spaces or create a primary-calendar meeting' : `Ask inside ${activeSpace?.email ?? 'this space'}`}
+                placeholder={isCombined ? 'Ask across all spaces...' : `Ask inside ${activeSpace?.email ?? 'this space'}`}
                 onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); } }}
                 helperText={speechMessage}
               />
@@ -445,12 +479,13 @@ export function AssistantPage() {
                       onClick={toggleListening}
                       disabled={!speechSupported}
                       aria-label="Toggle voice input"
+                      sx={{ width: 48, height: 48 }}
                     >
                       <MicIcon />
                     </IconButton>
                   </span>
                 </Tooltip>
-                <Button disabled={loading} variant="contained" endIcon={<SendIcon />} onClick={send} sx={{ flex: { xs: 1, sm: 'initial' } }}>Send</Button>
+                <Button disabled={loading || !input.trim()} variant="contained" endIcon={<SendIcon />} onClick={send} sx={{ flex: { xs: 1, sm: 'initial' }, minHeight: 48 }}>Send</Button>
               </Stack>
             </Stack>
           </Stack>
