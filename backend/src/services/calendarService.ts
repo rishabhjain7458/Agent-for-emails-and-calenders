@@ -110,19 +110,8 @@ export async function createEventForConnectedAccount(tenantId: string, userId: s
   return createEventWithAuth(auth, input);
 }
 
-export async function updateEvent(userId: string, eventId: string, input: any, force = false) {
+async function updateEventWithAuth(auth: any, eventId: string, input: any) {
   const { start, end, timezone } = eventTimes(input);
-  const conflicts = (await detectConflicts(userId, start, end)).filter((event) => event.id !== eventId);
-
-  if (conflicts.length && !force) {
-    return {
-      requiresConfirmation: true,
-      conflicts,
-      suggestions: await suggestAlternativeSlots(userId, start, end)
-    };
-  }
-
-  const auth = await getAuthorizedGoogleClient(userId);
   const calendar = google.calendar({ version: 'v3', auth });
   const result = await calendar.events.patch({
     calendarId: 'primary',
@@ -136,6 +125,27 @@ export async function updateEvent(userId: string, eventId: string, input: any, f
     }
   });
   return { event: result.data };
+}
+
+export async function updateEvent(userId: string, eventId: string, input: any, force = false) {
+  const { start, end } = eventTimes(input);
+  const conflicts = (await detectConflicts(userId, start, end)).filter((event) => event.id !== eventId);
+
+  if (conflicts.length && !force) {
+    return {
+      requiresConfirmation: true,
+      conflicts,
+      suggestions: await suggestAlternativeSlots(userId, start, end)
+    };
+  }
+
+  const auth = await getAuthorizedGoogleClient(userId);
+  return updateEventWithAuth(auth, eventId, input);
+}
+
+export async function updateEventForConnectedAccount(tenantId: string, userId: string, accountId: string, eventId: string, input: any) {
+  const auth = await getAuthorizedGoogleClientForConnectedAccount(tenantId, userId, accountId);
+  return updateEventWithAuth(auth, eventId, input);
 }
 
 export async function checkFreeBusy(userId: string, start: string, end: string, attendees: string[] = []) {

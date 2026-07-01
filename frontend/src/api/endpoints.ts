@@ -61,6 +61,11 @@ export async function getEmail(id: string) {
   return data.data;
 }
 
+export async function getEmailThread(threadId: string) {
+  const { data } = await api.get<{ data: EmailMessage[] }>(`/emails/threads/${encodeURIComponent(threadId)}`);
+  return data.data;
+}
+
 export async function getEmailAttachment(id: string, attachmentId: string) {
   const response = await api.get(`/emails/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}`, { responseType: 'blob' });
   return response.data as Blob;
@@ -69,6 +74,11 @@ export async function getEmailAttachment(id: string, attachmentId: string) {
 export async function generateReply(id: string) {
   const { data } = await api.post<{ data: { draft: string; email: EmailMessage } }>(`/emails/${encodeURIComponent(id)}/ai-reply`);
   return data.data;
+}
+
+export async function summarizeEmail(id: string) {
+  const { data } = await api.post<{ data: { summary: string } }>(`/emails/${encodeURIComponent(id)}/summary`);
+  return data.data.summary;
 }
 
 export async function refineReply(id: string, payload: { draft: string; instruction: string }) {
@@ -136,6 +146,11 @@ export async function getEvents(accountId = 'all', options?: { dashboard?: boole
 
 export async function createEvent(payload: Record<string, unknown>) {
   const { data } = await api.post('/calendar/events', payload);
+  return data.data;
+}
+
+export async function updateEvent(id: string, payload: Record<string, unknown>) {
+  const { data } = await api.put(`/calendar/events/${encodeURIComponent(id)}`, payload);
   return data.data;
 }
 

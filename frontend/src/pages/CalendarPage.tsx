@@ -14,7 +14,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { PageHeader } from '../components/PageHeader';
-import { createEvent, deleteEvent, getEvents, getSettings } from '../api/endpoints';
+import { createEvent, deleteEvent, getEvents, getSettings, updateEvent as updateCalendarEvent } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
 import type { CalendarEvent } from '../types';
 
@@ -51,6 +51,16 @@ function toDateInput(value: Date) {
 
 function toTimeInput(value: Date) {
   return value.toTimeString().slice(0, 5);
+}
+
+function datePartsFromRange(start?: Date | null, end?: Date | null) {
+  if (!start) return null;
+  const fallbackEnd = end ?? new Date(start.getTime() + 30 * 60 * 1000);
+  return {
+    date: toDateInput(start),
+    startTime: toTimeInput(start),
+    endTime: toTimeInput(fallbackEnd)
+  };
 }
 
 function eventAccountKey(event: CalendarEvent) {
@@ -249,6 +259,38 @@ export function CalendarPage() {
     }
   }
 
+  async function rescheduleEvent(event: CalendarEvent, start?: Date | null, end?: Date | null, revert?: () => void) {
+    const next = datePartsFromRange(start, end);
+    if (!next) return;
+    setError('');
+    setNotice('');
+    const payload = {
+      title: eventTitle(event),
+      ...next,
+      timezone: form.timezone || 'Asia/Kolkata',
+      description: event.description ?? '',
+      attendees: [],
+      accountId: event.accountId ?? 'primary',
+      force: true
+    };
+
+    setEvents((current) => current.map((item) => item.id === event.id ? {
+      ...item,
+      start: { dateTime: start?.toISOString() },
+      end: { dateTime: end?.toISOString() }
+    } : item));
+
+    try {
+      await updateCalendarEvent(event.id, payload);
+      setNotice('Event rescheduled.');
+      await load();
+    } catch (caught: any) {
+      revert?.();
+      setEvents((current) => current.map((item) => item.id === event.id ? event : item));
+      setError(caught?.response?.data?.error?.message ?? caught?.message ?? 'Event could not be rescheduled.');
+    }
+  }
+
   function copyEventDetails() {
     if (!selectedEvent) return;
     const text = [
@@ -265,6 +307,17 @@ export function CalendarPage() {
     if (!nextView) return;
     setCalendarView(nextView);
     calendarRef.current?.getApi().changeView(nextView);
+  }
+
+  function useSuggestedSlot(slot: { start: string; end: string }) {
+    const start = new Date(slot.start);
+    const end = new Date(slot.end);
+    setForm((current) => ({
+      ...current,
+      ...datePartsFromRange(start, end)
+    }));
+    setConflict(null);
+    setNotice('Suggested time applied. Review the event details, then create it.');
   }
 
   function AgendaGroup({ title, items }: { title: string; items: typeof agendaEvents }) {
@@ -399,6 +452,9 @@ export function CalendarPage() {
                 fixedWeekCount={false}
                 nowIndicator
                 selectable
+                editable={!isMobile}
+                eventStartEditable={!isMobile}
+                eventDurationEditable={!isMobile}
                 selectMirror
                 allDaySlot
                 allDayText="All day"
@@ -418,6 +474,14 @@ export function CalendarPage() {
                 eventClick={(info) => {
                   const matchingEvent = events.find((event) => event.id === info.event.id);
                   if (matchingEvent) setSelectedEvent(matchingEvent);
+                }}
+                eventDrop={(info) => {
+                  const matchingEvent = events.find((event) => event.id === info.event.id);
+                  if (matchingEvent) rescheduleEvent(matchingEvent, info.event.start, info.event.end, info.revert);
+                }}
+                eventResize={(info) => {
+                  const matchingEvent = events.find((event) => event.id === info.event.id);
+                  if (matchingEvent) rescheduleEvent(matchingEvent, info.event.start, info.event.end, info.revert);
                 }}
                 eventContent={(info) => (
                   isMobileMonthView ? (
@@ -558,9 +622,13 @@ export function CalendarPage() {
         <DialogTitle>Calendar conflict detected</DialogTitle>
         <DialogContent>
           <Typography sx={{ mb: 2 }}>This event overlaps existing calendar events.</Typography>
-          {conflict?.suggestions?.map((slot: any) => (
-            <Typography key={slot.start} color="text.secondary">{slot.start} to {slot.end}</Typography>
-          ))}
+          <Stack spacing={1}>
+            {conflict?.suggestions?.map((slot: any) => (
+              <Button key={slot.start} variant="outlined" onClick={() => useSuggestedSlot(slot)}>
+                {new Date(slot.start).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} to {new Date(slot.end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              </Button>
+            ))}
+          </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConflict(null)}>Cancel</Button>

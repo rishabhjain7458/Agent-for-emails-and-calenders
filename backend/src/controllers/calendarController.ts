@@ -9,7 +9,8 @@ import {
   listEventsForConnectedAccount,
   detectConflicts,
   suggestAlternativeSlots,
-  updateEvent
+  updateEvent,
+  updateEventForConnectedAccount
 } from '../services/calendarService.js';
 import {
   createMicrosoftEvent,
@@ -18,7 +19,8 @@ import {
   deleteMicrosoftEventForConnectedAccount,
   listMicrosoftEvents,
   listMicrosoftEventsForConnectedAccount,
-  updateMicrosoftEvent
+  updateMicrosoftEvent,
+  updateMicrosoftEventForConnectedAccount
 } from '../services/microsoftCalendarService.js';
 import { listAccountContexts, resolveAccountContext } from '../services/accountContextService.js';
 import { HttpError, send } from '../utils/http.js';
@@ -46,6 +48,19 @@ async function deleteCalendarEventForAccount(user: NonNullable<Express.Request['
   }
   if (account.isPrimary) await deleteEvent(user.id, eventId);
   else await deleteEventForConnectedAccount(user.tenantId, user.id, account.accountId, eventId);
+}
+
+async function updateCalendarEventForAccount(user: NonNullable<Express.Request['user']>, accountId: string, eventId: string, input: any) {
+  const account = await resolveAccountContext(user, accountId);
+  if (account.provider === 'zoho' || account.provider === 'imap') throw new HttpError(400, 'Mail-only spaces do not support calendar events yet.');
+  if (account.provider === 'microsoft') {
+    return account.isPrimary
+      ? updateMicrosoftEvent(user.id, eventId, input)
+      : updateMicrosoftEventForConnectedAccount(user.tenantId, user.id, account.accountId, eventId, input);
+  }
+  return account.isPrimary
+    ? updateEvent(user.id, eventId, input, Boolean(input.force))
+    : updateEventForConnectedAccount(user.tenantId, user.id, account.accountId, eventId, input);
 }
 
 export async function events(req: Request, res: Response, next: NextFunction) {
@@ -122,12 +137,11 @@ export async function remove(req: Request, res: Response, next: NextFunction) {
 
 export async function update(req: Request, res: Response, next: NextFunction) {
   try {
-    if (req.user!.provider === 'zoho') throw new HttpError(400, 'Zoho Mail spaces do not support calendar events yet.');
-    if (req.user!.provider === 'microsoft') {
-      send(res, await updateMicrosoftEvent(req.user!.id, req.params.id, req.body));
-      return;
-    }
-    send(res, await updateEvent(req.user!.id, req.params.id, req.body, Boolean(req.body.force)));
+    const requestedAccountId = req.body.accountId ? String(req.body.accountId) : '';
+    const connectedId = splitConnectedEventId(req.params.id);
+    const accountId = requestedAccountId || connectedId?.accountId || 'primary';
+    const eventId = connectedId?.accountId === accountId ? connectedId.eventId : req.params.id;
+    send(res, await updateCalendarEventForAccount(req.user!, accountId, eventId, req.body));
   } catch (error) {
     next(error);
   }

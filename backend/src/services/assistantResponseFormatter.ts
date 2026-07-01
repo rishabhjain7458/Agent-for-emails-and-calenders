@@ -24,6 +24,7 @@ export function formatCreatedMeeting(params: any, result: any) {
     '',
     `Title: ${params.title}`,
     `When: ${formatMeetingTime(params)}`,
+    Array.isArray(params.attendees) && params.attendees.length ? `Attendees: ${params.attendees.join(', ')}` : '',
     params.description ? `Notes: ${params.description}` : '',
     link ? `Calendar link: ${link}` : ''
   ].filter(Boolean).join('\n');

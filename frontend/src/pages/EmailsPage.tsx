@@ -11,10 +11,12 @@ import DraftsIcon from '@mui/icons-material/Drafts';
 import MarkEmailUnreadIcon from '@mui/icons-material/MarkEmailUnread';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
+import SnoozeIcon from '@mui/icons-material/Snooze';
 import { PageHeader } from '../components/PageHeader';
 import { EmptyState } from '../components/EmptyState';
 import { WindowedList } from '../components/WindowedList';
-import { archiveEmail, createEvent, createMeetingDraftFromEmail, deleteEmail, getEmails, setEmailUnreadState } from '../api/endpoints';
+import { archiveEmail, createEvent, createMeetingDraftFromEmail, createTask, deleteEmail, getEmails, setEmailUnreadState } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
 import type { EmailMessage } from '../types';
 
@@ -48,6 +50,19 @@ const queryOperators = [
 
 function actionErrorMessage(err: any, fallback: string) {
   return err?.response?.data?.error?.message ?? err?.response?.data?.message ?? err?.message ?? fallback;
+}
+
+function emailPriorityScore(email: EmailMessage) {
+  const haystack = `${email.sender} ${email.subject} ${email.snippet}`.toLowerCase();
+  let score = email.unread ? 35 : 15;
+  if (/\b(security|verify|alert|urgent|invoice|payment|bank|meeting|calendar|contract|approval|deadline)\b/.test(haystack)) score += 35;
+  if (email.attachments?.length) score += 10;
+  if (!/no-?reply|newsletter|promo|marketing|updates/i.test(haystack)) score += 15;
+  return Math.min(score, 100);
+}
+
+function followUpStorageKey(emailId: string) {
+  return `o-connect-email-follow-up:${emailId}`;
 }
 
 export function EmailsPage() {
@@ -233,6 +248,30 @@ export function EmailsPage() {
     } finally {
       setBusyEmailId('');
     }
+  }
+
+  async function handleCreateTaskFromEmail(email: EmailMessage) {
+    setActionError('');
+    setActionNotice('');
+    setBusyEmailId(email.id);
+    try {
+      await createTask({
+        title: `Follow up: ${email.subject}`,
+        accountId: email.accountId ?? 'primary'
+      });
+      setActionNotice('Task created from email.');
+    } catch (err: any) {
+      setActionError(actionErrorMessage(err, 'Could not create a task from that email.'));
+    } finally {
+      setBusyEmailId('');
+    }
+  }
+
+  function handleSnoozeEmail(email: EmailMessage, days: number) {
+    const due = new Date();
+    due.setDate(due.getDate() + days);
+    localStorage.setItem(followUpStorageKey(email.id), due.toISOString().slice(0, 10));
+    setActionNotice(`Follow-up reminder saved for ${due.toLocaleDateString([], { dateStyle: 'medium' })}.`);
   }
 
   async function confirmMeetingCreate() {
@@ -500,6 +539,15 @@ export function EmailsPage() {
                             sx={{ maxWidth: { xs: 190, sm: 260 }, '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' } }}
                           />
                         )}
+                        <Chip
+                          size="small"
+                          label={`AI ${emailPriorityScore(email)}`}
+                          color={emailPriorityScore(email) >= 70 ? 'warning' : emailPriorityScore(email) >= 45 ? 'primary' : 'default'}
+                          variant={emailPriorityScore(email) >= 70 ? 'filled' : 'outlined'}
+                        />
+                        {localStorage.getItem(followUpStorageKey(email.id)) && (
+                          <Chip size="small" label={`Follow ${localStorage.getItem(followUpStorageKey(email.id))}`} color="secondary" variant="outlined" />
+                        )}
                         <Typography
                           variant="subtitle1"
                           sx={{
@@ -518,6 +566,7 @@ export function EmailsPage() {
                         </Typography>
                       </Stack>
                       <Typography color="text.secondary" variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.sender}</Typography>
+                      {query.startsWith('in:sent') && <Chip size="small" label="Waiting for reply" color="secondary" variant="outlined" sx={{ mt: 0.75 }} />}
                       <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, display: '-webkit-box', WebkitLineClamp: { xs: 3, sm: 2 }, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{email.snippet}</Typography>
                     </Box>
                   <Stack spacing={0.75} alignItems={{ xs: 'stretch', md: 'flex-end' }} sx={{ flex: '0 0 auto', minWidth: { xs: '100%', md: 216 } }}>
@@ -553,6 +602,28 @@ export function EmailsPage() {
                             handleCreateMeetingDraft(email);
                           }}>
                             AI meeting
+                          </Button>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Create a follow-up task">
+                        <span>
+                          <Button size="small" variant="outlined" startIcon={<TaskAltIcon />} disabled={busyEmailId === email.id} onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            handleCreateTaskFromEmail(email);
+                          }}>
+                            Task
+                          </Button>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Save a local follow-up reminder">
+                        <span>
+                          <Button size="small" variant="outlined" startIcon={<SnoozeIcon />} disabled={busyEmailId === email.id} onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            handleSnoozeEmail(email, 1);
+                          }}>
+                            Snooze
                           </Button>
                         </span>
                       </Tooltip>

@@ -138,6 +138,7 @@ function AssistantStructuredCard({ cleaned }: { cleaned: string }) {
     ? [
       ['Title', labelValue(lines, 'Title')],
       ['When', labelValue(lines, 'When') ?? labelValue(lines, 'Starts')],
+      ['Attendees', labelValue(lines, 'Attendees')],
       ['Due', labelValue(lines, 'Due')],
       ['Status', labelValue(lines, 'Status')],
       ['Notes', labelValue(lines, 'Notes')]
@@ -205,6 +206,26 @@ function AssistantStructuredCard({ cleaned }: { cleaned: string }) {
             <Button size="small" variant="contained" href={actionHref} endIcon={<OpenInNewIcon />}>
               Open {isMeeting || isAgenda ? 'calendar' : isEmail ? 'emails' : 'tasks'}
             </Button>
+            {(isMeeting || isAgenda) && (
+              <Button size="small" variant="outlined" href="/calendar">
+                Add to calendar
+              </Button>
+            )}
+            {isEmail && (
+              <>
+                <Button size="small" variant="outlined" href="/emails?query=in%3Ainbox%20is%3Aunread">
+                  Draft reply
+                </Button>
+                <Button size="small" variant="outlined" href="/tasks">
+                  Create task
+                </Button>
+              </>
+            )}
+            {isTask && (
+              <Button size="small" variant="outlined" href="/assistant?prompt=Create%20a%20task%20from%20this%20context">
+                Create task
+              </Button>
+            )}
             {isMeeting && calendarLink && (
               <Button size="small" variant="outlined" href={calendarLink} target="_blank">
                 Google event
@@ -286,6 +307,7 @@ export function AssistantPage() {
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [speechMessage, setSpeechMessage] = useState('');
+  const [visibleHistoryCount, setVisibleHistoryCount] = useState(6);
   const recognitionRef = useRef<any>(null);
   const nativeSpeechListenersRef = useRef<PluginListenerHandle[]>([]);
   const dictationBaseRef = useRef('');
@@ -296,7 +318,7 @@ export function AssistantPage() {
     setHistoryLoading(true);
     try {
       const history = await getAssistantConversations();
-      setConversations(history.slice(0, 10));
+      setConversations(history);
     } finally {
       setHistoryLoading(false);
     }
@@ -548,6 +570,7 @@ export function AssistantPage() {
     'What meetings are coming up?',
     'Create a task to follow up tomorrow'
   ];
+  const visibleConversations = conversations.slice(0, visibleHistoryCount);
 
   return (
     <>
@@ -559,10 +582,10 @@ export function AssistantPage() {
                 <Button variant="contained" startIcon={<AddIcon />} onClick={startNewChat}>New Chat</Button>
                 <Box>
                   <Typography variant="h6">History</Typography>
-                  <Typography variant="body2" color="text.secondary">{historyLoading ? 'Loading chats...' : `Latest ${conversations.length} chats`}</Typography>
+                  <Typography variant="body2" color="text.secondary">{historyLoading ? 'Loading chats...' : `${conversations.length} saved chats`}</Typography>
                 </Box>
                 <Stack className="scroll-thin" divider={<Divider flexItem />} spacing={0} sx={{ maxHeight: { md: 560 }, overflowY: 'auto', pr: 0.5 }}>
-                  {conversations.map((conversation) => (
+                  {visibleConversations.map((conversation) => (
                     <Box
                       key={conversation.id}
                       role="button"
@@ -587,6 +610,11 @@ export function AssistantPage() {
                   ))}
                   {!historyLoading && conversations.length === 0 && (
                     <Alert severity="info">Your saved chats will appear here.</Alert>
+                  )}
+                  {visibleHistoryCount < conversations.length && (
+                    <Button size="small" variant="outlined" onClick={() => setVisibleHistoryCount((count) => count + 6)} sx={{ mt: 1 }}>
+                      Load older chats
+                    </Button>
                   )}
                 </Stack>
               </Stack>

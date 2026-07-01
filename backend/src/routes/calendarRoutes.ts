@@ -26,7 +26,8 @@ calendarRoutes.put('/events/:id', invalidateResponseCache, validateBody(Joi.obje
   timezone: Joi.string().required(),
   description: Joi.string().allow('').optional(),
   attendees: Joi.array().items(Joi.string().email()).default([]),
-  force: Joi.boolean().default(false)
+  force: Joi.boolean().default(false),
+  accountId: Joi.string().default('primary')
 })), update);
 calendarRoutes.delete('/events/:id', invalidateResponseCache, remove);
 calendarRoutes.post('/availability', validateBody(Joi.object({

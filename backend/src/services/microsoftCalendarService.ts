@@ -92,8 +92,7 @@ export async function deleteMicrosoftEventForConnectedAccount(tenantId: string, 
   await deleteMicrosoftEventWithToken(token, eventId);
 }
 
-export async function updateMicrosoftEvent(userId: string, eventId: string, input: any) {
-  const token = await getMicrosoftAccessToken(userId);
+async function updateMicrosoftEventWithToken(token: string, eventId: string, input: any) {
   const { start, end, timezone } = eventTimes(input);
   const { data } = await axios.patch(`${graph}/me/events/${eventId}`, {
     subject: input.title,
@@ -104,4 +103,14 @@ export async function updateMicrosoftEvent(userId: string, eventId: string, inpu
     headers: { Authorization: `Bearer ${token}` }
   });
   return data;
+}
+
+export async function updateMicrosoftEvent(userId: string, eventId: string, input: any) {
+  const token = await getMicrosoftAccessToken(userId);
+  return updateMicrosoftEventWithToken(token, eventId, input);
+}
+
+export async function updateMicrosoftEventForConnectedAccount(tenantId: string, userId: string, accountId: string, eventId: string, input: any) {
+  const token = await getMicrosoftAccessTokenForConnectedAccount(tenantId, userId, accountId);
+  return updateMicrosoftEventWithToken(token, eventId, input);
 }

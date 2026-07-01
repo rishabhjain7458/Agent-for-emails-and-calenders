@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type DragEvent, type ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, Grid, LinearProgress, Stack, Tooltip, Typography } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import MailIcon from '@mui/icons-material/Mail';
 import EventIcon from '@mui/icons-material/Event';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -311,6 +313,8 @@ function DragHandle() {
 }
 
 export function DashboardPage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { activeSpaceId, setActiveSpaceId, isCombined, spaces } = useSpace();
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [recentEmails, setRecentEmails] = useState<EmailMessage[]>([]);
@@ -577,12 +581,14 @@ export function DashboardPage() {
                   <Box
                     key={group.key}
                     onDragOver={(event) => {
+                      if (isMobile) return;
                       if (draggedSectionKey) {
                         event.preventDefault();
                         event.dataTransfer.dropEffect = 'move';
                       }
                     }}
                     onDrop={(event) => {
+                      if (isMobile) return;
                       event.preventDefault();
                       const dragKey = (event.dataTransfer.getData('text/section') || draggedSectionKey) as CardSectionKey | null;
                       if (dragKey) reorderCardSection(dragKey, group.key);
@@ -604,8 +610,9 @@ export function DashboardPage() {
                       <Box sx={{ alignItems: 'center', display: 'flex', gap: 0.8, minWidth: 0 }}>
                         <Tooltip title="Drag section to reorder">
                           <Box
-                            draggable
+                            draggable={!isMobile}
                             onDragStart={(event) => {
+                              if (isMobile) return;
                               setDraggedSectionKey(group.key);
                               event.dataTransfer.effectAllowed = 'move';
                               event.dataTransfer.setData('text/section', group.key);
@@ -638,8 +645,9 @@ export function DashboardPage() {
                 {group.cards.map((card, index) => {
                   const scopeIds = group.cards.map((item) => item.id);
                   const dragProps = {
-                    draggable: true,
+                    draggable: !isMobile,
                     onDragStart: (event: DragEvent<HTMLDivElement>) => {
+                      if (isMobile) return;
                       event.stopPropagation();
                       setDraggedCardId(card.id);
                       event.dataTransfer.effectAllowed = 'move';
@@ -647,6 +655,7 @@ export function DashboardPage() {
                     },
                     onDragEnd: () => setDraggedCardId(null),
                     onDragOver: (event: DragEvent<HTMLDivElement>) => {
+                      if (isMobile) return;
                       if (draggedCardId && scopeIds.includes(draggedCardId)) {
                         event.stopPropagation();
                         event.preventDefault();
@@ -654,6 +663,7 @@ export function DashboardPage() {
                       }
                     },
                     onDrop: (event: DragEvent<HTMLDivElement>) => {
+                      if (isMobile) return;
                       event.stopPropagation();
                       event.preventDefault();
                       const dragId = event.dataTransfer.getData('text/plain') || draggedCardId;

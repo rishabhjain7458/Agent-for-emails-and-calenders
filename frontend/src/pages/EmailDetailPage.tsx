@@ -15,8 +15,11 @@ import ImageIcon from '@mui/icons-material/Image';
 import LinkIcon from '@mui/icons-material/Link';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import SnoozeIcon from '@mui/icons-material/Snooze';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
+import TimelineIcon from '@mui/icons-material/Timeline';
 import { PageHeader } from '../components/PageHeader';
-import { archiveEmail, deleteEmail, generateReply, getEmail, getEmailAttachment, refineReply, saveDraft, sendReply } from '../api/endpoints';
+import { archiveEmail, createTask, deleteEmail, generateReply, getEmail, getEmailAttachment, getEmailThread, refineReply, saveDraft, sendReply, summarizeEmail } from '../api/endpoints';
 import type { EmailMessage } from '../types';
 
 type ReplyRefinementMessage = {
@@ -179,6 +182,19 @@ function canPreviewAttachment(mimeType?: string) {
   return Boolean(mimeType?.startsWith('image/') || mimeType?.includes('pdf') || mimeType?.startsWith('text/'));
 }
 
+function emailPriorityScore(email: EmailMessage) {
+  const haystack = `${email.sender} ${email.subject} ${email.snippet}`.toLowerCase();
+  let score = email.unread ? 35 : 15;
+  if (/\b(security|verify|alert|urgent|invoice|payment|bank|meeting|calendar|contract|approval|deadline)\b/.test(haystack)) score += 35;
+  if (/@(gmail|outlook|company|edu)\b/.test(haystack) || !/no-?reply|newsletter|promo|marketing|updates/i.test(haystack)) score += 15;
+  if (email.attachments?.length) score += 10;
+  return Math.min(score, 100);
+}
+
+function followUpStorageKey(emailId: string) {
+  return `o-connect-email-follow-up:${emailId}`;
+}
+
 function EmailBody({ body }: { body?: string }) {
   const cleaned = cleanEmailBody(body);
   const blocks = cleaned.split(/\n{2,}/).filter(Boolean);
@@ -278,9 +294,19 @@ export function EmailDetailPage() {
   const [refineInstruction, setRefineInstruction] = useState('');
   const [refineMessages, setRefineMessages] = useState<ReplyRefinementMessage[]>([]);
   const [refining, setRefining] = useState(false);
+  const [threadMessages, setThreadMessages] = useState<EmailMessage[]>([]);
+  const [aiSummary, setAiSummary] = useState('');
+  const [followUpAt, setFollowUpAt] = useState('');
 
   useEffect(() => {
-    if (id) getEmail(id).then(setEmail);
+    if (!id) return;
+    getEmail(id).then((message) => {
+      setEmail(message);
+      setFollowUpAt(localStorage.getItem(followUpStorageKey(message.id)) ?? '');
+      getEmailThread(`${message.accountId ? `${message.accountId}:` : ''}${message.threadId}`)
+        .then(setThreadMessages)
+        .catch(() => setThreadMessages([message]));
+    });
   }, [id]);
 
   async function createDraft() {
@@ -365,9 +391,51 @@ export function EmailDetailPage() {
     window.setTimeout(() => URL.revokeObjectURL(url), 30000);
   }
 
+  async function createFollowUpTask() {
+    if (!email) return;
+    setActionBusy('task');
+    setError('');
+    try {
+      await createTask({
+        title: `Follow up: ${email.subject}`,
+        dueDate: followUpAt || undefined,
+        accountId: email.accountId ?? 'primary'
+      });
+      setNotice('Follow-up task created.');
+    } catch (err: any) {
+      setError(actionErrorMessage(err, 'Could not create a follow-up task.'));
+    } finally {
+      setActionBusy('');
+    }
+  }
+
+  function saveFollowUpReminder(days = 1) {
+    if (!email) return;
+    const due = new Date();
+    due.setDate(due.getDate() + days);
+    const value = due.toISOString().slice(0, 10);
+    setFollowUpAt(value);
+    localStorage.setItem(followUpStorageKey(email.id), value);
+    setNotice(`Follow-up reminder saved for ${due.toLocaleDateString([], { dateStyle: 'medium' })}.`);
+  }
+
+  async function loadAiSummary() {
+    if (!email) return;
+    setActionBusy('summary');
+    setError('');
+    try {
+      setAiSummary(await summarizeEmail(email.id));
+    } catch (err: any) {
+      setError(actionErrorMessage(err, 'Could not summarize this email.'));
+    } finally {
+      setActionBusy('');
+    }
+  }
+
   if (!email) return <PageHeader title="Email" subtitle="Loading message..." />;
   const links = extractLinks(`${email.body ?? ''}\n${email.originalBody ?? ''}`);
   const hasOriginalHtml = /<\/?[a-z][\s\S]*>/i.test(email.originalBody ?? email.body ?? '');
+  const priorityScore = emailPriorityScore(email);
 
   return (
     <>
@@ -385,9 +453,33 @@ export function EmailDetailPage() {
                 </Box>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                   {email.unread && <Chip size="small" label="Unread" color="primary" />}
+                  <Chip size="small" label={`AI priority ${priorityScore}`} color={priorityScore >= 70 ? 'warning' : priorityScore >= 45 ? 'primary' : 'default'} variant={priorityScore >= 70 ? 'filled' : 'outlined'} />
+                  {followUpAt && <Chip size="small" label={`Follow up ${followUpAt}`} color="secondary" variant="outlined" />}
                   {email.accountEmail && <Chip size="small" label={email.accountEmail} variant="outlined" />}
                 </Stack>
               </Stack>
+              <Grid container spacing={1.25}>
+                <Grid item xs={12} md={4}>
+                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, bgcolor: 'action.hover' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 900 }}>Priority</Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 950 }}>{priorityScore}/100</Typography>
+                    <Typography variant="body2" color="text.secondary">Unread state, sender, keywords, and attachments.</Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} md={8}>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Button size="small" variant="outlined" startIcon={<AutoAwesomeIcon />} disabled={actionBusy === 'summary'} onClick={loadAiSummary}>
+                      {actionBusy === 'summary' ? 'Summarizing...' : 'AI summary'}
+                    </Button>
+                    <Button size="small" variant="outlined" startIcon={<SnoozeIcon />} onClick={() => saveFollowUpReminder(1)}>Snooze 1 day</Button>
+                    <Button size="small" variant="outlined" startIcon={<SnoozeIcon />} onClick={() => saveFollowUpReminder(3)}>Snooze 3 days</Button>
+                    <Button size="small" variant="contained" startIcon={<TaskAltIcon />} disabled={actionBusy === 'task'} onClick={createFollowUpTask}>
+                      {actionBusy === 'task' ? 'Creating...' : 'Turn into task'}
+                    </Button>
+                  </Stack>
+                </Grid>
+              </Grid>
+              {aiSummary && <Alert severity="info">{aiSummary}</Alert>}
               <Stack direction="row" spacing={1.25} alignItems="center" sx={{ borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}>
                 <Box sx={{ bgcolor: 'primary.main', borderRadius: '50%', color: '#fff', display: 'grid', flex: '0 0 auto', fontWeight: 850, height: 38, placeItems: 'center', width: 38 }}>
                   {(email.sender || 'M').trim()[0]?.toUpperCase()}
@@ -398,6 +490,27 @@ export function EmailDetailPage() {
                 </Box>
               </Stack>
               <RichEmailBody html={email.originalBody} text={email.body} />
+              <Box>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                  <TimelineIcon color="primary" />
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 900 }}>Thread timeline</Typography>
+                  <Chip size="small" label={`${threadMessages.length || 1} message${(threadMessages.length || 1) === 1 ? '' : 's'}`} />
+                </Stack>
+                <Stack spacing={1}>
+                  {(threadMessages.length ? threadMessages : [email]).map((message) => (
+                    <Box key={message.id} sx={{ border: '1px solid', borderColor: message.id === email.id ? 'primary.main' : 'divider', borderRadius: 2, bgcolor: message.id === email.id ? 'action.selected' : 'background.paper', p: 1.25 }}>
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} justifyContent="space-between">
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography sx={{ fontWeight: 900, overflowWrap: 'anywhere' }}>{message.subject}</Typography>
+                          <Typography variant="body2" color="text.secondary">{message.sender}</Typography>
+                        </Box>
+                        <Typography variant="caption" color="text.secondary">{message.date}</Typography>
+                      </Stack>
+                      {message.snippet && <Typography variant="body2" sx={{ mt: 0.75 }} color="text.secondary">{message.snippet}</Typography>}
+                    </Box>
+                  ))}
+                </Stack>
+              </Box>
               {!!email.attachments?.length && (
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Attachments</Typography>

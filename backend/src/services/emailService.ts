@@ -151,15 +151,16 @@ export async function getEmailAttachmentForConnectedAccount(tenantId: string, us
   return getAttachmentWithAuth(auth, messageId, attachmentId);
 }
 
-export async function getThread(userId: string, threadId: string): Promise<EmailMessage[]> {
-  const auth = await getAuthorizedGoogleClient(userId);
+async function getThreadWithAuth(auth: any, threadId: string, meta: Partial<EmailMessage> = {}): Promise<EmailMessage[]> {
   const gmail = google.gmail({ version: 'v1', auth });
   const thread = await gmail.users.threads.get({ userId: 'me', id: threadId, format: 'full' });
   return (thread.data.messages ?? []).map((message) => {
     const headers = message.payload?.headers ?? [];
     return {
-      id: message.id!,
+      id: meta.accountId ? `${meta.accountId}:${message.id!}` : message.id!,
       threadId: message.threadId!,
+      provider: 'google',
+      ...meta,
       subject: header(headers, 'Subject') || '(No subject)',
       sender: header(headers, 'From'),
       date: header(headers, 'Date'),
@@ -169,6 +170,16 @@ export async function getThread(userId: string, threadId: string): Promise<Email
       attachments: attachmentsFromPayload(message.payload)
     };
   });
+}
+
+export async function getThread(userId: string, threadId: string): Promise<EmailMessage[]> {
+  const auth = await getAuthorizedGoogleClient(userId);
+  return getThreadWithAuth(auth, threadId, { provider: 'google' });
+}
+
+export async function getThreadForConnectedAccount(tenantId: string, userId: string, accountId: string, accountEmail: string, threadId: string): Promise<EmailMessage[]> {
+  const auth = await getAuthorizedGoogleClientForConnectedAccount(tenantId, userId, accountId);
+  return getThreadWithAuth(auth, threadId, { accountId, accountEmail, provider: 'google' });
 }
 
 export async function archiveEmail(userId: string, messageId: string) {

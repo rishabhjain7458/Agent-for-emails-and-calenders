@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { archiveEmail, archiveEmailForConnectedAccount, deleteEmail, deleteEmailForConnectedAccount, getEmail, getEmailAttachment, getEmailAttachmentForConnectedAccount, getEmailForConnectedAccount, getThread, listEmails, listEmailsForConnectedAccount, sendReply, sendReplyForConnectedAccount, setEmailUnread, setEmailUnreadForConnectedAccount } from '../services/emailService.js';
+import { archiveEmail, archiveEmailForConnectedAccount, deleteEmail, deleteEmailForConnectedAccount, getEmail, getEmailAttachment, getEmailAttachmentForConnectedAccount, getEmailForConnectedAccount, getThread, getThreadForConnectedAccount, listEmails, listEmailsForConnectedAccount, sendReply, sendReplyForConnectedAccount, setEmailUnread, setEmailUnreadForConnectedAccount } from '../services/emailService.js';
 import { archiveMicrosoftEmail, archiveMicrosoftEmailForConnectedAccount, deleteMicrosoftEmail, deleteMicrosoftEmailForConnectedAccount, getMicrosoftAttachment, getMicrosoftAttachmentForConnectedAccount, getMicrosoftEmail, getMicrosoftEmailForConnectedAccount, listMicrosoftEmails, listMicrosoftEmailsForConnectedAccount, sendMicrosoftReply, setMicrosoftEmailUnread, setMicrosoftEmailUnreadForConnectedAccount } from '../services/microsoftEmailService.js';
 import { archiveZohoEmail, archiveZohoEmailForConnectedAccount, deleteZohoEmail, deleteZohoEmailForConnectedAccount, getZohoAttachment, getZohoAttachmentForConnectedAccount, getZohoEmail, getZohoEmailForConnectedAccount, listZohoEmails, listZohoEmailsForConnectedAccount, sendZohoReply, sendZohoReplyForConnectedAccount, setZohoEmailUnread, setZohoEmailUnreadForConnectedAccount } from '../services/zohoEmailService.js';
 import { archiveImapEmailForConnectedAccount, deleteImapEmailForConnectedAccount, getImapAttachmentForConnectedAccount, getImapEmailForConnectedAccount, listImapEmailsForConnectedAccount, sendImapReplyForConnectedAccount, setImapEmailUnreadForConnectedAccount } from '../services/imapEmailService.js';
@@ -311,6 +311,16 @@ export async function aiMeetingDraft(req: Request, res: Response, next: NextFunc
 
 export async function thread(req: Request, res: Response, next: NextFunction) {
   try {
+    const connectedId = splitConnectedMessageId(req.params.threadId);
+    if (connectedId) {
+      const account = await getConnectedAccount(req.user!.tenantId, req.user!.id, connectedId.accountId);
+      if (account?.provider === 'google') {
+        send(res, await getThreadForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, account.email, connectedId.messageId));
+        return;
+      }
+      send(res, [await getEmailForRequest(req, req.params.threadId)]);
+      return;
+    }
     if (req.user!.provider === 'microsoft') {
       send(res, [await getMicrosoftEmail(req.user!.id, req.params.threadId)]);
       return;
