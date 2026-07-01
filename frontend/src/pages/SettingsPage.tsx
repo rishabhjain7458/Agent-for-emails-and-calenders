@@ -26,6 +26,19 @@ type ZohoSmtpPreset = 'india' | 'global' | 'europe' | 'custom';
 
 const socialPlatforms = Object.entries(socialPlatformLabels) as [SocialPlatform, string][];
 
+const timezoneOptions = [
+  { label: 'India (IST)', value: 'Asia/Kolkata' },
+  { label: 'United States - Eastern', value: 'America/New_York' },
+  { label: 'United States - Pacific', value: 'America/Los_Angeles' },
+  { label: 'United Kingdom', value: 'Europe/London' },
+  { label: 'United Arab Emirates', value: 'Asia/Dubai' },
+  { label: 'Singapore', value: 'Asia/Singapore' },
+  { label: 'Australia - Sydney', value: 'Australia/Sydney' },
+  { label: 'Canada - Toronto', value: 'America/Toronto' },
+  { label: 'Germany', value: 'Europe/Berlin' },
+  { label: 'Japan', value: 'Asia/Tokyo' }
+];
+
 function socialCardStyle(platform?: string | null) {
   if (platform === 'instagram') return { bg: 'rgba(192, 38, 211, 0.14)', fg: '#c026d3' };
   if (platform === 'facebook') return { bg: 'rgba(37, 99, 235, 0.14)', fg: '#2563eb' };
@@ -128,7 +141,7 @@ function CompactRow({ icon, title, subtitle, action }: { icon: ReactNode; title:
 export function SettingsPage() {
   const { refreshSpaces } = useSpace();
   const [geminiApiKey, setGeminiApiKey] = useState('');
-  const [timezone, setTimezone] = useState('UTC');
+  const [timezone, setTimezone] = useState('Asia/Kolkata');
   const [ignorePromotions, setIgnorePromotions] = useState(true);
   const [notice, setNotice] = useState('');
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
@@ -148,7 +161,7 @@ export function SettingsPage() {
   useEffect(() => {
     getSettings().then((settings) => {
       setGeminiApiKey(settings.gemini_api_key ?? '');
-      setTimezone(settings.timezone ?? 'UTC');
+      setTimezone(settings.timezone && settings.timezone !== 'UTC' ? settings.timezone : 'Asia/Kolkata');
       setIgnorePromotions(settings.email_preferences?.ignorePromotions ?? true);
     });
     getConnectedAccounts().then(setAccounts);
@@ -285,7 +298,11 @@ export function SettingsPage() {
           >
             <Stack spacing={1.25}>
               <TextField size="small" label="Gemini API Key" type="password" value={geminiApiKey} onChange={(event) => setGeminiApiKey(event.target.value)} />
-              <TextField size="small" label="Timezone" value={timezone} onChange={(event) => setTimezone(event.target.value)} />
+              <TextField size="small" select label="Workspace timezone" value={timezone} onChange={(event) => setTimezone(event.target.value)} helperText="Used by Assistant, Calendar creation, and relative dates.">
+                {timezoneOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+                ))}
+              </TextField>
               <Box sx={{ bgcolor: 'action.hover', borderRadius: 2, px: 1.25, py: 0.5 }}>
                 <FormControlLabel control={<Switch checked={ignorePromotions} onChange={(event) => setIgnorePromotions(event.target.checked)} size="small" />} label="Ignore promotions in AI summaries" />
               </Box>

@@ -14,7 +14,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { PageHeader } from '../components/PageHeader';
-import { createEvent, deleteEvent, getEvents } from '../api/endpoints';
+import { createEvent, deleteEvent, getEvents, getSettings } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
 import type { CalendarEvent } from '../types';
 
@@ -106,6 +106,10 @@ export function CalendarPage() {
 
   useEffect(() => {
     load();
+    getSettings().then((settings) => {
+      const nextTimezone = settings.timezone && settings.timezone !== 'UTC' ? settings.timezone : 'Asia/Kolkata';
+      setForm((current) => ({ ...current, timezone: nextTimezone }));
+    }).catch(() => undefined);
   }, []);
 
   useEffect(() => {

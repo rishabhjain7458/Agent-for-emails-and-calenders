@@ -92,7 +92,10 @@ export async function extractAssistantParameters(tenantId: string, userId: strin
       'Return only valid JSON. Do not include markdown.',
       'For calendar_create return: {"title":"","date":"YYYY-MM-DD","startTime":"HH:mm","endTime":"HH:mm","timezone":"","description":"","attendees":[],"missing":[]}.',
       'Use 24-hour HH:mm time. If a person is named without an email address, include the name in title/description but do not put it in attendees.',
-      'If required calendar fields are missing or ambiguous, list them in missing. Required calendar fields are title, date, startTime, endTime.',
+      'Never mark timezone as missing; use the provided user timezone when the user does not specify one.',
+      'If the user gives only a start time for a meeting, set endTime to 30 minutes after startTime instead of asking a clarification.',
+      'If the user says "with NAME", make the title "Meeting with NAME" unless a better subject is explicitly provided.',
+      'If required calendar fields are missing or ambiguous after those defaults, list them in missing. Required calendar fields are date and startTime.',
       'For task_create return: {"title":"","dueDate":null,"missing":[]}.',
       'For email_search and email_summary return an inbox-scoped query by default: {"query":"in:inbox","missing":[]}. Only use in:sent if the user explicitly asks for sent emails.',
       'For general_question return: {"missing":[]}.'
