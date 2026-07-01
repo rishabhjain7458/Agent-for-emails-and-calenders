@@ -542,9 +542,35 @@ button {
 }
 
 @media (max-width: 600px) {
+  body::before,
+  body::after {
+    background-image: none;
+    opacity: 0.18;
+  }
+
+  .assistant-chat-window {
+    background-image: none;
+  }
+
   .premium-panel,
   .MuiCard-root {
     animation-duration: 280ms;
+  }
+
+  .premium-panel {
+    backdrop-filter: none;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
+  }
+
+  .MuiAppBar-root,
+  .MuiBottomNavigation-root,
+  .MuiAlert-root {
+    backdrop-filter: none !important;
+  }
+
+  .MuiCard-root,
+  .MuiPaper-root {
+    box-shadow: none !important;
   }
 
   .MuiCard-root:hover {
@@ -560,6 +586,12 @@ button {
   .MuiListItemButton-root:hover,
   .MuiChip-root:hover {
     transform: none !important;
+  }
+
+  .page-shell,
+  .MuiCard-root,
+  .premium-panel {
+    animation: none !important;
   }
 
   .fc .fc-toolbar {

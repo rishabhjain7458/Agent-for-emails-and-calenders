@@ -106,20 +106,34 @@ export async function extractAssistantParameters(tenantId: string, userId: strin
 }
 
 export async function generateEmailSummary(tenantId: string, userId: string, emails: EmailMessage[]) {
+  if (!emails.length) {
+    return [
+      'Email summary',
+      '',
+      'Status: No emails found for that request.',
+      '',
+      'Next step: Try a wider date range or a simpler search.'
+    ].join('\n');
+  }
+
   return generateText(
     tenantId,
     userId,
     [
-      'Summarize important emails concisely in plain text only.',
-      'Do not use Markdown, asterisks, bold markers, tables, or code fences.',
+      'Summarize important emails as an executive assistant.',
+      'Use plain text section labels and dash bullets. Do not use markdown bold markers, tables, or code fences.',
       'Use this readable format:',
-      'Overview: one short sentence.',
+      'Email summary',
+      'Overview: one short sentence with count and time range if dates are available.',
       'Priority items:',
-      '- Date - Sender - subject: action or risk.',
+      '- Date - Sender - Subject: action, deadline, risk, or why it matters.',
       'Other notes:',
-      '- Date - Sender - subject: useful context.',
+      '- Date - Sender - Subject: useful context.',
+      'Next steps:',
+      '- Practical action the user can take.',
       'Include email dates when available.',
-      'Keep spacing between sections. Prioritize security alerts, financial notifications, work emails, and meeting invitations. Ignore promotions and marketing.'
+      'If an email date is missing, say Date unavailable.',
+      'Prioritize security alerts, financial notifications, work emails, and meeting invitations. Ignore promotions and marketing.'
     ].join(' '),
     JSON.stringify(emails.slice(0, 20))
   );
@@ -190,7 +204,14 @@ export async function answerGeneralQuestion(tenantId: string, userId: string, me
   return generateText(
     tenantId,
     userId,
-    'You are an executive productivity assistant. Be concise and action-oriented. Use plain text only, without Markdown bold markers or asterisks.',
+    [
+      'You are an executive productivity assistant.',
+      'Give useful, specific answers with clear formatting.',
+      'Use this shape when appropriate: Summary, Details, Next steps.',
+      'Use exact dates and times when the user asks about schedules or relative dates.',
+      'If information is unavailable, say what is missing and what to try next.',
+      'Use plain text headings and dash bullets. Do not use markdown bold markers or code fences.'
+    ].join(' '),
     message
   );
 }

@@ -79,28 +79,71 @@ function labelValue(lines: string[], label: string) {
   return lines.find((line) => line.toLowerCase().startsWith(`${label.toLowerCase()}:`))?.replace(/^[^:]+:\s*/, '');
 }
 
+function collectSection(lines: string[], title: string) {
+  const start = lines.findIndex((line) => line.toLowerCase() === `${title.toLowerCase()}:`);
+  if (start < 0) return [];
+  const next = lines.findIndex((line, index) => index > start && /^[A-Z][A-Za-z0-9 ]+:$/.test(line));
+  return lines.slice(start + 1, next < 0 ? undefined : next).filter(Boolean);
+}
+
+function parseNumberedBlocks(lines: string[], prefix: string) {
+  const blocks: string[][] = [];
+  let current: string[] = [];
+  for (const line of lines) {
+    if (new RegExp(`^${prefix} \\d+:$`, 'i').test(line)) {
+      if (current.length) blocks.push(current);
+      current = [line];
+      continue;
+    }
+    if (current.length) current.push(line);
+  }
+  if (current.length) blocks.push(current);
+  return blocks;
+}
+
+function KeyValueGrid({ rows }: { rows: [string, string | undefined][] }) {
+  const visible = rows.filter((row): row is [string, string] => Boolean(row[1]));
+  if (!visible.length) return null;
+  return (
+    <Grid container spacing={1}>
+      {visible.map(([label, value]) => (
+        <Grid key={label} item xs={12} sm={6}>
+          <Box sx={{ bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: 1.5, p: 1 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 850 }}>{label}</Typography>
+            <Typography variant="body2" sx={{ lineHeight: 1.45, overflowWrap: 'anywhere' }}>{renderInlineText(value)}</Typography>
+          </Box>
+        </Grid>
+      ))}
+    </Grid>
+  );
+}
+
 function AssistantStructuredCard({ cleaned }: { cleaned: string }) {
   const lines = cleaned.split('\n').map((line) => line.trim()).filter(Boolean);
   const first = lines[0] ?? '';
-  const isMeeting = /meeting created|calendar result/i.test(first);
-  const isEmail = /^found \d+ emails?/i.test(first) || lines.includes('Emails');
-  const isTask = /tasks?|pending/i.test(first) && lines.some((line) => /task|pending|completed/i.test(line));
+  const isMeeting = /meeting created|calendar result|calendar conflict/i.test(first);
+  const isAgenda = /calendar agenda/i.test(first) || lines.includes('Events:');
+  const isEmail = /^found \d+ emails?/i.test(first) || /email summary/i.test(first) || lines.includes('Emails');
+  const isTask = /task created|tasks?|pending/i.test(first) && lines.some((line) => /task|pending|completed|due/i.test(line));
 
-  if (!isMeeting && !isEmail && !isTask) return null;
+  if (!isMeeting && !isAgenda && !isEmail && !isTask) return null;
 
-  const icon = isMeeting ? <EventIcon /> : isEmail ? <MailOutlineIcon /> : <CheckCircleIcon />;
-  const title = isMeeting ? 'Meeting created' : isEmail ? first : 'Tasks';
-  const actionHref = isMeeting ? '/calendar' : isEmail ? '/emails' : '/tasks';
+  const icon = isMeeting || isAgenda ? <EventIcon /> : isEmail ? <MailOutlineIcon /> : <CheckCircleIcon />;
+  const title = isMeeting ? first : isAgenda ? 'Calendar agenda' : isEmail ? first : first === 'Task created' ? 'Task created' : 'Tasks';
+  const actionHref = isMeeting || isAgenda ? '/calendar' : isEmail ? '/emails' : '/tasks';
   const calendarLink = labelValue(lines, 'Calendar link');
-  const rows = isMeeting
+  const eventBlocks = parseNumberedBlocks(lines, 'Event');
+  const emailBlocks = parseNumberedBlocks(lines, 'Email');
+  const rows = isMeeting || isTask
     ? [
       ['Title', labelValue(lines, 'Title')],
-      ['Starts', labelValue(lines, 'Starts')],
-      ['Ends', labelValue(lines, 'Ends')],
+      ['When', labelValue(lines, 'When') ?? labelValue(lines, 'Starts')],
+      ['Due', labelValue(lines, 'Due')],
+      ['Status', labelValue(lines, 'Status')],
       ['Notes', labelValue(lines, 'Notes')]
     ].filter((row) => row[1])
     : lines
-      .filter((line) => !/^email \d+$/i.test(line) && !/^(emails|available accounts)$/i.test(line) && line !== first)
+      .filter((line) => !/^(email|event) \d+:$/i.test(line) && !/^(emails|events|available accounts)$/i.test(line) && line !== first)
       .slice(0, 8)
       .map((line) => {
         const match = line.match(/^([^:]+):\s*(.+)$/);
@@ -108,29 +151,59 @@ function AssistantStructuredCard({ cleaned }: { cleaned: string }) {
       });
 
   return (
-    <Card variant="outlined" sx={{ bgcolor: 'background.paper', boxShadow: 'none' }}>
-      <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+    <Card variant="outlined" sx={{ bgcolor: 'background.paper', boxShadow: 'none', minWidth: { xs: 0, sm: 430 } }}>
+      <CardContent sx={{ p: { xs: 1.25, sm: 1.5 }, '&:last-child': { pb: { xs: 1.25, sm: 1.5 } } }}>
         <Stack spacing={1.25}>
           <Stack direction="row" alignItems="center" spacing={1}>
-            <Avatar sx={{ width: 30, height: 30, bgcolor: isMeeting ? 'secondary.light' : 'primary.light', color: isMeeting ? 'secondary.dark' : 'primary.dark' }}>
+            <Avatar sx={{ width: 32, height: 32, bgcolor: isMeeting || isAgenda ? 'secondary.light' : 'primary.light', color: isMeeting || isAgenda ? 'secondary.dark' : 'primary.dark' }}>
               {icon}
             </Avatar>
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 850 }}>{title}</Typography>
-              {isEmail && <Typography variant="caption" color="text.secondary">Showing compact results</Typography>}
+              {(isEmail || isAgenda) && <Typography variant="caption" color="text.secondary">{labelValue(lines, 'Found') ?? labelValue(lines, 'Status') ?? 'Formatted result'}</Typography>}
             </Box>
           </Stack>
-          <Stack spacing={0.8}>
-            {rows.map(([label, value], index) => (
-              <Box key={`${label}-${index}`} sx={{ borderTop: index ? '1px solid' : 0, borderColor: 'divider', pt: index ? 0.8 : 0 }}>
-                {label && <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>{label}</Typography>}
-                <Typography variant="body2" sx={{ lineHeight: 1.55, overflowWrap: 'anywhere' }}>{renderInlineText(String(value))}</Typography>
-              </Box>
-            ))}
-          </Stack>
+          {(isMeeting || isTask) && <KeyValueGrid rows={rows as [string, string | undefined][]} />}
+          {isAgenda && (
+            <Stack spacing={1}>
+              <KeyValueGrid rows={[['Range', labelValue(lines, 'Range')], ['Found', labelValue(lines, 'Found')], ['Status', labelValue(lines, 'Status')]]} />
+              {eventBlocks.slice(0, 8).map((block, index) => (
+                <Box key={index} sx={{ bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: 1.5, p: 1 }}>
+                  <Typography sx={{ fontWeight: 900, lineHeight: 1.35 }}>{labelValue(block, 'Title') ?? `Event ${index + 1}`}</Typography>
+                  <Typography variant="body2" color="text.secondary">{labelValue(block, 'When')}</Typography>
+                  {labelValue(block, 'Calendar') && <Typography variant="caption" color="text.secondary">{labelValue(block, 'Calendar')}</Typography>}
+                </Box>
+              ))}
+            </Stack>
+          )}
+          {isEmail && !isMeeting && !isTask && (
+            <Stack spacing={1}>
+              <KeyValueGrid rows={[['Overview', labelValue(lines, 'Overview')], ['Search', labelValue(lines, 'Search used')], ['Status', labelValue(lines, 'Status')]]} />
+              {emailBlocks.slice(0, 5).map((block, index) => (
+                <Box key={index} sx={{ bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: 1.5, p: 1 }}>
+                  <Typography sx={{ fontWeight: 900, lineHeight: 1.35 }}>{labelValue(block, 'Subject') ?? `Email ${index + 1}`}</Typography>
+                  <Typography variant="body2" color="text.secondary">{labelValue(block, 'From')}</Typography>
+                  <Typography variant="caption" color="text.secondary">{labelValue(block, 'Date')}</Typography>
+                  {labelValue(block, 'Preview') && <Typography variant="body2" sx={{ mt: 0.6 }}>{labelValue(block, 'Preview')}</Typography>}
+                </Box>
+              ))}
+              {['Priority items', 'Other notes', 'Next steps', 'What I checked'].map((section) => {
+                const items = collectSection(lines, section);
+                if (!items.length) return null;
+                return (
+                  <Box key={section} sx={{ bgcolor: 'action.hover', borderRadius: 1.5, p: 1 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 900 }}>{section}</Typography>
+                    <Stack component="ul" sx={{ m: 0, mt: 0.5, pl: 2 }} spacing={0.45}>
+                      {items.map((item, index) => <Typography key={index} component="li" variant="body2">{renderInlineText(item.replace(/^-\s*/, ''))}</Typography>)}
+                    </Stack>
+                  </Box>
+                );
+              })}
+            </Stack>
+          )}
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <Button size="small" variant="contained" href={actionHref} endIcon={<OpenInNewIcon />}>
-              Open {isMeeting ? 'calendar' : isEmail ? 'emails' : 'tasks'}
+              Open {isMeeting || isAgenda ? 'calendar' : isEmail ? 'emails' : 'tasks'}
             </Button>
             {isMeeting && calendarLink && (
               <Button size="small" variant="outlined" href={calendarLink} target="_blank">
@@ -564,7 +637,7 @@ export function AssistantPage() {
                 </Box>
               )}
               {messages.map((message, index) => (
-                <Box key={index} sx={{ alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: { xs: '94%', md: '76%' }, bgcolor: message.role === 'user' ? 'primary.main' : 'background.paper', color: message.role === 'user' ? 'primary.contrastText' : 'text.primary', p: { xs: 1.25, sm: 1.5 }, borderRadius: message.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px', border: message.role === 'assistant' ? '1px solid' : 0, borderColor: 'divider', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', boxShadow: message.role === 'assistant' ? '0 10px 24px rgba(0, 0, 0, 0.1)' : '0 10px 24px rgba(37, 87, 214, 0.18)', animation: 'page-enter 220ms ease both' }}>
+                <Box key={index} sx={{ alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: { xs: '94%', md: '76%' }, bgcolor: message.role === 'user' ? 'primary.main' : 'background.paper', color: message.role === 'user' ? 'primary.contrastText' : 'text.primary', p: { xs: 1.25, sm: 1.5 }, borderRadius: message.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px', border: message.role === 'assistant' ? '1px solid' : 0, borderColor: 'divider', whiteSpace: message.role === 'user' ? 'pre-wrap' : 'normal', overflowWrap: 'anywhere', boxShadow: message.role === 'assistant' ? '0 10px 24px rgba(0, 0, 0, 0.1)' : '0 10px 24px rgba(37, 87, 214, 0.18)', animation: 'page-enter 220ms ease both' }}>
                   {message.role === 'assistant' ? <AssistantMessageContent content={message.content} /> : <Typography variant="body2">{message.content}</Typography>}
                 </Box>
               ))}

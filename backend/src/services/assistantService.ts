@@ -196,6 +196,78 @@ function formatDate(value?: string | null) {
   return date.isValid() ? date.format('ddd, D MMM YYYY, h:mm A') : value;
 }
 
+function eventDateValue(event: any, edge: 'start' | 'end' = 'start') {
+  const value = event?.[edge]?.dateTime ?? event?.[edge]?.date ?? event?.[`${edge}Time`] ?? event?.[edge];
+  return typeof value === 'string' ? value : null;
+}
+
+function formatCalendarEventTime(event: any) {
+  const startValue = eventDateValue(event, 'start');
+  const endValue = eventDateValue(event, 'end');
+  if (!startValue) return 'Date unavailable';
+
+  const isAllDay = Boolean(event?.start?.date && !event?.start?.dateTime);
+  const start = dayjs(startValue);
+  const end = endValue ? dayjs(endValue) : null;
+  if (!start.isValid()) return startValue;
+  if (isAllDay) return `${start.format('ddd, D MMM YYYY')} · All day`;
+  if (end?.isValid()) return `${start.format('ddd, D MMM YYYY, h:mm A')} - ${end.format('h:mm A')}`;
+  return start.format('ddd, D MMM YYYY, h:mm A');
+}
+
+function formatCalendarAgenda(events: any[], params: any = {}) {
+  const sorted = [...events]
+    .map((event) => ({ event, starts: dayjs(eventDateValue(event, 'start') ?? '') }))
+    .sort((a, b) => {
+      const aTime = a.starts.isValid() ? a.starts.valueOf() : Number.MAX_SAFE_INTEGER;
+      const bTime = b.starts.isValid() ? b.starts.valueOf() : Number.MAX_SAFE_INTEGER;
+      return aTime - bTime;
+    })
+    .map(({ event }) => event);
+
+  const rangeStart = params.timeMin ? dayjs(params.timeMin) : null;
+  const rangeEnd = params.timeMax ? dayjs(params.timeMax) : null;
+  const range = rangeStart?.isValid() && rangeEnd?.isValid()
+    ? `${rangeStart.format('D MMM YYYY')} - ${rangeEnd.format('D MMM YYYY')}`
+    : 'Upcoming';
+
+  if (!sorted.length) {
+    return [
+      'Calendar agenda',
+      '',
+      `Range: ${range}`,
+      'Status: No events found.',
+      '',
+      'Next step: Try a wider range, like "show this month" or "next 30 days".'
+    ].join('\n');
+  }
+
+  const visible = sorted.slice(0, 12);
+  const rows = visible.flatMap((event, index) => {
+    const title = event.summary ?? event.subject ?? event.title ?? '(No title)';
+    return [
+      `Event ${index + 1}:`,
+      `Title: ${title}`,
+      `When: ${formatCalendarEventTime(event)}`,
+      event.accountEmail ? `Calendar: ${event.accountEmail}` : '',
+      event.location ? `Location: ${event.location}` : '',
+      event.description ? `Notes: ${compactText(event.description, 140)}` : '',
+      ''
+    ].filter((line, lineIndex, lines) => line || lines[lineIndex - 1]);
+  });
+
+  return [
+    'Calendar agenda',
+    '',
+    `Range: ${range}`,
+    `Found: ${sorted.length} event${sorted.length === 1 ? '' : 's'}`,
+    '',
+    'Events:',
+    ...rows,
+    sorted.length > visible.length ? `More: ${sorted.length - visible.length} additional events not shown.` : ''
+  ].filter(Boolean).join('\n').trim();
+}
+
 function compactText(value?: string | null, limit = 180) {
   const normalized = (value ?? '').replace(/\s+/g, ' ').trim();
   return normalized.length > limit ? `${normalized.slice(0, limit - 1).trim()}...` : normalized;
@@ -231,6 +303,21 @@ function formatEmailSearch(emails: EmailMessage[], query: string) {
   ].join('\n').trim();
 }
 
+function formatEmailSummaryEmpty(query: string) {
+  return [
+    'Email summary',
+    '',
+    'Status: No matching emails found.',
+    `Search used: ${query}`,
+    '',
+    'What I checked:',
+    '- Inbox scope first, unless you asked for sent mail.',
+    '- Unread and primary/priority filters when requested.',
+    '',
+    'Next step: Try "summarize unread from the last 30 days" or remove the priority filter.'
+  ].join('\n');
+}
+
 function formatTaskList(tasks: any[]) {
   const pending = tasks.filter((task) => task.status !== 'completed');
   if (!tasks.length) return 'No tasks found.';
@@ -245,6 +332,16 @@ function formatTaskList(tasks: any[]) {
       ? tasks.filter((task) => task.status === 'completed').slice(0, 5).map((task, index) => `${index + 1}. ${task.title}`)
       : ['- None'])
   ].filter(Boolean).join('\n');
+}
+
+function formatTaskCreated(title: string, dueDate?: string | null) {
+  return [
+    'Task created',
+    '',
+    `Title: ${title}`,
+    dueDate ? `Due: ${formatDate(dueDate)}` : 'Due: No due date',
+    'Status: Pending'
+  ].join('\n');
 }
 
 type AssistantHistoryMessage = {
@@ -419,12 +516,12 @@ async function processAssistantMessage(user: AuthUser, message: string, forcedAc
     case 'calendar_check':
       if (combinedScope) {
         const eventsByAccount = await Promise.all(accounts.filter((item) => item.provider !== 'zoho' && item.provider !== 'imap').map((item) => listCalendarForAccount(user, item, params)));
-        return { intent, result: eventsByAccount.flat() };
+        return { intent, result: formatCalendarAgenda(eventsByAccount.flat(), params) };
       }
       if (account?.provider === 'zoho' || account?.provider === 'imap') {
         return { intent, result: 'Mail-only spaces do not support calendar lookup yet. Please choose a Gmail or Outlook space.' };
       }
-      return { intent, result: await listCalendarForAccount(user, account!, params) };
+      return { intent, result: formatCalendarAgenda(await listCalendarForAccount(user, account!, params), params) };
     case 'calendar_delete':
       await deleteEvent(userId, params.eventId);
       return { intent, result: 'Calendar event deleted.' };
@@ -441,9 +538,11 @@ async function processAssistantMessage(user: AuthUser, message: string, forcedAc
       const query = normalizeInboxQuery(String(params.query ?? 'newer_than:14d'), message);
       if (combinedScope) {
         const messages = await searchEmailsAcrossAccounts(user, query, accounts);
+        if (!messages.length) return { intent, result: formatEmailSummaryEmpty(query) };
         return { intent, result: await generateEmailSummary(tenantId, userId, messages) };
       }
       const emails = await searchEmails(user, query, account!);
+      if (!emails.messages.length) return { intent, result: formatEmailSummaryEmpty(query) };
       return { intent, result: await generateEmailSummary(tenantId, userId, emails.messages) };
     }
     case 'task_create': {
@@ -466,12 +565,7 @@ async function processAssistantMessage(user: AuthUser, message: string, forcedAc
       });
       return {
         intent,
-        result: [
-          'Task created.',
-          '',
-          `Title: ${title}`,
-          params.dueDate ? `Due: ${formatDate(params.dueDate)}` : ''
-        ].filter(Boolean).join('\n')
+        result: formatTaskCreated(title, params.dueDate)
       };
     }
     case 'task_list':
