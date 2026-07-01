@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
@@ -20,6 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const isNative = Capacitor.isNativePlatform();
+  const handledNativeUrls = useRef(new Set<string>());
 
   const refresh = useCallback(async () => {
     const token = localStorage.getItem('sessionToken');
@@ -39,45 +40,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refresh();
   }, []);
 
+  const completeNativeLogin = useCallback(async (token: string) => {
+    localStorage.setItem('sessionToken', token);
+    setLoading(true);
+    try {
+      const nextUser = await getMe();
+      setUser(nextUser);
+      await Browser.close().catch(() => undefined);
+      window.location.replace('/dashboard');
+    } catch (caught) {
+      localStorage.removeItem('sessionToken');
+      setUser(null);
+      await Browser.close().catch(() => undefined);
+      const message = caught instanceof Error ? caught.message : 'Mobile login could not create a session.';
+      window.location.replace(`/login?auth_error=${encodeURIComponent(message)}`);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleNativeCallbackUrl = useCallback(async (url: string) => {
+    if (handledNativeUrls.current.has(url)) return;
+    handledNativeUrls.current.add(url);
+
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      await Browser.close().catch(() => undefined);
+      window.location.replace('/login?auth_error=Invalid%20mobile%20login%20callback');
+      return;
+    }
+    if (parsed.protocol !== 'oconnect:') return;
+
+    const path = parsed.hostname === 'app' ? parsed.pathname : `/${parsed.hostname}${parsed.pathname}`;
+    const search = parsed.search;
+    const token = parsed.searchParams.get('token');
+    const error = parsed.searchParams.get('error') || parsed.searchParams.get('auth_error');
+
+    if (token) {
+      await completeNativeLogin(token);
+      return;
+    }
+
+    await Browser.close().catch(() => undefined);
+    if (error) {
+      window.location.replace(`/login?auth_error=${encodeURIComponent(error)}`);
+      return;
+    }
+    window.location.replace(`${path || '/dashboard'}${search}`);
+  }, [completeNativeLogin]);
+
   useEffect(() => {
     if (!isNative) return;
 
-    const listener = App.addListener('appUrlOpen', async ({ url }) => {
-      let parsed: URL;
-      try {
-        parsed = new URL(url);
-      } catch {
-        await Browser.close().catch(() => undefined);
-        window.location.href = '/login?auth_error=Invalid%20mobile%20login%20callback';
-        return;
-      }
-      if (parsed.protocol !== 'oconnect:') return;
+    App.getLaunchUrl().then((launch) => {
+      if (launch?.url) handleNativeCallbackUrl(launch.url);
+    }).catch(() => undefined);
 
-      const path = parsed.hostname === 'app' ? parsed.pathname : `/${parsed.hostname}${parsed.pathname}`;
-      const search = parsed.search;
-      const token = parsed.searchParams.get('token');
-      const error = parsed.searchParams.get('error') || parsed.searchParams.get('auth_error');
-
-      if (token) {
-        localStorage.setItem('sessionToken', token);
-        await Browser.close().catch(() => undefined);
-        await refresh();
-        window.location.href = '/dashboard';
-        return;
-      }
-
-      await Browser.close().catch(() => undefined);
-      if (error) {
-        window.location.href = `/login?auth_error=${encodeURIComponent(error)}`;
-        return;
-      }
-      window.location.href = `${path || '/dashboard'}${search}`;
+    const listener = App.addListener('appUrlOpen', ({ url }) => {
+      handleNativeCallbackUrl(url);
     });
 
     return () => {
       listener.then((handle) => handle.remove());
     };
-  }, [isNative, refresh]);
+  }, [handleNativeCallbackUrl, isNative]);
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
