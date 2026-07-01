@@ -470,9 +470,15 @@ export function AssistantPage() {
     }
   }
 
+  const promptShortcuts = [
+    'Summarize my unread priority emails',
+    'What meetings are coming up?',
+    'Create a task to follow up tomorrow'
+  ];
+
   return (
     <>
-      <Grid container spacing={2.5}>
+      <Grid container spacing={{ xs: 1.25, md: 2.25 }}>
         <Grid item xs={12} md={3.3} lg={2.8} sx={{ display: { xs: 'none', md: 'block' } }}>
           <Card className="premium-panel" sx={{ height: '100%' }}>
             <CardContent>
@@ -515,15 +521,15 @@ export function AssistantPage() {
           </Card>
         </Grid>
         <Grid item xs={12} md={8.5} lg={9}>
-          <Card className="premium-panel" sx={{ overflow: 'hidden' }}>
-            <CardContent sx={{ p: { xs: 1.5, sm: 2.25 } }}>
-          <Stack spacing={1.5} sx={{ minHeight: { xs: 'calc(100vh - 108px)', md: 620 } }}>
+          <Card className="premium-panel" sx={{ overflow: 'hidden', borderRadius: { xs: 2, md: 2 }, boxShadow: { xs: 'none', md: undefined } }}>
+            <CardContent sx={{ p: { xs: 1, sm: 1.75, md: 2.25 } }}>
+          <Stack spacing={{ xs: 1.1, sm: 1.35 }} sx={{ minHeight: { xs: 'calc(100vh - 154px)', md: 620 } }}>
             {error && <Alert severity="error">{error}</Alert>}
-            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.25}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={1.15}>
               <Stack direction="row" spacing={1.25} alignItems="center">
-                <Avatar sx={{ width: { xs: 40, sm: 46 }, height: { xs: 40, sm: 46 }, bgcolor: 'primary.main', boxShadow: '0 12px 26px rgba(37, 87, 214, 0.24)' }}><SmartToyIcon /></Avatar>
+                <Avatar sx={{ width: { xs: 38, sm: 46 }, height: { xs: 38, sm: 46 }, bgcolor: 'primary.main', boxShadow: '0 12px 26px rgba(37, 87, 214, 0.24)' }}><SmartToyIcon /></Avatar>
                 <Box>
-                  <Typography variant="h6" sx={{ fontSize: { xs: '1.12rem', sm: '1.25rem' }, lineHeight: 1.15 }}>Workspace Copilot</Typography>
+                  <Typography variant="h6" sx={{ fontSize: { xs: '1.05rem', sm: '1.25rem' }, lineHeight: 1.15 }}>Workspace Copilot</Typography>
                   <Typography variant="body2" color="text.secondary">
                     {isCombined ? 'Using every connected space.' : `Using ${activeSpace?.email ?? 'selected space'}.`}
                   </Typography>
@@ -534,16 +540,31 @@ export function AssistantPage() {
                 <Chip size="small" label={isCombined ? 'Combined workspace' : activeSpace?.email ?? 'Selected space'} color={isCombined ? 'default' : 'primary'} variant={isCombined ? 'outlined' : 'filled'} />
               </Stack>
             </Stack>
-            <Box className="scroll-thin" sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, p: { xs: 1.15, sm: 2 }, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'action.hover', minHeight: { xs: 260, sm: 340 }, maxHeight: { xs: 'none', md: 620 }, overflowY: 'auto' }}>
+            {messages.length === 0 && (
+              <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                {promptShortcuts.map((prompt) => (
+                  <Button
+                    key={prompt}
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setInput(prompt)}
+                    sx={{ bgcolor: 'background.paper', minHeight: 34 }}
+                  >
+                    {prompt}
+                  </Button>
+                ))}
+              </Stack>
+            )}
+            <Box className="scroll-thin assistant-chat-window" sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.25, p: { xs: 1, sm: 1.6 }, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(15, 23, 42, 0.68)' : 'rgba(243, 247, 252, 0.8)', minHeight: { xs: 300, sm: 340 }, maxHeight: { xs: 'none', md: 620 }, overflowY: 'auto' }}>
               {messages.length === 0 && (
-                <Box sx={{ my: 'auto', textAlign: 'center', mx: 'auto', maxWidth: 460, py: { xs: 4, sm: 7 } }}>
-                  <Avatar sx={{ bgcolor: 'secondary.light', color: 'secondary.dark', mx: 'auto', mb: 1.5 }}><AutoAwesomeIcon /></Avatar>
-                  <Typography variant="h6" sx={{ fontSize: { xs: '1.2rem', sm: '1.35rem' }, lineHeight: 1.18 }}>What should we move forward?</Typography>
-                  <Typography color="text.secondary" sx={{ mt: 0.75, fontSize: { xs: '0.92rem', sm: '1rem' } }}>Ask for unread priorities, a meeting plan, or a task breakdown.</Typography>
+                <Box sx={{ my: 'auto', textAlign: 'center', mx: 'auto', maxWidth: 430, py: { xs: 3.5, sm: 6 } }}>
+                  <Avatar sx={{ bgcolor: 'secondary.light', color: 'secondary.dark', height: 46, mx: 'auto', mb: 1.35, width: 46 }}><AutoAwesomeIcon /></Avatar>
+                  <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', sm: '1.32rem' }, lineHeight: 1.18 }}>What should we move forward?</Typography>
+                  <Typography color="text.secondary" sx={{ mt: 0.65, fontSize: { xs: '0.88rem', sm: '0.98rem' } }}>Ask for unread priorities, a meeting plan, or a task breakdown.</Typography>
                 </Box>
               )}
               {messages.map((message, index) => (
-                <Box key={index} sx={{ alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: { xs: '96%', md: '78%' }, bgcolor: message.role === 'user' ? 'primary.main' : 'background.paper', color: message.role === 'user' ? 'primary.contrastText' : 'text.primary', p: 1.5, borderRadius: 2, border: message.role === 'assistant' ? '1px solid' : 0, borderColor: 'divider', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', boxShadow: message.role === 'assistant' ? '0 10px 24px rgba(0, 0, 0, 0.12)' : 'none', animation: 'page-enter 220ms ease both' }}>
+                <Box key={index} sx={{ alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: { xs: '94%', md: '76%' }, bgcolor: message.role === 'user' ? 'primary.main' : 'background.paper', color: message.role === 'user' ? 'primary.contrastText' : 'text.primary', p: { xs: 1.25, sm: 1.5 }, borderRadius: message.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px', border: message.role === 'assistant' ? '1px solid' : 0, borderColor: 'divider', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', boxShadow: message.role === 'assistant' ? '0 10px 24px rgba(0, 0, 0, 0.1)' : '0 10px 24px rgba(37, 87, 214, 0.18)', animation: 'page-enter 220ms ease both' }}>
                   {message.role === 'assistant' ? <AssistantMessageContent content={message.content} /> : <Typography variant="body2">{message.content}</Typography>}
                 </Box>
               ))}
@@ -569,7 +590,7 @@ export function AssistantPage() {
                 border: '1px solid',
                 borderColor: 'divider',
                 borderRadius: 2,
-                p: { xs: 1, sm: 1.1 }
+                p: { xs: 0.85, sm: 1.1 }
               }}
             >
               <TextField
@@ -581,6 +602,7 @@ export function AssistantPage() {
                 placeholder={isCombined ? 'Ask across all spaces...' : `Ask inside ${activeSpace?.email ?? 'this space'}`}
                 onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); } }}
                 helperText={speechMessage}
+                sx={{ '& .MuiOutlinedInput-root': { alignItems: 'flex-start' }, '& textarea': { lineHeight: 1.45 } }}
               />
               <Stack direction="row" spacing={1} justifyContent={{ xs: 'space-between', sm: 'flex-start' }}>
                 <Tooltip title={speechSupported ? (listening ? 'Stop voice input' : 'Start voice input') : 'Voice input not supported'}>

@@ -6,12 +6,15 @@ body,
 
 html {
   scrollbar-gutter: stable;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
   background: #f4f7fc;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body::before {
@@ -298,6 +301,13 @@ body::after {
   background: transparent;
 }
 
+.assistant-chat-window {
+  background-image:
+    linear-gradient(rgba(37, 87, 214, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 87, 214, 0.022) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
 .metric-card {
   overflow: hidden;
   position: relative;
@@ -532,6 +542,26 @@ button {
 }
 
 @media (max-width: 600px) {
+  .premium-panel,
+  .MuiCard-root {
+    animation-duration: 280ms;
+  }
+
+  .MuiCard-root:hover {
+    transform: none !important;
+  }
+
+  .MuiCard-root:hover::before {
+    animation: none;
+    opacity: 0;
+  }
+
+  .MuiButton-root:hover,
+  .MuiListItemButton-root:hover,
+  .MuiChip-root:hover {
+    transform: none !important;
+  }
+
   .fc .fc-toolbar {
     align-items: stretch;
     display: grid;

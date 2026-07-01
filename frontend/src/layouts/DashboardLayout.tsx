@@ -4,6 +4,8 @@ import {
   AppBar,
   Avatar,
   Box,
+  BottomNavigation,
+  BottomNavigationAction,
   Divider,
   Drawer,
   IconButton,
@@ -35,7 +37,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useThemeMode } from '../contexts/ThemeModeContext';
 
 const drawerWidth = 276;
-const collapsedDrawerWidth = 78;
+const collapsedDrawerWidth = 74;
 const navItems = [
   { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
   { label: 'Emails', path: '/emails', icon: <EmailIcon /> },
@@ -57,6 +59,7 @@ export function DashboardLayout() {
   const drawerExpanded = isMobile || !collapsed || sidebarHover;
   const layoutDrawerWidth = isMobile ? drawerWidth : collapsed ? collapsedDrawerWidth : drawerWidth;
   const paperDrawerWidth = isMobile ? drawerWidth : drawerExpanded ? drawerWidth : collapsedDrawerWidth;
+  const activeNavValue = navItems.find((item) => location.pathname.startsWith(item.path))?.path ?? '/dashboard';
 
   function toggleCollapsed() {
     setCollapsed((current) => {
@@ -180,7 +183,7 @@ export function DashboardLayout() {
             </IconButton>
           )}
           <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 950, lineHeight: 1.05 }} noWrap>
+            <Typography variant="subtitle1" sx={{ fontSize: { xs: '1rem', sm: '1.05rem' }, fontWeight: 950, lineHeight: 1.05 }} noWrap>
               AI Executive Assistant
             </Typography>
             {!isMobile && (
@@ -194,7 +197,7 @@ export function DashboardLayout() {
               {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
             </IconButton>
           </Tooltip>
-          <Avatar sx={{ width: { xs: 32, sm: 36 }, height: { xs: 32, sm: 36 }, bgcolor: 'primary.main' }}>{user?.name?.[0] ?? 'U'}</Avatar>
+          <Avatar sx={{ width: { xs: 34, sm: 36 }, height: { xs: 34, sm: 36 }, bgcolor: 'primary.main', boxShadow: '0 10px 22px rgba(37, 87, 214, 0.24)' }}>{user?.name?.[0] ?? 'U'}</Avatar>
           {!isMobile && <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 220 }}>{user?.email}</Typography>}
           <Tooltip title="Logout">
             <IconButton onClick={logout} aria-label="Logout">
@@ -233,11 +236,59 @@ export function DashboardLayout() {
         {drawer}
       </Drawer>
 
-      <Box component="main" sx={{ flex: 1, pt: { xs: 7, sm: 7.5, md: 8 }, px: { xs: 1.25, sm: 2.5, md: 3.5, xl: 5 }, pb: { xs: 3, md: 5 }, minWidth: 0, transition: theme.transitions.create('padding', { duration: theme.transitions.duration.shorter }) }}>
-        <Box className="page-shell" sx={{ maxWidth: 1480, mx: 'auto', width: '100%' }}>
+      <Box component="main" sx={{ flex: 1, pt: { xs: 6.9, sm: 7.5, md: 8 }, px: { xs: 1.05, sm: 2.25, md: 3, xl: 4 }, pb: { xs: 10.5, md: 5 }, minWidth: 0, transition: theme.transitions.create('padding', { duration: theme.transitions.duration.shorter }) }}>
+        <Box className="page-shell" sx={{ maxWidth: 1380, mx: 'auto', width: '100%' }}>
           <Outlet />
         </Box>
       </Box>
+
+      {isMobile && (
+        <Box
+          sx={{
+            bottom: 0,
+            left: 0,
+            position: 'fixed',
+            right: 0,
+            zIndex: theme.zIndex.appBar,
+            px: 1,
+            pb: 'calc(env(safe-area-inset-bottom) + 8px)',
+            pointerEvents: 'none'
+          }}
+        >
+          <BottomNavigation
+            showLabels
+            value={activeNavValue}
+            sx={{
+              bgcolor: alpha(theme.palette.background.paper, 0.92),
+              backdropFilter: 'blur(18px)',
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 2.25,
+              boxShadow: theme.palette.mode === 'dark' ? '0 18px 44px rgba(0,0,0,0.45)' : '0 18px 42px rgba(24,35,56,0.16)',
+              height: 64,
+              overflow: 'hidden',
+              pointerEvents: 'auto'
+            }}
+          >
+            {navItems.slice(0, 5).map((item) => (
+              <BottomNavigationAction
+                key={item.path}
+                component={RouterLink}
+                to={item.path}
+                value={item.path}
+                label={item.label === 'AI Assistant' ? 'AI' : item.label}
+                icon={item.icon}
+                sx={{
+                  minWidth: 0,
+                  px: 0.25,
+                  '& .MuiBottomNavigationAction-label': { fontSize: '0.66rem', fontWeight: 850, lineHeight: 1.05 },
+                  '& .MuiSvgIcon-root': { fontSize: 22 }
+                }}
+              />
+            ))}
+          </BottomNavigation>
+        </Box>
+      )}
     </Box>
   );
 }

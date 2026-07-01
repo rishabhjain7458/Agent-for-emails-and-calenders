@@ -303,7 +303,7 @@ function AnalysisPanel({ title, subtitle, icon, children }: { title: string; sub
 function DragHandle() {
   return (
     <Tooltip title="Drag to reorder">
-      <Box sx={{ alignItems: 'center', bottom: 4, color: 'text.secondary', display: 'flex', justifyContent: 'center', left: 0, opacity: 0.52, position: 'absolute', right: 0 }}>
+      <Box sx={{ alignItems: 'center', bottom: 4, color: 'text.secondary', display: { xs: 'none', sm: 'flex' }, justifyContent: 'center', left: 0, opacity: 0.52, position: 'absolute', right: 0 }}>
         <DragIndicatorIcon sx={{ fontSize: 15 }} />
       </Box>
     </Tooltip>
@@ -540,7 +540,7 @@ export function DashboardPage() {
       {loading && <LinearProgress sx={{ mb: 1.25 }} />}
       {cardOrderSaving && <LinearProgress sx={{ mb: 1.25 }} color="secondary" />}
 
-      <Stack spacing={1.25}>
+      <Stack spacing={{ xs: 1, md: 1.25 }}>
         <Card
           className="premium-panel"
           sx={{
@@ -552,16 +552,16 @@ export function DashboardPage() {
             overflow: 'hidden'
           }}
         >
-          <CardContent sx={{ p: { xs: 0.85, md: 1 } }}>
-            <Stack spacing={0.8} sx={{ width: '100%' }}>
+          <CardContent sx={{ p: { xs: 0.7, md: 0.9 } }}>
+            <Stack spacing={0.7} sx={{ width: '100%' }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={0.75} alignItems={{ xs: 'stretch', sm: 'center' }}>
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontSize: { xs: '1rem', sm: '1.08rem' }, fontWeight: 950, lineHeight: 1.05 }}>Cards</Typography>
-                  <Typography color="text.secondary" sx={{ fontSize: '0.74rem', lineHeight: 1.2 }}>Choose a workspace or saved profile.</Typography>
+                  <Typography sx={{ fontSize: { xs: '0.98rem', sm: '1.05rem' }, fontWeight: 950, lineHeight: 1.05 }}>Cards</Typography>
+                  <Typography color="text.secondary" sx={{ fontSize: '0.72rem', lineHeight: 1.2 }}>Choose a workspace or saved profile.</Typography>
                 </Box>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent={{ xs: 'flex-start', sm: 'flex-end' }} useFlexGap>
-                  <Button size="small" variant="contained" component={RouterLink} to="/assistant" startIcon={<SmartToyIcon />}>AI Assistant</Button>
-                  <Button size="small" variant="outlined" startIcon={<RefreshIcon />} onClick={loadDashboard}>Refresh</Button>
+                  <Button size="small" variant="contained" component={RouterLink} to="/assistant" startIcon={<SmartToyIcon />} sx={{ minHeight: 34 }}>AI Assistant</Button>
+                  <Button size="small" variant="outlined" startIcon={<RefreshIcon />} onClick={loadDashboard} sx={{ minHeight: 34 }}>Refresh</Button>
                 </Stack>
               </Stack>
               <Box
@@ -595,12 +595,12 @@ export function DashboardPage() {
                       borderRadius: 2,
                       boxShadow: (theme) => theme.palette.mode === 'dark' ? 'none' : '0 10px 24px rgba(30, 41, 59, 0.04)',
                       opacity: draggedSectionKey === group.key ? 0.62 : 1,
-                      p: { xs: 0.7, md: 0.78 },
+                      p: { xs: 0.55, md: 0.68 },
                       transition: 'opacity 150ms ease, border-color 150ms ease, transform 150ms ease',
                       width: '100%'
                     }}
                   >
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.55, px: 0.25 }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.45, px: 0.2 }}>
                       <Box sx={{ alignItems: 'center', display: 'flex', gap: 0.8, minWidth: 0 }}>
                         <Tooltip title="Drag section to reorder">
                           <Box
@@ -611,13 +611,13 @@ export function DashboardPage() {
                               event.dataTransfer.setData('text/section', group.key);
                             }}
                             onDragEnd={() => setDraggedSectionKey(null)}
-                            sx={{ alignItems: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 1.25, color: 'text.secondary', cursor: 'grab', display: 'flex', height: 26, justifyContent: 'center', opacity: 0.78, width: 26, '&:active': { cursor: 'grabbing' } }}
+                            sx={{ alignItems: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 1.25, color: 'text.secondary', cursor: 'grab', display: { xs: 'none', sm: 'flex' }, height: 24, justifyContent: 'center', opacity: 0.78, width: 24, '&:active': { cursor: 'grabbing' } }}
                           >
                             <DragIndicatorIcon sx={{ fontSize: 18 }} />
                           </Box>
                         </Tooltip>
                         <Box sx={{ minWidth: 0 }}>
-                          <Typography sx={{ fontSize: '0.76rem', fontWeight: 950, letterSpacing: 0, textTransform: 'uppercase' }}>{group.title}</Typography>
+                          <Typography sx={{ fontSize: '0.74rem', fontWeight: 950, letterSpacing: 0, textTransform: 'uppercase' }}>{group.title}</Typography>
                           <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }} noWrap>{group.helper}</Typography>
                         </Box>
                       </Box>
@@ -626,11 +626,11 @@ export function DashboardPage() {
                     <Box
                       sx={{
                         display: 'grid',
-                        gap: 0.9,
+                        gap: { xs: 0.65, sm: 0.8 },
                         gridTemplateColumns: {
                           xs: 'repeat(2, minmax(0, 1fr))',
-                          sm: 'repeat(auto-fill, minmax(126px, 148px))',
-                          lg: 'repeat(auto-fill, minmax(134px, 154px))'
+                          sm: 'repeat(auto-fill, minmax(118px, 140px))',
+                          lg: 'repeat(auto-fill, minmax(126px, 146px))'
                         },
                         justifyContent: 'start'
                       }}
@@ -675,9 +675,9 @@ export function DashboardPage() {
                           borderRadius: 2,
                           boxShadow: isCombined ? '0 16px 34px rgba(37,87,214,0.2)' : '0 8px 20px rgba(30,41,59,0.035)',
                           color: isCombined ? '#fff' : 'text.primary',
-                          height: { xs: 82, sm: 86 },
-                          p: 0.65,
-                          pb: 2.25,
+                           height: { xs: 74, sm: 80 },
+                           p: 0.55,
+                           pb: { xs: 1.15, sm: 1.95 },
                           position: 'relative',
                           cursor: 'grab',
                           opacity: draggedCardId === card.id ? 0.56 : 1,
@@ -697,12 +697,12 @@ export function DashboardPage() {
                       >
                         <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
                           <Box component="button" type="button" onClick={() => setActiveSpaceId('combined')} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 0.45, minWidth: 0, width: '100%' }}>
-                            <Box sx={{ bgcolor: isCombined ? 'rgba(255,255,255,0.16)' : 'action.hover', borderRadius: 1.5, display: 'grid', height: 26, placeItems: 'center', width: 26 }}>
+                            <Box sx={{ bgcolor: isCombined ? 'rgba(255,255,255,0.16)' : 'action.hover', borderRadius: 1.5, display: 'grid', height: 24, placeItems: 'center', width: 24 }}>
                               <LayersIcon sx={{ fontSize: 16 }} />
                             </Box>
                             <Box sx={{ minWidth: 0 }}>
                               <Stack direction="row" spacing={0.55} alignItems="center" justifyContent="center">
-                                <Typography sx={{ fontSize: '0.82rem', fontWeight: 950, lineHeight: 1.1 }}>Combined</Typography>
+                                <Typography sx={{ fontSize: '0.78rem', fontWeight: 950, lineHeight: 1.1 }}>Combined</Typography>
                                 {isCombined && <Chip size="small" label="Active" sx={{ bgcolor: 'background.paper', color: 'primary.main', fontWeight: 800, height: 20, '& .MuiChip-label': { px: 0.7 } }} />}
                               </Stack>
                               <Typography variant="caption" sx={{ display: 'block', fontSize: '0.63rem', fontWeight: 800, opacity: 0.82 }} noWrap>
@@ -731,9 +731,9 @@ export function DashboardPage() {
                           borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(80, 96, 128, 0.64)' : 'rgba(208, 218, 234, 0.96)',
                           borderRadius: 2,
                           color: 'inherit',
-                          height: { xs: 82, sm: 86 },
-                          p: 0.65,
-                          pb: 2.25,
+                           height: { xs: 74, sm: 80 },
+                           p: 0.55,
+                           pb: { xs: 1.15, sm: 1.95 },
                           position: 'relative',
                           cursor: 'grab',
                           opacity: draggedCardId === card.id ? 0.56 : 1,
@@ -754,7 +754,7 @@ export function DashboardPage() {
                       >
                         <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
                           <Box component="a" href={dashboardCardUrl(card.account)} target="_blank" rel="noreferrer" sx={{ alignItems: 'center', color: 'inherit', display: 'flex', flexDirection: 'column', gap: 0.45, minWidth: 0, textDecoration: 'none', width: '100%' }}>
-                            <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}28`, borderRadius: '50%', boxShadow: `0 7px 15px ${meta.accent}10`, color: meta.accent, display: 'grid', flex: '0 0 auto', height: 28, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 28 }}>
+                             <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}28`, borderRadius: '50%', boxShadow: `0 7px 15px ${meta.accent}10`, color: meta.accent, display: 'grid', flex: '0 0 auto', height: 26, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 26 }}>
                               {card.account.cardType === 'social' ? (
                                 <Typography sx={{ color: meta.accent, fontSize: '0.78rem', fontWeight: 950 }}>{avatarInitial(card.account)}</Typography>
                               ) : meta.icon}
@@ -772,7 +772,7 @@ export function DashboardPage() {
                             </Box>
                             <Box sx={{ minWidth: 0 }}>
                               <Stack direction="row" spacing={0.4} alignItems="center" justifyContent="center">
-                                <Typography sx={{ display: '-webkit-box', fontSize: '0.72rem', fontWeight: 900, lineHeight: 1.06, overflow: 'hidden', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{card.account.label}</Typography>
+                                <Typography sx={{ display: '-webkit-box', fontSize: '0.68rem', fontWeight: 900, lineHeight: 1.06, overflow: 'hidden', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{card.account.label}</Typography>
                                 <OpenInNewIcon sx={{ color: meta.accent, flex: '0 0 auto', fontSize: 12 }} />
                               </Stack>
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.61rem', fontWeight: 800 }} noWrap>{meta.label} · #{index + 1}</Typography>
@@ -801,10 +801,10 @@ export function DashboardPage() {
                         borderRadius: 2,
                         boxShadow: active ? `0 14px 30px ${account.color}16` : '0 8px 20px rgba(30,41,59,0.035)',
                         color: 'text.primary',
-                        height: { xs: 82, sm: 86 },
+                        height: { xs: 74, sm: 80 },
                         overflow: 'hidden',
-                        p: 0.65,
-                        pb: 2.25,
+                        p: 0.55,
+                        pb: { xs: 1.15, sm: 1.95 },
                         position: 'relative',
                         cursor: 'grab',
                         opacity: draggedCardId === card.id ? 0.56 : 1,
@@ -825,12 +825,12 @@ export function DashboardPage() {
                     >
                       <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
                         <Box component="button" type="button" onClick={() => setActiveSpaceId(account.id)} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 0.45, minWidth: 0, width: '100%' }}>
-                          <Box sx={{ bgcolor: `${account.color}10`, border: '1px solid', borderColor: `${account.color}2d`, borderRadius: 1.5, color: account.color, display: 'grid', height: 26, placeItems: 'center', width: 26 }}>
+                          <Box sx={{ bgcolor: `${account.color}10`, border: '1px solid', borderColor: `${account.color}2d`, borderRadius: 1.5, color: account.color, display: 'grid', height: 24, placeItems: 'center', width: 24 }}>
                             <MailIcon sx={{ fontSize: 16 }} />
                           </Box>
                           <Box sx={{ minWidth: 0 }}>
                             <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
-                              <Typography sx={{ display: '-webkit-box', fontSize: '0.69rem', fontWeight: 900, lineHeight: 1.08, overflow: 'hidden', overflowWrap: 'anywhere', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{account.email}</Typography>
+                              <Typography sx={{ display: '-webkit-box', fontSize: '0.66rem', fontWeight: 900, lineHeight: 1.08, overflow: 'hidden', overflowWrap: 'anywhere', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{account.email}</Typography>
                               {active && <Chip size="small" label="Active" sx={{ bgcolor: account.color, color: '#fff', flex: '0 0 auto', fontWeight: 800, height: 20, '& .MuiChip-label': { px: 0.7 } }} />}
                             </Stack>
                             <Typography variant="caption" sx={{ color: account.color, display: 'block', fontSize: '0.61rem', fontWeight: 900 }} noWrap>
@@ -852,11 +852,11 @@ export function DashboardPage() {
         </Card>
 
         <Card className="premium-panel" sx={{ borderColor: selectedSpaceColor, overflow: 'hidden', scrollMarginTop: 96 }}>
-          <Box sx={{ bgcolor: selectedSpace ? `${selectedSpaceColor}10` : 'rgba(37,87,214,0.08)', borderBottom: '1px solid', borderColor: 'divider', p: { xs: 2, md: 2.5 } }}>
+          <Box sx={{ bgcolor: selectedSpace ? `${selectedSpaceColor}10` : 'rgba(37,87,214,0.08)', borderBottom: '1px solid', borderColor: 'divider', p: { xs: 1.5, md: 2 } }}>
             <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2}>
               <Box sx={{ minWidth: 0 }}>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                  <Typography variant="h4" sx={{ fontWeight: 950, overflowWrap: 'anywhere' }}>{workspaceTitle}</Typography>
+                  <Typography variant="h4" sx={{ fontSize: { xs: '1.35rem', sm: '1.7rem', md: '2rem' }, fontWeight: 950, overflowWrap: 'anywhere' }}>{workspaceTitle}</Typography>
                   <Chip label={isCombined ? 'Combined' : 'Selected space'} color={isCombined ? 'primary' : 'default'} sx={{ fontWeight: 850 }} />
                 </Stack>
                 <Typography color="text.secondary" sx={{ mt: 0.75 }}>{workspaceSubtitle}</Typography>
@@ -869,7 +869,7 @@ export function DashboardPage() {
             </Stack>
           </Box>
 
-          <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
+          <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
             <Grid container spacing={2}>
               <Grid item xs={12} md={4}>
                 <Stack spacing={1.25}>
