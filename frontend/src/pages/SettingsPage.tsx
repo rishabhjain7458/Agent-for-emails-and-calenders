@@ -1,4 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Card, CardContent, Chip, FormControlLabel, Grid, MenuItem, Stack, Switch, TextField, Typography } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -15,6 +17,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import PermMediaIcon from '@mui/icons-material/PermMedia';
+import SystemUpdateIcon from '@mui/icons-material/SystemUpdate';
 import { PageHeader } from '../components/PageHeader';
 import { connectImapAccount, createDashboardCard, deleteDashboardCard, disconnectAccount, getConnectedAccounts, getConnectAccountUrl, getDashboardCards, getSettings, updateSettings } from '../api/endpoints';
 import type { ConnectedAccount, DashboardCard } from '../types';
@@ -157,6 +160,8 @@ export function SettingsPage() {
   const [smtpHost, setSmtpHost] = useState('smtp.zoho.in');
   const [smtpPort, setSmtpPort] = useState('465');
   const [smtpPreset, setSmtpPreset] = useState<ZohoSmtpPreset>('india');
+  const [updateStatus, setUpdateStatus] = useState('Checking live update status...');
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
 
   useEffect(() => {
     getSettings().then((settings) => {
@@ -177,7 +182,47 @@ export function SettingsPage() {
       setNotice(`Social connect issue: ${socialError}`);
       window.history.replaceState({}, '', '/settings');
     }
+    refreshLiveUpdateStatus();
   }, []);
+
+  function bundleLabel(bundle: any) {
+    if (!bundle) return 'none';
+    return [bundle.version, bundle.id].filter(Boolean).join(' · ') || JSON.stringify(bundle);
+  }
+
+  async function refreshLiveUpdateStatus() {
+    if (!Capacitor.isNativePlatform()) {
+      setUpdateStatus('Live updates run only inside the Android/iOS app.');
+      return;
+    }
+
+    try {
+      const current = await CapacitorUpdater.current();
+      const pending = await CapacitorUpdater.getNextBundle();
+      setUpdateStatus(`Native ${current.native}; current ${bundleLabel(current.bundle)}; pending ${bundleLabel(pending)}.`);
+    } catch (error) {
+      setUpdateStatus(error instanceof Error ? error.message : 'Could not read live update status.');
+    }
+  }
+
+  async function checkLiveUpdateNow() {
+    if (!Capacitor.isNativePlatform()) {
+      setUpdateStatus('Open the installed APK to check live updates.');
+      return;
+    }
+
+    setCheckingUpdate(true);
+    try {
+      await CapacitorUpdater.notifyAppReady();
+      const result = await CapacitorUpdater.triggerUpdateCheck();
+      await refreshLiveUpdateStatus();
+      setNotice(`Live update check ${result.status}. Reopen the app if a pending bundle appears.`);
+    } catch (error) {
+      setUpdateStatus(error instanceof Error ? error.message : 'Live update check failed.');
+    } finally {
+      setCheckingUpdate(false);
+    }
+  }
 
   async function save() {
     await updateSettings({
@@ -290,6 +335,24 @@ export function SettingsPage() {
       <PageHeader title="Settings" subtitle="Manage accounts, assistant defaults, and dashboard shortcuts." compact />
       {notice && <Alert sx={{ mb: 2 }} severity="success">{notice}</Alert>}
       <Grid container spacing={2}>
+        <Grid item xs={12}>
+          <SettingsSection
+            title="App Updates"
+            subtitle="Check what Capgo bundle this device is actually running."
+            chip={<Chip size="small" icon={<SystemUpdateIcon />} label={Capacitor.isNativePlatform() ? 'APK live updates' : 'Web preview'} variant="outlined" />}
+          >
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems={{ xs: 'stretch', md: 'center' }} justifyContent="space-between">
+              <Typography color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>{updateStatus}</Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <Button variant="outlined" onClick={refreshLiveUpdateStatus}>Refresh status</Button>
+                <Button variant="contained" startIcon={<SystemUpdateIcon />} disabled={checkingUpdate} onClick={checkLiveUpdateNow}>
+                  {checkingUpdate ? 'Checking...' : 'Check now'}
+                </Button>
+              </Stack>
+            </Stack>
+          </SettingsSection>
+        </Grid>
+
         <Grid item xs={12} lg={4}>
           <SettingsSection
             title="Assistant"

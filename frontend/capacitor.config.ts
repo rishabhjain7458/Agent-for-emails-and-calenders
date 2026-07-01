@@ -11,7 +11,7 @@ const config: CapacitorConfig = {
   plugins: {
     CapacitorUpdater: {
       appId: 'com.oconnect.assistant',
-      autoUpdate: 'atBackground',
+      autoUpdate: 'always',
       version: '1.0.0'
     }
   }

@@ -6,6 +6,7 @@ export async function initializeLiveUpdates() {
 
   try {
     await CapacitorUpdater.notifyAppReady();
+    await CapacitorUpdater.triggerUpdateCheck();
   } catch (error) {
     console.warn('Live update readiness check failed.', error);
   }
