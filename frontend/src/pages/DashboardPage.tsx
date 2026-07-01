@@ -662,8 +662,8 @@ export function DashboardPage() {
                         gap: 0.9,
                         gridTemplateColumns: {
                           xs: 'repeat(2, minmax(0, 1fr))',
-                          sm: 'repeat(auto-fill, minmax(156px, 176px))',
-                          lg: 'repeat(auto-fill, minmax(164px, 184px))'
+                          sm: 'repeat(auto-fill, minmax(138px, 158px))',
+                          lg: 'repeat(auto-fill, minmax(146px, 164px))'
                         },
                         justifyContent: 'start'
                       }}
@@ -708,9 +708,9 @@ export function DashboardPage() {
                           borderRadius: 2,
                           boxShadow: isCombined ? '0 16px 34px rgba(37,87,214,0.2)' : '0 8px 20px rgba(30,41,59,0.035)',
                           color: isCombined ? '#fff' : 'text.primary',
-                          height: { xs: 112, sm: 118 },
-                          p: 1,
-                          pb: 3.6,
+                          height: { xs: 94, sm: 98 },
+                          p: 0.8,
+                          pb: 2.85,
                           position: 'relative',
                           cursor: 'grab',
                           opacity: draggedCardId === card.id ? 0.56 : 1,
@@ -729,16 +729,16 @@ export function DashboardPage() {
                         }}
                       >
                         <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
-                          <Box component="button" type="button" onClick={() => setActiveSpaceId('combined')} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0, width: '100%' }}>
-                            <Box sx={{ bgcolor: isCombined ? 'rgba(255,255,255,0.16)' : 'action.hover', borderRadius: 2, display: 'grid', height: 38, placeItems: 'center', width: 38 }}>
-                              <LayersIcon fontSize="small" />
+                          <Box component="button" type="button" onClick={() => setActiveSpaceId('combined')} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 0.45, minWidth: 0, width: '100%' }}>
+                            <Box sx={{ bgcolor: isCombined ? 'rgba(255,255,255,0.16)' : 'action.hover', borderRadius: 1.75, display: 'grid', height: 30, placeItems: 'center', width: 30 }}>
+                              <LayersIcon sx={{ fontSize: 18 }} />
                             </Box>
                             <Box sx={{ minWidth: 0 }}>
                               <Stack direction="row" spacing={0.55} alignItems="center" justifyContent="center">
-                                <Typography sx={{ fontSize: '0.9rem', fontWeight: 950, lineHeight: 1.1 }}>Combined</Typography>
-                                {isCombined && <Chip size="small" label="Active" sx={{ bgcolor: 'background.paper', color: 'primary.main', fontWeight: 800, height: 22 }} />}
+                                <Typography sx={{ fontSize: '0.82rem', fontWeight: 950, lineHeight: 1.1 }}>Combined</Typography>
+                                {isCombined && <Chip size="small" label="Active" sx={{ bgcolor: 'background.paper', color: 'primary.main', fontWeight: 800, height: 20, '& .MuiChip-label': { px: 0.7 } }} />}
                               </Stack>
-                              <Typography variant="caption" sx={{ display: 'block', fontSize: '0.68rem', fontWeight: 800, opacity: 0.82 }} noWrap>
+                              <Typography variant="caption" sx={{ display: 'block', fontSize: '0.63rem', fontWeight: 800, opacity: 0.82 }} noWrap>
                                 {metricLabel(emails.length, 'email')} · {metricLabel(pendingTasks.length, 'task')}
                               </Typography>
                             </Box>
@@ -764,9 +764,9 @@ export function DashboardPage() {
                           borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(80, 96, 128, 0.64)' : 'rgba(208, 218, 234, 0.96)',
                           borderRadius: 2,
                           color: 'inherit',
-                          height: { xs: 112, sm: 118 },
-                          p: 1,
-                          pb: 3.6,
+                          height: { xs: 94, sm: 98 },
+                          p: 0.8,
+                          pb: 2.85,
                           position: 'relative',
                           cursor: 'grab',
                           opacity: draggedCardId === card.id ? 0.56 : 1,
@@ -786,10 +786,10 @@ export function DashboardPage() {
                         }}
                       >
                         <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
-                          <Box component="a" href={dashboardCardUrl(card.account)} target="_blank" rel="noreferrer" sx={{ alignItems: 'center', color: 'inherit', display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0, textDecoration: 'none', width: '100%' }}>
-                            <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}28`, borderRadius: '50%', boxShadow: `0 8px 18px ${meta.accent}12`, color: meta.accent, display: 'grid', flex: '0 0 auto', height: 40, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 40 }}>
+                          <Box component="a" href={dashboardCardUrl(card.account)} target="_blank" rel="noreferrer" sx={{ alignItems: 'center', color: 'inherit', display: 'flex', flexDirection: 'column', gap: 0.45, minWidth: 0, textDecoration: 'none', width: '100%' }}>
+                            <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}28`, borderRadius: '50%', boxShadow: `0 7px 15px ${meta.accent}10`, color: meta.accent, display: 'grid', flex: '0 0 auto', height: 32, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 32 }}>
                               {card.account.cardType === 'social' ? (
-                                <Typography sx={{ color: meta.accent, fontSize: '0.95rem', fontWeight: 950 }}>{avatarInitial(card.account)}</Typography>
+                                <Typography sx={{ color: meta.accent, fontSize: '0.78rem', fontWeight: 950 }}>{avatarInitial(card.account)}</Typography>
                               ) : meta.icon}
                               {avatarUrl && (
                                 <Box
@@ -805,10 +805,10 @@ export function DashboardPage() {
                             </Box>
                             <Box sx={{ minWidth: 0 }}>
                               <Stack direction="row" spacing={0.4} alignItems="center" justifyContent="center">
-                                <Typography sx={{ display: '-webkit-box', fontSize: '0.82rem', fontWeight: 900, lineHeight: 1.12, overflow: 'hidden', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{card.account.label}</Typography>
-                                <OpenInNewIcon sx={{ color: meta.accent, flex: '0 0 auto', fontSize: 13 }} />
+                                <Typography sx={{ display: '-webkit-box', fontSize: '0.76rem', fontWeight: 900, lineHeight: 1.08, overflow: 'hidden', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{card.account.label}</Typography>
+                                <OpenInNewIcon sx={{ color: meta.accent, flex: '0 0 auto', fontSize: 12 }} />
                               </Stack>
-                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.66rem', fontWeight: 800 }} noWrap>{meta.label} · #{index + 1}</Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.61rem', fontWeight: 800 }} noWrap>{meta.label} · #{index + 1}</Typography>
                             </Box>
                           </Box>
                           <DragHandle />
@@ -834,10 +834,10 @@ export function DashboardPage() {
                         borderRadius: 2,
                         boxShadow: active ? `0 14px 30px ${account.color}16` : '0 8px 20px rgba(30,41,59,0.035)',
                         color: 'text.primary',
-                        height: { xs: 112, sm: 118 },
+                        height: { xs: 94, sm: 98 },
                         overflow: 'hidden',
-                        p: 1,
-                        pb: 3.6,
+                        p: 0.8,
+                        pb: 2.85,
                         position: 'relative',
                         cursor: 'grab',
                         opacity: draggedCardId === card.id ? 0.56 : 1,
@@ -857,16 +857,16 @@ export function DashboardPage() {
                       }}
                     >
                       <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
-                        <Box component="button" type="button" onClick={() => setActiveSpaceId(account.id)} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0, width: '100%' }}>
-                          <Box sx={{ bgcolor: `${account.color}10`, border: '1px solid', borderColor: `${account.color}2d`, borderRadius: 2, color: account.color, display: 'grid', height: 38, placeItems: 'center', width: 38 }}>
-                            <MailIcon fontSize="small" />
+                        <Box component="button" type="button" onClick={() => setActiveSpaceId(account.id)} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 0.45, minWidth: 0, width: '100%' }}>
+                          <Box sx={{ bgcolor: `${account.color}10`, border: '1px solid', borderColor: `${account.color}2d`, borderRadius: 1.75, color: account.color, display: 'grid', height: 30, placeItems: 'center', width: 30 }}>
+                            <MailIcon sx={{ fontSize: 18 }} />
                           </Box>
                           <Box sx={{ minWidth: 0 }}>
                             <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
-                              <Typography sx={{ display: '-webkit-box', fontSize: '0.75rem', fontWeight: 900, lineHeight: 1.12, overflow: 'hidden', overflowWrap: 'anywhere', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{account.email}</Typography>
-                              {active && <Chip size="small" label="Active" sx={{ bgcolor: account.color, color: '#fff', flex: '0 0 auto', fontWeight: 800, height: 22 }} />}
+                              <Typography sx={{ display: '-webkit-box', fontSize: '0.69rem', fontWeight: 900, lineHeight: 1.08, overflow: 'hidden', overflowWrap: 'anywhere', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{account.email}</Typography>
+                              {active && <Chip size="small" label="Active" sx={{ bgcolor: account.color, color: '#fff', flex: '0 0 auto', fontWeight: 800, height: 20, '& .MuiChip-label': { px: 0.7 } }} />}
                             </Stack>
-                            <Typography variant="caption" sx={{ color: account.color, display: 'block', fontSize: '0.67rem', fontWeight: 900 }} noWrap>
+                            <Typography variant="caption" sx={{ color: account.color, display: 'block', fontSize: '0.61rem', fontWeight: 900 }} noWrap>
                               {providerLabel(account.provider)} · {metricLabel(account.emails, 'email')}
                             </Typography>
                           </Box>
