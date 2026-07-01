@@ -10,7 +10,7 @@
     "android:sync": "npm run build:mobile && cap sync android",
     "android:open": "cap open android",
     "ota:init": "npx @capgo/cli@latest init",
-    "ota:upload": "npm run build:mobile && npx @capgo/cli@latest bundle upload",
+    "ota:upload": "npm run build:mobile && npx @capgo/cli@latest bundle upload com.oconnect.assistant --path ./dist --channel production --package-json ./package.json --node-modules ../node_modules",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -37,7 +37,14 @@ From the repo root:
 npm run ota:upload
 ```
 
-The script builds the mobile web bundle and uploads it to Capgo. Devices with an OTA-enabled APK will download the update and apply it when the app backgrounds or restarts.
+The script builds the mobile web bundle and uploads it to the `production` channel for `com.oconnect.assistant`. Devices with an OTA-enabled APK will download the update and apply it when the app backgrounds or restarts.
+
+For a named test bundle:
+
+```bash
+cd frontend
+npx @capgo/cli@latest bundle upload com.oconnect.assistant --path ./dist --channel production --bundle 1.0.1 --comment "Test OTA upload" --package-json ./package.json --node-modules ../node_modules
+```
 
 ## First APK requirement
 
