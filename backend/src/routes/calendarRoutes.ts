@@ -2,12 +2,12 @@ import { Router } from 'express';
 import Joi from 'joi';
 import { availability, create, events, freeBusy, remove, update } from '../controllers/calendarController.js';
 import { validateBody } from '../middleware/validate.js';
-import { cacheGet } from '../middleware/responseCache.js';
+import { cacheGet, invalidateResponseCache } from '../middleware/responseCache.js';
 
 export const calendarRoutes = Router();
 
 calendarRoutes.get('/events', cacheGet(45, (req) => req.query.dashboard === '1'), events);
-calendarRoutes.post('/events', validateBody(Joi.object({
+calendarRoutes.post('/events', invalidateResponseCache, validateBody(Joi.object({
   title: Joi.string().required(),
   date: Joi.string().required(),
   startTime: Joi.string().required(),
@@ -18,7 +18,7 @@ calendarRoutes.post('/events', validateBody(Joi.object({
   force: Joi.boolean().default(false),
   accountId: Joi.string().default('primary')
 })), create);
-calendarRoutes.put('/events/:id', validateBody(Joi.object({
+calendarRoutes.put('/events/:id', invalidateResponseCache, validateBody(Joi.object({
   title: Joi.string().required(),
   date: Joi.string().required(),
   startTime: Joi.string().required(),
@@ -28,7 +28,7 @@ calendarRoutes.put('/events/:id', validateBody(Joi.object({
   attendees: Joi.array().items(Joi.string().email()).default([]),
   force: Joi.boolean().default(false)
 })), update);
-calendarRoutes.delete('/events/:id', remove);
+calendarRoutes.delete('/events/:id', invalidateResponseCache, remove);
 calendarRoutes.post('/availability', validateBody(Joi.object({
   start: Joi.string().required(),
   end: Joi.string().required()

@@ -6,7 +6,7 @@ import { exchangeMicrosoftCode, getMicrosoftAuthUrl, redirectWithMicrosoftSessio
 import { exchangeZohoCode, getZohoAuthUrl, redirectWithZohoSession } from '../services/zohoAuthService.js';
 import { upsertGoogleUser, upsertMicrosoftUser, upsertZohoUser } from '../repositories/userRepository.js';
 import { ensureDefaultTenant } from '../repositories/tenantRepository.js';
-import { signSession } from '../middleware/auth.js';
+import { sessionCookieName, sessionCookieOptions, signSession } from '../middleware/auth.js';
 import { deleteConnectedAccount, listConnectedAccounts, upsertConnectedAccount } from '../repositories/connectedAccountRepository.js';
 import { createDashboardCard } from '../repositories/dashboardCardRepository.js';
 import { upsertSocialConnection, type SocialPlatform } from '../repositories/socialConnectionRepository.js';
@@ -114,6 +114,15 @@ function redirectAfterSocialError(provider: string, message: string, mobile = fa
 function redirectAfterAuthError(provider: string, message: string, mobile = false) {
   const baseUrl = mobile ? env.MOBILE_APP_URL : env.FRONTEND_URL;
   return `${baseUrl}/login?auth_error=${encodeURIComponent(`${provider}: ${message}`)}`;
+}
+
+function redirectWithAuthenticatedSession(res: Response, token: string, mobile: boolean, mobileRedirect: (token: string, mobile: boolean) => string) {
+  if (mobile) {
+    res.redirect(mobileRedirect(token, true));
+    return;
+  }
+  res.cookie(sessionCookieName, token, sessionCookieOptions());
+  res.redirect(`${env.FRONTEND_URL.replace(/\/$/, '')}/auth/callback`);
 }
 
 function socialErrorMessage(error: unknown) {
@@ -238,8 +247,9 @@ export async function googleCallback(req: Request, res: Response, next: NextFunc
       tokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null
     });
     const tenant = await ensureDefaultTenant(user.id, user.email);
+    const mobile = isMobileState(req.query.state, 'google');
     const token = signSession({ id: user.id, tenantId: tenant.id, email: user.email, name: user.name, role: tenant.role, provider: 'google' });
-    res.redirect(redirectWithSession(token, isMobileState(req.query.state, 'google')));
+    redirectWithAuthenticatedSession(res, token, mobile, redirectWithSession);
   } catch (error) {
     next(error);
   }
@@ -292,8 +302,9 @@ export async function microsoftCallback(req: Request, res: Response, next: NextF
       tokenExpiry: tokens.expiry
     });
     const tenant = await ensureDefaultTenant(user.id, user.email);
+    const mobile = isMobileState(req.query.state, 'microsoft');
     const token = signSession({ id: user.id, tenantId: tenant.id, email: user.email, name: user.name, role: tenant.role, provider: 'microsoft' });
-    res.redirect(redirectWithMicrosoftSession(token, isMobileState(req.query.state, 'microsoft')));
+    redirectWithAuthenticatedSession(res, token, mobile, redirectWithMicrosoftSession);
   } catch (error) {
     next(error);
   }
@@ -346,8 +357,9 @@ export async function zohoCallback(req: Request, res: Response, next: NextFuncti
       tokenExpiry: tokens.expiry
     });
     const tenant = await ensureDefaultTenant(user.id, user.email);
+    const mobile = isMobileState(req.query.state, 'zoho');
     const token = signSession({ id: user.id, tenantId: tenant.id, email: user.email, name: user.name, role: tenant.role, provider: 'zoho' });
-    res.redirect(redirectWithZohoSession(token, isMobileState(req.query.state, 'zoho')));
+    redirectWithAuthenticatedSession(res, token, mobile, redirectWithZohoSession);
   } catch (error) {
     next(error);
   }
@@ -355,6 +367,11 @@ export async function zohoCallback(req: Request, res: Response, next: NextFuncti
 
 export function me(req: Request, res: Response) {
   send(res, req.user);
+}
+
+export function logout(_req: Request, res: Response) {
+  res.clearCookie(sessionCookieName, { ...sessionCookieOptions(), maxAge: undefined });
+  send(res, { loggedOut: true });
 }
 
 export async function connectedAccounts(req: Request, res: Response, next: NextFunction) {

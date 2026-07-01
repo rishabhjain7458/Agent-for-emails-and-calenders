@@ -3,7 +3,8 @@ import type { ReactNode } from 'react';
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
-import { getMe } from '../api/endpoints';
+import { getMe, logoutSession } from '../api/endpoints';
+import { clearSessionToken, getSessionToken, setSessionToken } from '../api/sessionToken';
 import type { User } from '../types';
 
 type AuthContextValue = {
@@ -30,25 +31,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handledNativeUrls = useRef(new Set<string>());
 
   const refresh = useCallback(async () => {
-    const token = localStorage.getItem('sessionToken');
-    if (!token) {
+    const token = await getSessionToken();
+    if (isNative && !token) {
       setUser(null);
       setLoading(false);
       return;
     }
     try {
       setUser(await getMe());
+    } catch {
+      setUser(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isNative]);
 
   useEffect(() => {
     refresh();
-  }, []);
+  }, [refresh]);
 
   const completeNativeLogin = useCallback(async (token: string) => {
-    localStorage.setItem('sessionToken', token);
+    await setSessionToken(token);
     setLoading(true);
     try {
       const nextUser = await getMe();
@@ -56,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await Browser.close().catch(() => undefined);
       window.location.replace('/dashboard');
     } catch (caught) {
-      localStorage.removeItem('sessionToken');
+      await clearSessionToken();
       setUser(null);
       await Browser.close().catch(() => undefined);
       const message = getLoginErrorMessage(caught);
@@ -127,11 +130,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.location.href = url;
     },
     logout: () => {
-      localStorage.removeItem('sessionToken');
+      clearSessionToken();
+      logoutSession().catch(() => undefined);
       setUser(null);
       window.location.href = '/login';
     }
-  }), [user, loading, refresh]);
+  }), [isNative, user, loading, refresh]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

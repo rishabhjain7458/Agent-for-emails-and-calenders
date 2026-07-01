@@ -6,6 +6,10 @@ export async function getMe() {
   return data.data;
 }
 
+export async function logoutSession() {
+  await api.post('/auth/logout');
+}
+
 type EmailsApiResponse =
   | { data: EmailMessage[] }
   | { data: { messages: EmailMessage[]; nextPageToken?: string; resultSizeEstimate?: number } };

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Box, Button, ButtonGroup, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Stack, TextField, Typography } from '@mui/material';
+import DOMPurify from 'dompurify';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -127,16 +128,22 @@ function extractLinks(body?: string) {
   });
 }
 
-function sanitizeEmailHtml(value?: string) {
+function sanitizeEmailHtml(value?: string, allowRemoteImages = false) {
   if (!value) return '';
   const parser = new DOMParser();
-  const doc = parser.parseFromString(value, 'text/html');
-  doc.querySelectorAll('script, iframe, object, embed, form, input, button, textarea, select').forEach((node) => node.remove());
-  doc.querySelectorAll('*').forEach((node) => {
-    Array.from(node.attributes).forEach((attribute) => {
-      if (/^on/i.test(attribute.name)) node.removeAttribute(attribute.name);
-    });
+  const sanitized = DOMPurify.sanitize(value, {
+    ADD_ATTR: ['target'],
+    FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'textarea', 'select'],
+    FORBID_ATTR: ['srcset']
   });
+  const doc = parser.parseFromString(sanitized, 'text/html');
+  if (!allowRemoteImages) {
+    doc.querySelectorAll('img[src]').forEach((node) => {
+      node.setAttribute('data-blocked-src', node.getAttribute('src') ?? '');
+      node.removeAttribute('src');
+      node.setAttribute('alt', node.getAttribute('alt') || 'Remote image blocked');
+    });
+  }
   doc.querySelectorAll('a[href]').forEach((node) => {
     node.setAttribute('target', '_blank');
     node.setAttribute('rel', 'noreferrer noopener');
@@ -146,6 +153,7 @@ function sanitizeEmailHtml(value?: string) {
     html, body { margin: 0; padding: 0; background: #ffffff; color: #202124; font-family: Arial, Helvetica, sans-serif; }
     body { overflow-wrap: anywhere; }
     img { max-width: 100% !important; height: auto !important; }
+    img:not([src]) { display: inline-block; min-height: 32px; min-width: 120px; border: 1px dashed #cbd5e1; border-radius: 8px; background: #f8fafc; }
     table { max-width: 100% !important; }
     a { color: #1a73e8; }
     pre { white-space: pre-wrap; }
@@ -206,7 +214,8 @@ function RichEmailBody({ html, text }: { html?: string; text?: string }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [height, setHeight] = useState(620);
   const [mode, setMode] = useState('text');
-  const srcDoc = useMemo(() => sanitizeEmailHtml(html), [html]);
+  const [showRemoteImages, setShowRemoteImages] = useState(false);
+  const srcDoc = useMemo(() => sanitizeEmailHtml(html, showRemoteImages), [html, showRemoteImages]);
   const hasHtml = Boolean(srcDoc);
 
   function resizeFrame() {
@@ -223,17 +232,24 @@ function RichEmailBody({ html, text }: { html?: string; text?: string }) {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }} gap={1} flexWrap="wrap">
         <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 800 }}>Message</Typography>
-        <ButtonGroup size="small" variant="outlined">
-          <Button disabled={!hasHtml} variant={mode === 'rich' ? 'contained' : 'outlined'} onClick={() => setMode('rich')}>Rich view</Button>
-          <Button variant={mode === 'text' ? 'contained' : 'outlined'} onClick={() => setMode('text')}>Clean text</Button>
-        </ButtonGroup>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {mode === 'rich' && hasHtml && (
+            <Button size="small" variant="outlined" onClick={() => setShowRemoteImages((current) => !current)}>
+              {showRemoteImages ? 'Block images' : 'Show images'}
+            </Button>
+          )}
+          <ButtonGroup size="small" variant="outlined">
+            <Button disabled={!hasHtml} variant={mode === 'rich' ? 'contained' : 'outlined'} onClick={() => setMode('rich')}>Rich view</Button>
+            <Button variant={mode === 'text' ? 'contained' : 'outlined'} onClick={() => setMode('text')}>Clean text</Button>
+          </ButtonGroup>
+        </Stack>
       </Stack>
       <Box sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
         {mode === 'rich' && hasHtml ? (
           <Box
             component="iframe"
             ref={iframeRef}
-            sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+            sandbox="allow-popups allow-popups-to-escape-sandbox"
             srcDoc={srcDoc}
             onLoad={resizeFrame}
             title="Email body"

@@ -16,11 +16,10 @@ export function AuthCallbackPage() {
         navigate(`/login?auth_error=${encodeURIComponent(error)}`, { replace: true });
         return;
       }
-      if (!token) {
-        navigate('/login?auth_error=Login%20did%20not%20return%20a%20session%20token', { replace: true });
+      if (token) {
+        navigate('/login?auth_error=Unexpected%20mobile%20login%20callback', { replace: true });
         return;
       }
-      localStorage.setItem('sessionToken', token);
       await refresh();
       navigate('/dashboard', { replace: true });
     }
