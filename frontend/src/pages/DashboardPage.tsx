@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type DragEvent, type ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, FormControlLabel, Grid, IconButton, LinearProgress, Stack, Switch, Tooltip, Typography } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
+import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Divider, Grid, LinearProgress, Stack, Tooltip, Typography } from '@mui/material';
 import MailIcon from '@mui/icons-material/Mail';
 import EventIcon from '@mui/icons-material/Event';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import LayersIcon from '@mui/icons-material/Layers';
@@ -23,7 +21,6 @@ import InsightsIcon from '@mui/icons-material/Insights';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import PermMediaIcon from '@mui/icons-material/PermMedia';
-import { PageHeader } from '../components/PageHeader';
 import { completeTask, getDashboardCards, getEmails, getEvents, getTasks, updateDashboardCardOrder } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
 import type { CalendarEvent, DashboardCard as LinkDashboardCard, EmailMessage, Task } from '../types';
@@ -305,9 +302,8 @@ function AnalysisPanel({ title, subtitle, icon, children }: { title: string; sub
 function DragHandle() {
   return (
     <Tooltip title="Drag to reorder">
-      <Box sx={{ alignItems: 'center', bottom: 8, color: 'text.secondary', display: 'flex', gap: 0.2, justifyContent: 'center', left: 0, opacity: 0.62, position: 'absolute', right: 0 }}>
-        <DragIndicatorIcon sx={{ fontSize: 17 }} />
-        <Typography variant="caption" sx={{ fontSize: '0.58rem', fontWeight: 850 }}>drag</Typography>
+      <Box sx={{ alignItems: 'center', bottom: 4, color: 'text.secondary', display: 'flex', justifyContent: 'center', left: 0, opacity: 0.52, position: 'absolute', right: 0 }}>
+        <DragIndicatorIcon sx={{ fontSize: 15 }} />
       </Box>
     </Tooltip>
   );
@@ -329,10 +325,6 @@ export function DashboardPage() {
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
   const [draggedSectionKey, setDraggedSectionKey] = useState<CardSectionKey | null>(null);
   const [sectionOrder, setSectionOrder] = useState<CardSectionKey[]>(readSectionOrder);
-  const [focusMode, setFocusMode] = useState(() => localStorage.getItem('o-connect-focus-mode') === 'true');
-  const workspaceRef = useRef<HTMLDivElement | null>(null);
-  const analysisRef = useRef<HTMLDivElement | null>(null);
-  const shortcutsRef = useRef<HTMLDivElement | null>(null);
 
   async function loadDashboard() {
     setLoading(true);
@@ -448,9 +440,6 @@ export function DashboardPage() {
   const workspaceSubtitle = selectedSpace
     ? `${providerLabel(selectedSpace.provider)} space. Mail, tasks, assistant, and create actions use this account.`
     : 'All connected spaces together. Calendar remains unified.';
-  const workspacePrompt = selectedSpace
-    ? `Plan my day for ${selectedSpace.email}`
-    : 'Plan my day across all spaces';
   const recentScopedEmails = selectedSpace
     ? recentEmails.filter((email) => itemAccountKey(email) === selectedSpace.id || email.accountEmail === selectedSpace.email)
     : recentEmails;
@@ -482,19 +471,6 @@ export function DashboardPage() {
     loadDashboard();
   }
 
-  function scrollToSection(section: 'workspace' | 'analysis' | 'shortcuts') {
-    const target = section === 'workspace' ? workspaceRef.current : section === 'analysis' ? analysisRef.current : shortcutsRef.current;
-    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  function toggleFocusMode(checked: boolean) {
-    setFocusMode(checked);
-    localStorage.setItem('o-connect-focus-mode', String(checked));
-    if (checked && isCombined && accountSpaces[0]) {
-      setActiveSpaceId(accountSpaces[0].id);
-    }
-  }
-
   async function saveDashboardCardOrder(next: string[]) {
     setCardOrderError('');
     setCardOrder(next);
@@ -523,7 +499,7 @@ export function DashboardPage() {
     await saveDashboardCardOrder(next);
   }
 
-  const visibleDashboardCards = orderedDashboardCards.filter((card) => !(focusMode && selectedSpace && card.kind === 'space' && card.account.id !== selectedSpace.id));
+  const visibleDashboardCards = orderedDashboardCards;
   const visibleMailCards = visibleDashboardCards.filter((card) => card.kind !== 'link');
   const visiblePortalCards = visibleDashboardCards.filter((card) => card.kind === 'link' && card.account.cardType === 'portal');
   const visibleMediaCards = visibleDashboardCards.filter((card) => card.kind === 'link' && card.account.cardType === 'media');
@@ -558,18 +534,12 @@ export function DashboardPage() {
 
   return (
     <>
-      <PageHeader
-        title="Dashboard"
-        subtitle="Pick a space, then work from a focused view."
-        action={<Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadDashboard}>Refresh</Button>}
-        compact
-      />
       {errors.length > 0 && <Alert sx={{ mb: 2 }} severity="warning">{errors.join(' ')}</Alert>}
       {cardOrderError && <Alert sx={{ mb: 2 }} severity="warning">{cardOrderError}</Alert>}
-      {loading && <LinearProgress sx={{ mb: 2 }} />}
-      {cardOrderSaving && <LinearProgress sx={{ mb: 2 }} color="secondary" />}
+      {loading && <LinearProgress sx={{ mb: 1.25 }} />}
+      {cardOrderSaving && <LinearProgress sx={{ mb: 1.25 }} color="secondary" />}
 
-      <Stack spacing={1.5}>
+      <Stack spacing={1.25}>
         <Card
           className="premium-panel"
           sx={{
@@ -581,27 +551,22 @@ export function DashboardPage() {
             overflow: 'hidden'
           }}
         >
-          <CardContent sx={{ p: { xs: 1, md: 1.2 } }}>
-            <Stack spacing={1} sx={{ width: '100%' }}>
+          <CardContent sx={{ p: { xs: 0.85, md: 1 } }}>
+            <Stack spacing={0.8} sx={{ width: '100%' }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={0.75} alignItems={{ xs: 'stretch', sm: 'center' }}>
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontSize: { xs: '1.05rem', sm: '1.18rem' }, fontWeight: 950, lineHeight: 1.05 }}>Cards</Typography>
-                  <Typography color="text.secondary" sx={{ fontSize: '0.78rem', lineHeight: 1.25 }}>Choose a workspace or saved profile.</Typography>
+                  <Typography sx={{ fontSize: { xs: '1rem', sm: '1.08rem' }, fontWeight: 950, lineHeight: 1.05 }}>Cards</Typography>
+                  <Typography color="text.secondary" sx={{ fontSize: '0.74rem', lineHeight: 1.2 }}>Choose a workspace or saved profile.</Typography>
                 </Box>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent={{ xs: 'flex-start', sm: 'flex-end' }} useFlexGap>
-                  <FormControlLabel control={<Switch checked={focusMode} onChange={(event) => toggleFocusMode(event.target.checked)} size="small" />} label="Focus mode" sx={{ mr: 0 }} />
-                  <Chip size="small" label={`${visibleDashboardCards.length} cards`} variant="outlined" />
-                  <Chip size="small" label="Order saved" color={cardOrderSaving ? 'default' : 'success'} variant="outlined" />
-                  {(['workspace', 'analysis', 'shortcuts'] as const).map((key) => (
-                    <Chip key={key} size="small" label={key} color="primary" variant="filled" onClick={() => scrollToSection(key)} />
-                  ))}
+                  <Button size="small" variant="outlined" startIcon={<RefreshIcon />} onClick={loadDashboard}>Refresh</Button>
                 </Stack>
               </Stack>
               <Box
                 sx={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 1,
+                  gap: 0.75,
                   minWidth: 0,
                   width: '100%'
                 }}
@@ -628,12 +593,12 @@ export function DashboardPage() {
                       borderRadius: 2,
                       boxShadow: (theme) => theme.palette.mode === 'dark' ? 'none' : '0 10px 24px rgba(30, 41, 59, 0.04)',
                       opacity: draggedSectionKey === group.key ? 0.62 : 1,
-                      p: { xs: 0.85, md: 0.95 },
+                      p: { xs: 0.7, md: 0.78 },
                       transition: 'opacity 150ms ease, border-color 150ms ease, transform 150ms ease',
                       width: '100%'
                     }}
                   >
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.7, px: 0.25 }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: 0.55, px: 0.25 }}>
                       <Box sx={{ alignItems: 'center', display: 'flex', gap: 0.8, minWidth: 0 }}>
                         <Tooltip title="Drag section to reorder">
                           <Box
@@ -662,8 +627,8 @@ export function DashboardPage() {
                         gap: 0.9,
                         gridTemplateColumns: {
                           xs: 'repeat(2, minmax(0, 1fr))',
-                          sm: 'repeat(auto-fill, minmax(138px, 158px))',
-                          lg: 'repeat(auto-fill, minmax(146px, 164px))'
+                          sm: 'repeat(auto-fill, minmax(126px, 148px))',
+                          lg: 'repeat(auto-fill, minmax(134px, 154px))'
                         },
                         justifyContent: 'start'
                       }}
@@ -708,9 +673,9 @@ export function DashboardPage() {
                           borderRadius: 2,
                           boxShadow: isCombined ? '0 16px 34px rgba(37,87,214,0.2)' : '0 8px 20px rgba(30,41,59,0.035)',
                           color: isCombined ? '#fff' : 'text.primary',
-                          height: { xs: 94, sm: 98 },
-                          p: 0.8,
-                          pb: 2.85,
+                          height: { xs: 82, sm: 86 },
+                          p: 0.65,
+                          pb: 2.25,
                           position: 'relative',
                           cursor: 'grab',
                           opacity: draggedCardId === card.id ? 0.56 : 1,
@@ -730,8 +695,8 @@ export function DashboardPage() {
                       >
                         <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
                           <Box component="button" type="button" onClick={() => setActiveSpaceId('combined')} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 0.45, minWidth: 0, width: '100%' }}>
-                            <Box sx={{ bgcolor: isCombined ? 'rgba(255,255,255,0.16)' : 'action.hover', borderRadius: 1.75, display: 'grid', height: 30, placeItems: 'center', width: 30 }}>
-                              <LayersIcon sx={{ fontSize: 18 }} />
+                            <Box sx={{ bgcolor: isCombined ? 'rgba(255,255,255,0.16)' : 'action.hover', borderRadius: 1.5, display: 'grid', height: 26, placeItems: 'center', width: 26 }}>
+                              <LayersIcon sx={{ fontSize: 16 }} />
                             </Box>
                             <Box sx={{ minWidth: 0 }}>
                               <Stack direction="row" spacing={0.55} alignItems="center" justifyContent="center">
@@ -764,9 +729,9 @@ export function DashboardPage() {
                           borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(80, 96, 128, 0.64)' : 'rgba(208, 218, 234, 0.96)',
                           borderRadius: 2,
                           color: 'inherit',
-                          height: { xs: 94, sm: 98 },
-                          p: 0.8,
-                          pb: 2.85,
+                          height: { xs: 82, sm: 86 },
+                          p: 0.65,
+                          pb: 2.25,
                           position: 'relative',
                           cursor: 'grab',
                           opacity: draggedCardId === card.id ? 0.56 : 1,
@@ -787,7 +752,7 @@ export function DashboardPage() {
                       >
                         <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
                           <Box component="a" href={dashboardCardUrl(card.account)} target="_blank" rel="noreferrer" sx={{ alignItems: 'center', color: 'inherit', display: 'flex', flexDirection: 'column', gap: 0.45, minWidth: 0, textDecoration: 'none', width: '100%' }}>
-                            <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}28`, borderRadius: '50%', boxShadow: `0 7px 15px ${meta.accent}10`, color: meta.accent, display: 'grid', flex: '0 0 auto', height: 32, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 32 }}>
+                            <Box sx={{ bgcolor: meta.accentBg, border: '1px solid', borderColor: `${meta.accent}28`, borderRadius: '50%', boxShadow: `0 7px 15px ${meta.accent}10`, color: meta.accent, display: 'grid', flex: '0 0 auto', height: 28, overflow: 'hidden', placeItems: 'center', position: 'relative', width: 28 }}>
                               {card.account.cardType === 'social' ? (
                                 <Typography sx={{ color: meta.accent, fontSize: '0.78rem', fontWeight: 950 }}>{avatarInitial(card.account)}</Typography>
                               ) : meta.icon}
@@ -805,7 +770,7 @@ export function DashboardPage() {
                             </Box>
                             <Box sx={{ minWidth: 0 }}>
                               <Stack direction="row" spacing={0.4} alignItems="center" justifyContent="center">
-                                <Typography sx={{ display: '-webkit-box', fontSize: '0.76rem', fontWeight: 900, lineHeight: 1.08, overflow: 'hidden', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{card.account.label}</Typography>
+                                <Typography sx={{ display: '-webkit-box', fontSize: '0.72rem', fontWeight: 900, lineHeight: 1.06, overflow: 'hidden', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>{card.account.label}</Typography>
                                 <OpenInNewIcon sx={{ color: meta.accent, flex: '0 0 auto', fontSize: 12 }} />
                               </Stack>
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.61rem', fontWeight: 800 }} noWrap>{meta.label} · #{index + 1}</Typography>
@@ -834,10 +799,10 @@ export function DashboardPage() {
                         borderRadius: 2,
                         boxShadow: active ? `0 14px 30px ${account.color}16` : '0 8px 20px rgba(30,41,59,0.035)',
                         color: 'text.primary',
-                        height: { xs: 94, sm: 98 },
+                        height: { xs: 82, sm: 86 },
                         overflow: 'hidden',
-                        p: 0.8,
-                        pb: 2.85,
+                        p: 0.65,
+                        pb: 2.25,
                         position: 'relative',
                         cursor: 'grab',
                         opacity: draggedCardId === card.id ? 0.56 : 1,
@@ -858,8 +823,8 @@ export function DashboardPage() {
                     >
                       <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }}>
                         <Box component="button" type="button" onClick={() => setActiveSpaceId(account.id)} sx={{ all: 'unset', alignItems: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 0.45, minWidth: 0, width: '100%' }}>
-                          <Box sx={{ bgcolor: `${account.color}10`, border: '1px solid', borderColor: `${account.color}2d`, borderRadius: 1.75, color: account.color, display: 'grid', height: 30, placeItems: 'center', width: 30 }}>
-                            <MailIcon sx={{ fontSize: 18 }} />
+                          <Box sx={{ bgcolor: `${account.color}10`, border: '1px solid', borderColor: `${account.color}2d`, borderRadius: 1.5, color: account.color, display: 'grid', height: 26, placeItems: 'center', width: 26 }}>
+                            <MailIcon sx={{ fontSize: 16 }} />
                           </Box>
                           <Box sx={{ minWidth: 0 }}>
                             <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
@@ -884,7 +849,7 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card ref={workspaceRef} className="premium-panel" sx={{ borderColor: selectedSpaceColor, overflow: 'hidden', scrollMarginTop: 96 }}>
+        <Card className="premium-panel" sx={{ borderColor: selectedSpaceColor, overflow: 'hidden', scrollMarginTop: 96 }}>
           <Box sx={{ bgcolor: selectedSpace ? `${selectedSpaceColor}10` : 'rgba(37,87,214,0.08)', borderBottom: '1px solid', borderColor: 'divider', p: { xs: 2, md: 2.5 } }}>
             <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2}>
               <Box sx={{ minWidth: 0 }}>
@@ -974,7 +939,6 @@ export function DashboardPage() {
         </Card>
 
         <Card
-          ref={analysisRef}
           className="premium-panel"
           sx={{
             background: (theme) => theme.palette.mode === 'dark'
@@ -1148,25 +1112,6 @@ export function DashboardPage() {
                 </Box>
               </Grid>
             </Grid>
-          </CardContent>
-        </Card>
-
-        <Card ref={shortcutsRef} className="premium-panel" sx={{ scrollMarginTop: 96 }}>
-          <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
-            <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }} spacing={2}>
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 900 }}>Assistant shortcuts</Typography>
-                <Typography color="text.secondary" variant="body2">These run inside the active space.</Typography>
-              </Box>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" useFlexGap>
-                {[workspacePrompt, 'Summarize unread emails', 'Create tasks from important emails'].map((prompt) => (
-                  <Button key={prompt} component={RouterLink} to={`/assistant?prompt=${encodeURIComponent(prompt)}`} variant="outlined" startIcon={<AutoAwesomeIcon />}>
-                    {prompt}
-                  </Button>
-                ))}
-                <Button component={RouterLink} to="/calendar" variant="contained" startIcon={<AddIcon />}>Create Meeting</Button>
-              </Stack>
-            </Stack>
           </CardContent>
         </Card>
 

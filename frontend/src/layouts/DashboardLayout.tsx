@@ -1,21 +1,17 @@
 import { useState } from 'react';
-import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, Outlet, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Avatar,
   Box,
-  Chip,
   Divider,
   Drawer,
   IconButton,
-  InputAdornment,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  MenuItem,
   Stack,
-  TextField,
   Toolbar,
   Tooltip,
   Typography,
@@ -30,16 +26,10 @@ import SmartToyIcon from '@mui/icons-material/SmartToy';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
-import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import LayersIcon from '@mui/icons-material/Layers';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
-import LightModeIcon from '@mui/icons-material/LightMode';
 import { useAuth } from '../contexts/AuthContext';
-import { useSpace } from '../contexts/SpaceContext';
-import { useThemeMode } from '../contexts/ThemeModeContext';
 
 const drawerWidth = 276;
 const collapsedDrawerWidth = 78;
@@ -57,10 +47,7 @@ export function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') !== 'false');
   const [sidebarHover, setSidebarHover] = useState(false);
   const { user, logout } = useAuth();
-  const { activeSpaceId, activeSpace, isCombined, setActiveSpaceId, spaces } = useSpace();
-  const { mode, toggleMode } = useThemeMode();
   const location = useLocation();
-  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const drawerExpanded = isMobile || !collapsed || sidebarHover;
@@ -73,25 +60,6 @@ export function DashboardLayout() {
       localStorage.setItem('sidebar-collapsed', String(next));
       return next;
     });
-  }
-
-  function runCommand(value: string) {
-    const command = value.trim();
-    if (!command) return;
-    const lower = command.toLowerCase();
-    if (lower.startsWith('task:') || lower.startsWith('todo:')) {
-      navigate(`/tasks?title=${encodeURIComponent(command.replace(/^(task|todo):/i, '').trim())}`);
-      return;
-    }
-    if (/\b(meeting|calendar|schedule|event)\b/i.test(command)) {
-      navigate(`/calendar?prompt=${encodeURIComponent(command)}`);
-      return;
-    }
-    if (/\b(summarize|draft|reply|plan|assistant|ai)\b/i.test(command)) {
-      navigate(`/assistant?prompt=${encodeURIComponent(command)}`);
-      return;
-    }
-    navigate(`/emails?query=${encodeURIComponent(command)}`);
   }
 
   const drawer = (
@@ -201,55 +169,14 @@ export function DashboardLayout() {
           backdropFilter: 'blur(18px)'
         }}
       >
-        <Toolbar sx={{ gap: { xs: 0.75, sm: 1.35 }, minHeight: { xs: 64, sm: 72 }, px: { xs: 1.25, sm: 2.25 } }}>
+        <Toolbar sx={{ gap: { xs: 0.75, sm: 1.35 }, justifyContent: 'flex-end', minHeight: { xs: 54, sm: 58 }, px: { xs: 1.25, sm: 2.25 } }}>
           {isMobile && (
             <IconButton onClick={() => setOpen(true)} aria-label="Open navigation">
               <MenuIcon />
             </IconButton>
           )}
-          <TextField
-            size="small"
-            placeholder={isMobile ? 'Search' : 'Search emails, meetings, tasks'}
-            sx={{
-              maxWidth: { xs: 'none', md: 560 },
-              flex: 1,
-              minWidth: 0,
-              '& .MuiOutlinedInput-root': { borderRadius: 999, bgcolor: 'background.paper' },
-              '& .MuiInputBase-input': { px: { xs: 0.5, sm: 1.75 } }
-            }}
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                const value = (event.target as HTMLInputElement).value.trim();
-                runCommand(value);
-              }
-            }}
-            helperText={isMobile ? undefined : 'Try: task: follow up, create meeting tomorrow, summarize unread, or from:name@example.com'}
-          />
-          {!isMobile && (
-            <TextField
-              select
-              size="small"
-              label="Space"
-              value={activeSpaceId}
-              onChange={(event) => setActiveSpaceId(event.target.value)}
-              sx={{ minWidth: 260, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: 'background.paper' } }}
-              InputProps={{ startAdornment: <InputAdornment position="start"><LayersIcon fontSize="small" /></InputAdornment> }}
-            >
-              <MenuItem value="combined">Combined workspace</MenuItem>
-              {spaces.map((space) => (
-                <MenuItem key={space.id} value={space.id}>
-                  {space.email}
-                </MenuItem>
-              ))}
-            </TextField>
-          )}
-          {isMobile && <Chip size="small" label={isCombined ? 'Combined' : activeSpace?.email ?? 'Space'} color="secondary" variant="outlined" />}
-          <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
-            <IconButton onClick={toggleMode} aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
-              {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
-            </IconButton>
-          </Tooltip>
+          {isMobile && <Box sx={{ flex: 1 }} />}
+          {!isMobile && <Box sx={{ flex: 1 }} />}
           <Avatar sx={{ width: { xs: 32, sm: 36 }, height: { xs: 32, sm: 36 }, bgcolor: 'primary.main' }}>{user?.name?.[0] ?? 'U'}</Avatar>
           {!isMobile && <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 220 }}>{user?.email}</Typography>}
           <Tooltip title="Logout">
@@ -289,7 +216,7 @@ export function DashboardLayout() {
         {drawer}
       </Drawer>
 
-      <Box component="main" sx={{ flex: 1, pt: { xs: 9, sm: 10, md: 11 }, px: { xs: 1.25, sm: 2.5, md: 3.5, xl: 5 }, pb: { xs: 3, md: 5 }, minWidth: 0, transition: theme.transitions.create('padding', { duration: theme.transitions.duration.shorter }) }}>
+      <Box component="main" sx={{ flex: 1, pt: { xs: 7, sm: 7.5, md: 8 }, px: { xs: 1.25, sm: 2.5, md: 3.5, xl: 5 }, pb: { xs: 3, md: 5 }, minWidth: 0, transition: theme.transitions.create('padding', { duration: theme.transitions.duration.shorter }) }}>
         <Box className="page-shell" sx={{ maxWidth: 1480, mx: 'auto', width: '100%' }}>
           <Outlet />
         </Box>
