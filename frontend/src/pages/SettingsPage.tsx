@@ -86,7 +86,7 @@ function cardUrlPlaceholder(type: CardFormType) {
 }
 
 function accountProviderLabel(provider: ConnectedAccount['provider']) {
-  return provider === 'microsoft' ? 'Outlook' : provider === 'imap' ? 'IMAP Mail' : provider === 'zoho' ? 'Zoho Mail' : 'Gmail';
+  return provider === 'microsoft' ? 'Microsoft Mail' : provider === 'imap' ? 'IMAP Mail' : provider === 'zoho' ? 'Zoho Mail' : 'Gmail';
 }
 
 function SettingsSection({ title, subtitle, chip, children }: { title: string; subtitle: string; chip?: ReactNode; children: ReactNode }) {
@@ -142,6 +142,23 @@ function CompactRow({ icon, title, subtitle, action }: { icon: ReactNode; title:
   );
 }
 
+function SummaryTile({ label, value, helper }: { label: string; value: string; helper: string }) {
+  return (
+    <Card
+      className="premium-panel"
+      sx={{
+        borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(64, 82, 112, 0.72)' : 'rgba(210, 220, 236, 0.9)'
+      }}
+    >
+      <CardContent sx={{ p: { xs: 1.35, md: 1.65 } }}>
+        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800, textTransform: 'uppercase' }}>{label}</Typography>
+        <Typography sx={{ fontSize: '1.45rem', fontWeight: 950, lineHeight: 1.1, mt: 0.4, overflowWrap: 'anywhere' }}>{value}</Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.35 }}>{helper}</Typography>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function SettingsPage() {
   const { refreshSpaces } = useSpace();
   const [geminiApiKey, setGeminiApiKey] = useState('');
@@ -176,7 +193,7 @@ export function SettingsPage() {
     getDashboardCards().then((result) => setDashboardCards(result.cards));
     const connected = new URLSearchParams(window.location.search).get('connected');
     if (connected) {
-      const label = connected === 'microsoft' ? 'Outlook' : connected === 'zoho' ? 'Zoho Mail' : socialPlatformLabels[connected as SocialPlatform] ?? 'Gmail';
+      const label = connected === 'zoho' ? 'Zoho Mail' : socialPlatformLabels[connected as SocialPlatform] ?? 'Gmail';
       setNotice(`${label} account connected.`);
       window.history.replaceState({}, '', '/settings');
     }
@@ -239,7 +256,7 @@ export function SettingsPage() {
     setNotice('Settings saved.');
   }
 
-  async function connect(provider: 'google' | 'microsoft' | 'zoho') {
+  async function connect(provider: 'google' | 'zoho') {
     const url = await getConnectAccountUrl(provider);
     window.location.href = url;
   }
@@ -335,13 +352,27 @@ export function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Manage accounts, assistant defaults, and dashboard shortcuts." compact />
+      <PageHeader title="Settings" subtitle="Keep the app connected, current, and tuned to your workspace." compact />
       {notice && <Alert sx={{ mb: 2 }} severity="success">{notice}</Alert>}
+      <Grid container spacing={1.5} sx={{ mb: 2 }}>
+        <Grid item xs={6} md={3}>
+          <SummaryTile label="Inboxes" value={`${accounts.length}`} helper="Connected accounts" />
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <SummaryTile label="Timezone" value={timezone.replace('_', ' ')} helper="Assistant scheduling" />
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <SummaryTile label="Cards" value={`${dashboardCards.length}`} helper="Dashboard shortcuts" />
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <SummaryTile label="Email AI" value={ignorePromotions ? 'Filtered' : 'All mail'} helper="Promotion handling" />
+        </Grid>
+      </Grid>
       <Grid container spacing={2}>
         <Grid item xs={12}>
           <SettingsSection
             title="App Updates"
-            subtitle="Check for the latest app improvements."
+            subtitle="Check once and the app will tell you if an update is available."
             chip={<Chip size="small" icon={<SystemUpdateIcon />} label="Updates" variant="outlined" />}
           >
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems={{ xs: 'stretch', md: 'center' }} justifyContent="space-between">
@@ -355,8 +386,8 @@ export function SettingsPage() {
 
         <Grid item xs={12} lg={4}>
           <SettingsSection
-            title="Assistant"
-            subtitle="Core AI and workspace defaults."
+            title="Assistant Preferences"
+            subtitle="Gemini, timezone, and email summary behavior."
             chip={<Chip size="small" icon={<SettingsIcon />} label="Tenant scoped" variant="outlined" />}
           >
             <Stack spacing={1.25}>
@@ -377,13 +408,12 @@ export function SettingsPage() {
         <Grid item xs={12} lg={8}>
           <SettingsSection
             title="Connected Inboxes"
-            subtitle="Connect Gmail, Outlook, Zoho OAuth, or Zoho IMAP."
+            subtitle="Connect Gmail or Zoho accounts for email, search, and assistant actions."
             chip={<Chip size="small" label={`${accounts.length} connected`} variant="outlined" />}
           >
             <Stack spacing={1.5}>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" useFlexGap>
                 <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('google')}>Gmail</Button>
-                <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('microsoft')}>Outlook</Button>
                 <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => connect('zoho')}>Zoho OAuth</Button>
               </Stack>
 
@@ -432,7 +462,7 @@ export function SettingsPage() {
                       action={<Button color="error" variant="text" startIcon={<DeleteIcon />} onClick={() => removeAccount(account.id)} sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}>Disconnect</Button>}
                     />
                   ))}
-                  {accounts.length === 0 && <Alert severity="info">No extra inboxes connected yet. Connect Gmail, Outlook, Zoho OAuth, or Zoho IMAP above.</Alert>}
+                  {accounts.length === 0 && <Alert severity="info">No extra inboxes connected yet. Connect Gmail, Zoho OAuth, or Zoho IMAP above.</Alert>}
                 </Stack>
               </Box>
             </Stack>
