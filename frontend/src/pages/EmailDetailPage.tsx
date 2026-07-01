@@ -15,7 +15,6 @@ import ImageIcon from '@mui/icons-material/Image';
 import LinkIcon from '@mui/icons-material/Link';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import SnoozeIcon from '@mui/icons-material/Snooze';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import { PageHeader } from '../components/PageHeader';
@@ -191,10 +190,6 @@ function emailPriorityScore(email: EmailMessage) {
   return Math.min(score, 100);
 }
 
-function followUpStorageKey(emailId: string) {
-  return `o-connect-email-follow-up:${emailId}`;
-}
-
 function EmailBody({ body }: { body?: string }) {
   const cleaned = cleanEmailBody(body);
   const blocks = cleaned.split(/\n{2,}/).filter(Boolean);
@@ -296,13 +291,12 @@ export function EmailDetailPage() {
   const [refining, setRefining] = useState(false);
   const [threadMessages, setThreadMessages] = useState<EmailMessage[]>([]);
   const [aiSummary, setAiSummary] = useState('');
-  const [followUpAt, setFollowUpAt] = useState('');
+  const [taskDraft, setTaskDraft] = useState<{ title: string; dueDate: string; accountId: string } | null>(null);
 
   useEffect(() => {
     if (!id) return;
     getEmail(id).then((message) => {
       setEmail(message);
-      setFollowUpAt(localStorage.getItem(followUpStorageKey(message.id)) ?? '');
       getEmailThread(`${message.accountId ? `${message.accountId}:` : ''}${message.threadId}`)
         .then(setThreadMessages)
         .catch(() => setThreadMessages([message]));
@@ -391,32 +385,37 @@ export function EmailDetailPage() {
     window.setTimeout(() => URL.revokeObjectURL(url), 30000);
   }
 
-  async function createFollowUpTask() {
+  function openTaskDraft() {
     if (!email) return;
+    setTaskDraft({
+      title: `Follow up: ${email.subject}`,
+      dueDate: '',
+      accountId: email.accountId ?? 'primary'
+    });
+  }
+
+  async function createFollowUpTask() {
+    if (!email || !taskDraft) return;
+    if (!taskDraft.title.trim()) {
+      setError('Add a task title before creating it.');
+      return;
+    }
+
     setActionBusy('task');
     setError('');
     try {
       await createTask({
-        title: `Follow up: ${email.subject}`,
-        dueDate: followUpAt || undefined,
-        accountId: email.accountId ?? 'primary'
+        title: taskDraft.title.trim(),
+        dueDate: taskDraft.dueDate || undefined,
+        accountId: taskDraft.accountId
       });
+      setTaskDraft(null);
       setNotice('Follow-up task created.');
     } catch (err: any) {
       setError(actionErrorMessage(err, 'Could not create a follow-up task.'));
     } finally {
       setActionBusy('');
     }
-  }
-
-  function saveFollowUpReminder(days = 1) {
-    if (!email) return;
-    const due = new Date();
-    due.setDate(due.getDate() + days);
-    const value = due.toISOString().slice(0, 10);
-    setFollowUpAt(value);
-    localStorage.setItem(followUpStorageKey(email.id), value);
-    setNotice(`Follow-up reminder saved for ${due.toLocaleDateString([], { dateStyle: 'medium' })}.`);
   }
 
   async function loadAiSummary() {
@@ -454,7 +453,6 @@ export function EmailDetailPage() {
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                   {email.unread && <Chip size="small" label="Unread" color="primary" />}
                   <Chip size="small" label={`AI priority ${priorityScore}`} color={priorityScore >= 70 ? 'warning' : priorityScore >= 45 ? 'primary' : 'default'} variant={priorityScore >= 70 ? 'filled' : 'outlined'} />
-                  {followUpAt && <Chip size="small" label={`Follow up ${followUpAt}`} color="secondary" variant="outlined" />}
                   {email.accountEmail && <Chip size="small" label={email.accountEmail} variant="outlined" />}
                 </Stack>
               </Stack>
@@ -471,10 +469,8 @@ export function EmailDetailPage() {
                     <Button size="small" variant="outlined" startIcon={<AutoAwesomeIcon />} disabled={actionBusy === 'summary'} onClick={loadAiSummary}>
                       {actionBusy === 'summary' ? 'Summarizing...' : 'AI summary'}
                     </Button>
-                    <Button size="small" variant="outlined" startIcon={<SnoozeIcon />} onClick={() => saveFollowUpReminder(1)}>Snooze 1 day</Button>
-                    <Button size="small" variant="outlined" startIcon={<SnoozeIcon />} onClick={() => saveFollowUpReminder(3)}>Snooze 3 days</Button>
-                    <Button size="small" variant="contained" startIcon={<TaskAltIcon />} disabled={actionBusy === 'task'} onClick={createFollowUpTask}>
-                      {actionBusy === 'task' ? 'Creating...' : 'Turn into task'}
+                    <Button size="small" variant="contained" startIcon={<TaskAltIcon />} disabled={actionBusy === 'task'} onClick={openTaskDraft}>
+                      Turn into task
                     </Button>
                   </Stack>
                 </Grid>
@@ -682,6 +678,55 @@ export function EmailDetailPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOriginalOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={Boolean(taskDraft)} onClose={() => setTaskDraft(null)} fullWidth maxWidth="sm">
+        <DialogTitle>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <TaskAltIcon color="primary" />
+            <Box>
+              <Typography variant="h6">Create task from email?</Typography>
+              <Typography variant="caption" color="text.secondary">Review the task before it is added.</Typography>
+            </Box>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          {taskDraft && (
+            <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+              <TextField
+                size="small"
+                label="Task title"
+                value={taskDraft.title}
+                onChange={(event) => setTaskDraft({ ...taskDraft, title: event.target.value })}
+              />
+              <TextField
+                size="small"
+                label="Due date"
+                type="date"
+                value={taskDraft.dueDate}
+                InputLabelProps={{ shrink: true }}
+                helperText="Optional. Leave blank if this does not need a deadline."
+                onChange={(event) => setTaskDraft({ ...taskDraft, dueDate: event.target.value })}
+              />
+              <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>Source email</Typography>
+                <Typography sx={{ fontWeight: 850, overflowWrap: 'anywhere' }}>{email.subject}</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>{email.sender}</Typography>
+                {email.accountEmail && <Chip size="small" label={email.accountEmail} variant="outlined" sx={{ mt: 1 }} />}
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTaskDraft(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            startIcon={<TaskAltIcon />}
+            disabled={actionBusy === 'task' || !taskDraft?.title.trim()}
+            onClick={createFollowUpTask}
+          >
+            {actionBusy === 'task' ? 'Creating...' : 'Create task'}
+          </Button>
         </DialogActions>
       </Dialog>
     </>

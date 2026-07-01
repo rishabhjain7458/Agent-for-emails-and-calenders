@@ -12,7 +12,6 @@ import MarkEmailUnreadIcon from '@mui/icons-material/MarkEmailUnread';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
-import SnoozeIcon from '@mui/icons-material/Snooze';
 import { PageHeader } from '../components/PageHeader';
 import { EmptyState } from '../components/EmptyState';
 import { WindowedList } from '../components/WindowedList';
@@ -61,10 +60,6 @@ function emailPriorityScore(email: EmailMessage) {
   return Math.min(score, 100);
 }
 
-function followUpStorageKey(emailId: string) {
-  return `o-connect-email-follow-up:${emailId}`;
-}
-
 export function EmailsPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -89,6 +84,8 @@ export function EmailsPage() {
   const [busyEmailId, setBusyEmailId] = useState('');
   const [meetingDraft, setMeetingDraft] = useState<Awaited<ReturnType<typeof createMeetingDraftFromEmail>> | null>(null);
   const [meetingCreating, setMeetingCreating] = useState(false);
+  const [taskDraft, setTaskDraft] = useState<{ email: EmailMessage; title: string; dueDate: string; accountId: string } | null>(null);
+  const [taskCreating, setTaskCreating] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function load(q = query, nextLimit = limit) {
@@ -250,28 +247,15 @@ export function EmailsPage() {
     }
   }
 
-  async function handleCreateTaskFromEmail(email: EmailMessage) {
+  function handleCreateTaskFromEmail(email: EmailMessage) {
     setActionError('');
     setActionNotice('');
-    setBusyEmailId(email.id);
-    try {
-      await createTask({
-        title: `Follow up: ${email.subject}`,
-        accountId: email.accountId ?? 'primary'
-      });
-      setActionNotice('Task created from email.');
-    } catch (err: any) {
-      setActionError(actionErrorMessage(err, 'Could not create a task from that email.'));
-    } finally {
-      setBusyEmailId('');
-    }
-  }
-
-  function handleSnoozeEmail(email: EmailMessage, days: number) {
-    const due = new Date();
-    due.setDate(due.getDate() + days);
-    localStorage.setItem(followUpStorageKey(email.id), due.toISOString().slice(0, 10));
-    setActionNotice(`Follow-up reminder saved for ${due.toLocaleDateString([], { dateStyle: 'medium' })}.`);
+    setTaskDraft({
+      email,
+      title: `Follow up: ${email.subject}`,
+      dueDate: '',
+      accountId: email.accountId ?? 'primary'
+    });
   }
 
   async function confirmMeetingCreate() {
@@ -291,6 +275,31 @@ export function EmailsPage() {
       setActionError(actionErrorMessage(err, 'Could not create the meeting. Check the draft and try again.'));
     } finally {
       setMeetingCreating(false);
+    }
+  }
+
+  async function confirmTaskCreate() {
+    if (!taskDraft) return;
+    if (!taskDraft.title.trim()) {
+      setActionError('Add a task title before creating it.');
+      return;
+    }
+
+    setTaskCreating(true);
+    setActionError('');
+    setActionNotice('');
+    try {
+      await createTask({
+        title: taskDraft.title.trim(),
+        dueDate: taskDraft.dueDate || undefined,
+        accountId: taskDraft.accountId
+      });
+      setTaskDraft(null);
+      setActionNotice('Task created from email.');
+    } catch (err: any) {
+      setActionError(actionErrorMessage(err, 'Could not create a task from that email.'));
+    } finally {
+      setTaskCreating(false);
     }
   }
 
@@ -502,7 +511,7 @@ export function EmailsPage() {
               <Stack divider={<Divider flexItem />} spacing={0}>
                 <WindowedList
                   items={emails}
-                  estimateSize={138}
+                  estimateSize={126}
                   maxVisible={48}
                   renderItem={(email) => (
                     <Box
@@ -517,7 +526,7 @@ export function EmailsPage() {
                   }
                   setTouchStartX(null);
                 }}
-                sx={{ display: 'block', color: 'inherit', py: 1.25, px: { xs: 0.75, sm: 1 }, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease, box-shadow 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(3px)' }, boxShadow: 'inset 3px 0 0 #2557d6' } }}
+                sx={{ display: 'block', color: 'inherit', py: 1.15, px: { xs: 0.75, sm: 1 }, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease, box-shadow 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(3px)' }, boxShadow: 'inset 3px 0 0 #2557d6' } }}
               >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: { xs: 1, md: 1.5 }, alignItems: 'flex-start', flexDirection: { xs: 'column', md: 'row' } }}>
                     <Box
@@ -545,9 +554,6 @@ export function EmailsPage() {
                           color={emailPriorityScore(email) >= 70 ? 'warning' : emailPriorityScore(email) >= 45 ? 'primary' : 'default'}
                           variant={emailPriorityScore(email) >= 70 ? 'filled' : 'outlined'}
                         />
-                        {localStorage.getItem(followUpStorageKey(email.id)) && (
-                          <Chip size="small" label={`Follow ${localStorage.getItem(followUpStorageKey(email.id))}`} color="secondary" variant="outlined" />
-                        )}
                         <Typography
                           variant="subtitle1"
                           sx={{
@@ -567,7 +573,7 @@ export function EmailsPage() {
                       </Stack>
                       <Typography color="text.secondary" variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.sender}</Typography>
                       {query.startsWith('in:sent') && <Chip size="small" label="Waiting for reply" color="secondary" variant="outlined" sx={{ mt: 0.75 }} />}
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, display: '-webkit-box', WebkitLineClamp: { xs: 3, sm: 2 }, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{email.snippet}</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.45, display: '-webkit-box', WebkitLineClamp: { xs: 2, sm: 2 }, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{email.snippet}</Typography>
                     </Box>
                   <Stack spacing={0.75} alignItems={{ xs: 'stretch', md: 'flex-end' }} sx={{ flex: '0 0 auto', minWidth: { xs: '100%', md: 216 } }}>
                     <Typography variant="caption" color="text.secondary" sx={{ textAlign: { xs: 'left', md: 'right' }, whiteSpace: { xs: 'normal', sm: 'nowrap' } }}>{email.date}</Typography>
@@ -613,17 +619,6 @@ export function EmailsPage() {
                             handleCreateTaskFromEmail(email);
                           }}>
                             Task
-                          </Button>
-                        </span>
-                      </Tooltip>
-                      <Tooltip title="Save a local follow-up reminder">
-                        <span>
-                          <Button size="small" variant="outlined" startIcon={<SnoozeIcon />} disabled={busyEmailId === email.id} onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            handleSnoozeEmail(email, 1);
-                          }}>
-                            Snooze
                           </Button>
                         </span>
                       </Tooltip>
@@ -699,6 +694,57 @@ export function EmailsPage() {
             onClick={confirmMeetingCreate}
           >
             {meetingCreating ? 'Creating...' : 'Create meeting'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={Boolean(taskDraft)} onClose={() => setTaskDraft(null)} fullWidth maxWidth="sm">
+        <DialogTitle>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <TaskAltIcon color="primary" />
+            <Box>
+              <Typography variant="h6">Create task from email?</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Review the task before it is added.
+              </Typography>
+            </Box>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          {taskDraft && (
+            <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+              <TextField
+                size="small"
+                label="Task title"
+                value={taskDraft.title}
+                onChange={(event) => setTaskDraft({ ...taskDraft, title: event.target.value })}
+              />
+              <TextField
+                size="small"
+                label="Due date"
+                type="date"
+                value={taskDraft.dueDate}
+                InputLabelProps={{ shrink: true }}
+                helperText="Optional. Leave blank if this does not need a deadline."
+                onChange={(event) => setTaskDraft({ ...taskDraft, dueDate: event.target.value })}
+              />
+              <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>Source email</Typography>
+                <Typography sx={{ fontWeight: 850, overflowWrap: 'anywhere' }}>{taskDraft.email.subject}</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>{taskDraft.email.sender}</Typography>
+                {taskDraft.email.accountEmail && <Chip size="small" label={taskDraft.email.accountEmail} variant="outlined" sx={{ mt: 1 }} />}
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTaskDraft(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            startIcon={<TaskAltIcon />}
+            disabled={taskCreating || !taskDraft?.title.trim()}
+            onClick={confirmTaskCreate}
+          >
+            {taskCreating ? 'Creating...' : 'Create task'}
           </Button>
         </DialogActions>
       </Dialog>
