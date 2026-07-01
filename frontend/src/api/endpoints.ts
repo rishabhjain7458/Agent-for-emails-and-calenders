@@ -92,6 +92,34 @@ export async function deleteEmail(id: string) {
   return data.data;
 }
 
+export async function setEmailUnreadState(id: string, unread: boolean) {
+  const { data } = await api.patch(`/emails/${encodeURIComponent(id)}/read-state`, { unread });
+  return data.data as { unread: boolean };
+}
+
+export async function createMeetingDraftFromEmail(id: string) {
+  const { data } = await api.post(`/emails/${encodeURIComponent(id)}/ai-meeting-draft`);
+  return data.data as {
+    accountId: string;
+    accountEmail: string;
+    provider: string;
+    canCreate: boolean;
+    draft: {
+      title: string;
+      date: string;
+      startTime: string;
+      endTime: string;
+      timezone: string;
+      description?: string;
+      attendees: string[];
+      missing: string[];
+      confidence: number;
+      reason: string;
+    };
+    sourceEmail: { id: string; subject: string; sender: string; date: string };
+  };
+}
+
 export async function getEmailSummary() {
   const { data } = await api.get<{ data: { summary: string } }>('/emails/summary');
   return data.data.summary;

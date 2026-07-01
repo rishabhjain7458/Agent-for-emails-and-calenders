@@ -1,12 +1,13 @@
 import type { NextFunction, Request, Response } from 'express';
-import { archiveEmail, archiveEmailForConnectedAccount, deleteEmail, deleteEmailForConnectedAccount, getEmail, getEmailAttachment, getEmailAttachmentForConnectedAccount, getEmailForConnectedAccount, getThread, listEmails, listEmailsForConnectedAccount, sendReply, sendReplyForConnectedAccount } from '../services/emailService.js';
-import { archiveMicrosoftEmail, archiveMicrosoftEmailForConnectedAccount, deleteMicrosoftEmail, deleteMicrosoftEmailForConnectedAccount, getMicrosoftAttachment, getMicrosoftAttachmentForConnectedAccount, getMicrosoftEmail, getMicrosoftEmailForConnectedAccount, listMicrosoftEmails, listMicrosoftEmailsForConnectedAccount, sendMicrosoftReply } from '../services/microsoftEmailService.js';
-import { archiveZohoEmail, archiveZohoEmailForConnectedAccount, deleteZohoEmail, deleteZohoEmailForConnectedAccount, getZohoAttachment, getZohoAttachmentForConnectedAccount, getZohoEmail, getZohoEmailForConnectedAccount, listZohoEmails, listZohoEmailsForConnectedAccount, sendZohoReply, sendZohoReplyForConnectedAccount } from '../services/zohoEmailService.js';
-import { archiveImapEmailForConnectedAccount, deleteImapEmailForConnectedAccount, getImapAttachmentForConnectedAccount, getImapEmailForConnectedAccount, listImapEmailsForConnectedAccount, sendImapReplyForConnectedAccount } from '../services/imapEmailService.js';
-import { generateEmailReply, generateEmailSummary, generateSingleEmailSummary, refineEmailReply } from '../services/geminiService.js';
+import { archiveEmail, archiveEmailForConnectedAccount, deleteEmail, deleteEmailForConnectedAccount, getEmail, getEmailAttachment, getEmailAttachmentForConnectedAccount, getEmailForConnectedAccount, getThread, listEmails, listEmailsForConnectedAccount, sendReply, sendReplyForConnectedAccount, setEmailUnread, setEmailUnreadForConnectedAccount } from '../services/emailService.js';
+import { archiveMicrosoftEmail, archiveMicrosoftEmailForConnectedAccount, deleteMicrosoftEmail, deleteMicrosoftEmailForConnectedAccount, getMicrosoftAttachment, getMicrosoftAttachmentForConnectedAccount, getMicrosoftEmail, getMicrosoftEmailForConnectedAccount, listMicrosoftEmails, listMicrosoftEmailsForConnectedAccount, sendMicrosoftReply, setMicrosoftEmailUnread, setMicrosoftEmailUnreadForConnectedAccount } from '../services/microsoftEmailService.js';
+import { archiveZohoEmail, archiveZohoEmailForConnectedAccount, deleteZohoEmail, deleteZohoEmailForConnectedAccount, getZohoAttachment, getZohoAttachmentForConnectedAccount, getZohoEmail, getZohoEmailForConnectedAccount, listZohoEmails, listZohoEmailsForConnectedAccount, sendZohoReply, sendZohoReplyForConnectedAccount, setZohoEmailUnread, setZohoEmailUnreadForConnectedAccount } from '../services/zohoEmailService.js';
+import { archiveImapEmailForConnectedAccount, deleteImapEmailForConnectedAccount, getImapAttachmentForConnectedAccount, getImapEmailForConnectedAccount, listImapEmailsForConnectedAccount, sendImapReplyForConnectedAccount, setImapEmailUnreadForConnectedAccount } from '../services/imapEmailService.js';
+import { extractMeetingFromEmail, generateEmailReply, generateEmailSummary, generateSingleEmailSummary, refineEmailReply } from '../services/geminiService.js';
 import { saveDraft } from '../repositories/draftRepository.js';
+import { getSettings } from '../repositories/settingsRepository.js';
 import { getConnectedAccount } from '../repositories/connectedAccountRepository.js';
-import { send } from '../utils/http.js';
+import { HttpError, send } from '../utils/http.js';
 import type { EmailMessage } from '../types.js';
 import { normalizeInboxQuery } from '../utils/emailQuery.js';
 import { listAccountContexts } from '../services/accountContextService.js';
@@ -75,6 +76,40 @@ async function deleteEmailForRequest(req: Request, id: string) {
   if (req.user!.provider === 'microsoft') return deleteMicrosoftEmail(req.user!.id, id);
   if (req.user!.provider === 'zoho') return deleteZohoEmail(req.user!.id, id);
   return deleteEmail(req.user!.id, id);
+}
+
+async function setEmailUnreadForRequest(req: Request, id: string, unread: boolean) {
+  const connectedId = splitConnectedMessageId(id);
+  if (connectedId) {
+    const account = await getConnectedAccount(req.user!.tenantId, req.user!.id, connectedId.accountId);
+    if (account?.provider === 'microsoft') return setMicrosoftEmailUnreadForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId, unread);
+    if (account?.provider === 'google') return setEmailUnreadForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId, unread);
+    if (account?.provider === 'zoho') return setZohoEmailUnreadForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, account.provider_account_id, connectedId.messageId, unread);
+    if (account?.provider === 'imap') return setImapEmailUnreadForConnectedAccount(req.user!.tenantId, req.user!.id, account.id, connectedId.messageId, unread);
+  }
+
+  if (req.user!.provider === 'microsoft') return setMicrosoftEmailUnread(req.user!.id, id, unread);
+  if (req.user!.provider === 'zoho') return setZohoEmailUnread(req.user!.id, id, unread);
+  if (req.user!.provider === 'imap') throw new HttpError(400, 'Primary IMAP accounts are not supported for read-state changes.');
+  return setEmailUnread(req.user!.id, id, unread);
+}
+
+function emailReceivingAccount(req: Request, id: string) {
+  const connectedId = splitConnectedMessageId(id);
+  return connectedId ? connectedId.accountId : 'primary';
+}
+
+function preferredTimezone(value?: string | null) {
+  return !value || value === 'UTC' ? 'Asia/Kolkata' : value;
+}
+
+function validMeetingDraft(draft: any) {
+  return Boolean(
+    draft?.title &&
+    /^\d{4}-\d{2}-\d{2}$/.test(String(draft.date ?? '')) &&
+    /^\d{2}:\d{2}$/.test(String(draft.startTime ?? '')) &&
+    /^\d{2}:\d{2}$/.test(String(draft.endTime ?? ''))
+  );
 }
 
 async function getAttachmentForRequest(req: Request, id: string, attachmentId: string) {
@@ -229,6 +264,51 @@ export async function emailSummary(req: Request, res: Response, next: NextFuncti
   }
 }
 
+export async function aiMeetingDraft(req: Request, res: Response, next: NextFunction) {
+  try {
+    const email = await getEmailForRequest(req, req.params.id);
+    const settings = await getSettings(req.user!.tenantId, req.user!.id);
+    const timezone = preferredTimezone(settings.timezone);
+    const rawDraft = await extractMeetingFromEmail(req.user!.tenantId, req.user!.id, email, timezone);
+    const accountId = emailReceivingAccount(req, req.params.id);
+    const provider = email.provider ?? req.user!.provider;
+    const calendarSupported = provider !== 'zoho' && provider !== 'imap';
+    const draft = {
+      title: rawDraft.title || email.subject || 'Meeting from email',
+      date: rawDraft.date || '',
+      startTime: rawDraft.startTime || '',
+      endTime: rawDraft.endTime || '',
+      timezone: rawDraft.timezone && rawDraft.timezone !== 'UTC' ? rawDraft.timezone : timezone,
+      description: rawDraft.description || [
+        `Created from email: ${email.subject}`,
+        `From: ${email.sender}`,
+        email.snippet ? `Preview: ${email.snippet}` : ''
+      ].filter(Boolean).join('\n'),
+      attendees: Array.isArray(rawDraft.attendees) ? rawDraft.attendees.filter((item: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item)) : [],
+      missing: Array.isArray(rawDraft.missing) ? rawDraft.missing.filter((item: string) => item !== 'timezone') : [],
+      confidence: Number(rawDraft.confidence ?? 0.6),
+      reason: calendarSupported
+        ? rawDraft.reason || 'Drafted from the selected email.'
+        : 'This email belongs to a mail-only account. The meeting details can be reviewed, but calendar creation is only available for Gmail or Outlook spaces.'
+    };
+    send(res, {
+      accountId,
+      accountEmail: email.accountEmail ?? req.user!.email,
+      provider,
+      canCreate: calendarSupported && validMeetingDraft(draft) && draft.confidence >= 0.35 && draft.missing.length === 0,
+      draft,
+      sourceEmail: {
+        id: email.id,
+        subject: email.subject,
+        sender: email.sender,
+        date: email.date
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function thread(req: Request, res: Response, next: NextFunction) {
   try {
     if (req.user!.provider === 'microsoft') {
@@ -311,6 +391,15 @@ export async function remove(req: Request, res: Response, next: NextFunction) {
   try {
     await deleteEmailForRequest(req, req.params.id);
     send(res, { deleted: true });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function readState(req: Request, res: Response, next: NextFunction) {
+  try {
+    await setEmailUnreadForRequest(req, req.params.id, Boolean(req.body.unread));
+    send(res, { unread: Boolean(req.body.unread) });
   } catch (error) {
     next(error);
   }

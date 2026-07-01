@@ -201,6 +201,25 @@ export async function deleteEmailForConnectedAccount(tenantId: string, userId: s
   await deleteEmailWithAuth(auth, messageId);
 }
 
+async function setEmailUnreadWithAuth(auth: any, messageId: string, unread: boolean) {
+  const gmail = google.gmail({ version: 'v1', auth });
+  await gmail.users.messages.modify({
+    userId: 'me',
+    id: messageId,
+    requestBody: unread ? { addLabelIds: ['UNREAD'] } : { removeLabelIds: ['UNREAD'] }
+  });
+}
+
+export async function setEmailUnread(userId: string, messageId: string, unread: boolean) {
+  const auth = await getAuthorizedGoogleClient(userId);
+  await setEmailUnreadWithAuth(auth, messageId, unread);
+}
+
+export async function setEmailUnreadForConnectedAccount(tenantId: string, userId: string, accountId: string, messageId: string, unread: boolean) {
+  const auth = await getAuthorizedGoogleClientForConnectedAccount(tenantId, userId, accountId);
+  await setEmailUnreadWithAuth(auth, messageId, unread);
+}
+
 async function sendReplyWithAuth(auth: any, input: { threadId: string; to: string; subject: string; body: string }) {
   const gmail = google.gmail({ version: 'v1', auth });
   const raw = Buffer.from([

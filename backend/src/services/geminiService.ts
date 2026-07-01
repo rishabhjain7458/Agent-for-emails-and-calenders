@@ -134,6 +134,30 @@ export async function generateSingleEmailSummary(tenantId: string, userId: strin
   );
 }
 
+export async function extractMeetingFromEmail(tenantId: string, userId: string, email: EmailMessage, timezone: string) {
+  const now = new Date().toISOString();
+  const text = await generateText(
+    tenantId,
+    userId,
+    [
+      'Analyze this email and create a calendar event draft only if the email implies a meeting, appointment, deadline call, interview, visit, webinar, class, reminder, or scheduled discussion.',
+      `Current ISO time: ${now}. User timezone: ${timezone}. Resolve relative dates using this timezone.`,
+      'Return only valid JSON with this shape: {"title":"","date":"YYYY-MM-DD","startTime":"HH:mm","endTime":"HH:mm","timezone":"","description":"","attendees":[],"confidence":0.8,"reason":"","missing":[]}.',
+      'Use 24-hour HH:mm. If only a start time is present, use a 30 minute duration. If no exact time is present but there is a date, choose 09:00 to 09:30 and mention that assumption in reason.',
+      'Use a short human title. Put useful context, sender, and source email subject in description. Include only valid email addresses in attendees.',
+      'Never put timezone in missing; use the provided timezone. If date is missing, include date in missing. If no meeting-like intent exists, set confidence below 0.35 and explain in reason.'
+    ].join(' '),
+    JSON.stringify({
+      subject: email.subject,
+      sender: email.sender,
+      date: email.date,
+      snippet: email.snippet,
+      body: email.body?.slice(0, 6000)
+    })
+  );
+  return parseJsonObject(text);
+}
+
 export async function generateEmailReply(tenantId: string, userId: string, email: EmailMessage, tone = 'professional') {
   return generateText(
     tenantId,

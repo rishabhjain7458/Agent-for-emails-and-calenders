@@ -272,6 +272,20 @@ export async function deleteImapEmailForConnectedAccount(tenantId: string, userI
   });
 }
 
+export async function setImapEmailUnreadForConnectedAccount(tenantId: string, userId: string, accountId: string, messageId: string, unread: boolean) {
+  const account = await getImapAccount(tenantId, userId, accountId);
+  const { mailbox, uid } = splitImapMessageId(messageId);
+  await withClient(account, async (client) => {
+    const lock = await client.getMailboxLock(mailbox);
+    try {
+      if (unread) await client.messageFlagsRemove(uid, ['\\Seen'], { uid: true });
+      else await client.messageFlagsAdd(uid, ['\\Seen'], { uid: true });
+    } finally {
+      lock.release();
+    }
+  });
+}
+
 export async function sendImapReplyForConnectedAccount(tenantId: string, userId: string, accountId: string, input: { to: string; subject: string; body: string }) {
   const account = await getImapAccount(tenantId, userId, accountId);
   const candidates = uniqueSmtpCandidates(account.config);

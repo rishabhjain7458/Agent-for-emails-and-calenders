@@ -1,15 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Link as RouterLink, useSearchParams } from 'react-router-dom';
-import { Alert, Box, Button, Card, CardContent, Chip, Divider, Drawer, Grid, LinearProgress, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Drawer, Grid, LinearProgress, Stack, TextField, Tooltip, Typography, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import SaveIcon from '@mui/icons-material/Save';
+import DeleteIcon from '@mui/icons-material/Delete';
+import DraftsIcon from '@mui/icons-material/Drafts';
+import MarkEmailUnreadIcon from '@mui/icons-material/MarkEmailUnread';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import { PageHeader } from '../components/PageHeader';
 import { EmptyState } from '../components/EmptyState';
 import { WindowedList } from '../components/WindowedList';
-import { archiveEmail, deleteEmail, getEmails } from '../api/endpoints';
+import { archiveEmail, createEvent, createMeetingDraftFromEmail, deleteEmail, getEmails, setEmailUnreadState } from '../api/endpoints';
 import { useSpace } from '../contexts/SpaceContext';
 import type { EmailMessage } from '../types';
 
@@ -48,6 +53,7 @@ function actionErrorMessage(err: any, fallback: string) {
 export function EmailsPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const navigate = useNavigate();
   const { activeSpaceId, activeSpace, isCombined, setActiveSpaceId } = useSpace();
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get('query') || 'in:inbox';
@@ -64,6 +70,10 @@ export function EmailsPage() {
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [limit, setLimit] = useState(24);
   const [actionError, setActionError] = useState('');
+  const [actionNotice, setActionNotice] = useState('');
+  const [busyEmailId, setBusyEmailId] = useState('');
+  const [meetingDraft, setMeetingDraft] = useState<Awaited<ReturnType<typeof createMeetingDraftFromEmail>> | null>(null);
+  const [meetingCreating, setMeetingCreating] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function load(q = query, nextLimit = limit) {
@@ -175,6 +185,73 @@ export function EmailsPage() {
     } catch (err: any) {
       setEmails((current) => [email, ...current.filter((item) => item.id !== email.id)]);
       setActionError(actionErrorMessage(err, 'Could not update that email.'));
+    }
+  }
+
+  async function handleDeleteEmail(email: EmailMessage) {
+    setActionError('');
+    setActionNotice('');
+    setBusyEmailId(email.id);
+    const previous = emails;
+    setEmails((current) => current.filter((item) => item.id !== email.id));
+    try {
+      await deleteEmail(email.id);
+      setActionNotice('Email deleted.');
+    } catch (err: any) {
+      setEmails(previous);
+      setActionError(actionErrorMessage(err, 'Could not delete that email.'));
+    } finally {
+      setBusyEmailId('');
+    }
+  }
+
+  async function handleToggleUnread(email: EmailMessage) {
+    const nextUnread = !email.unread;
+    setActionError('');
+    setActionNotice('');
+    setBusyEmailId(email.id);
+    setEmails((current) => current.map((item) => item.id === email.id ? { ...item, unread: nextUnread } : item));
+    try {
+      await setEmailUnreadState(email.id, nextUnread);
+      setActionNotice(nextUnread ? 'Email marked unread.' : 'Email marked read.');
+    } catch (err: any) {
+      setEmails((current) => current.map((item) => item.id === email.id ? { ...item, unread: email.unread } : item));
+      setActionError(actionErrorMessage(err, 'Could not update read state for that email.'));
+    } finally {
+      setBusyEmailId('');
+    }
+  }
+
+  async function handleCreateMeetingDraft(email: EmailMessage) {
+    setActionError('');
+    setActionNotice('');
+    setBusyEmailId(email.id);
+    try {
+      setMeetingDraft(await createMeetingDraftFromEmail(email.id));
+    } catch (err: any) {
+      setActionError(actionErrorMessage(err, 'Could not analyze that email for a meeting.'));
+    } finally {
+      setBusyEmailId('');
+    }
+  }
+
+  async function confirmMeetingCreate() {
+    if (!meetingDraft) return;
+    setMeetingCreating(true);
+    setActionError('');
+    setActionNotice('');
+    try {
+      await createEvent({
+        ...meetingDraft.draft,
+        accountId: meetingDraft.accountId,
+        force: false
+      });
+      setActionNotice(`Meeting created on ${meetingDraft.accountEmail}.`);
+      setMeetingDraft(null);
+    } catch (err: any) {
+      setActionError(actionErrorMessage(err, 'Could not create the meeting. Check the draft and try again.'));
+    } finally {
+      setMeetingCreating(false);
     }
   }
 
@@ -367,6 +444,11 @@ export function EmailsPage() {
             <Alert severity="error">{actionError}</Alert>
           </Grid>
         )}
+        {actionNotice && (
+          <Grid item xs={12}>
+            <Alert severity="success">{actionNotice}</Alert>
+          </Grid>
+        )}
         <Grid item xs={12}>
           <Card className="premium-panel">
             {loading && <LinearProgress />}
@@ -381,13 +463,11 @@ export function EmailsPage() {
               <Stack divider={<Divider flexItem />} spacing={0}>
                 <WindowedList
                   items={emails}
-                  estimateSize={104}
+                  estimateSize={138}
                   maxVisible={48}
                   renderItem={(email) => (
                     <Box
                 key={email.id}
-                component={RouterLink}
-                to={`/emails/${encodeURIComponent(email.id)}`}
                 onTouchStart={(event) => setTouchStartX(event.touches[0]?.clientX ?? null)}
                 onTouchEnd={(event) => {
                   if (touchStartX === null) return;
@@ -398,10 +478,18 @@ export function EmailsPage() {
                   }
                   setTouchStartX(null);
                 }}
-                sx={{ display: 'block', textDecoration: 'none', color: 'inherit', py: 1.25, px: { xs: 0.75, sm: 1 }, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease, box-shadow 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(3px)' }, boxShadow: 'inset 3px 0 0 #2557d6' } }}
+                sx={{ display: 'block', color: 'inherit', py: 1.25, px: { xs: 0.75, sm: 1 }, borderRadius: 2, transition: 'background 160ms ease, transform 160ms ease, box-shadow 160ms ease', '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateX(3px)' }, boxShadow: 'inset 3px 0 0 #2557d6' } }}
               >
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: { xs: 0.75, sm: 2 }, alignItems: 'flex-start', flexDirection: { xs: 'column', sm: 'row' } }}>
-                    <Box sx={{ minWidth: 0, width: '100%' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: { xs: 1, md: 1.5 }, alignItems: 'flex-start', flexDirection: { xs: 'column', md: 'row' } }}>
+                    <Box
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => navigate(`/emails/${encodeURIComponent(email.id)}`)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') navigate(`/emails/${encodeURIComponent(email.id)}`);
+                      }}
+                      sx={{ cursor: 'pointer', minWidth: 0, width: '100%' }}
+                    >
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, flexWrap: 'wrap', rowGap: 0.75 }}>
                         {email.unread && <Chip size="small" label="Unread" color="primary" />}
                         {email.accountEmail && (
@@ -432,7 +520,44 @@ export function EmailsPage() {
                       <Typography color="text.secondary" variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.sender}</Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, display: '-webkit-box', WebkitLineClamp: { xs: 3, sm: 2 }, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{email.snippet}</Typography>
                     </Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: { xs: 'normal', sm: 'nowrap' } }}>{email.date}</Typography>
+                  <Stack spacing={0.75} alignItems={{ xs: 'stretch', md: 'flex-end' }} sx={{ flex: '0 0 auto', minWidth: { xs: '100%', md: 216 } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ textAlign: { xs: 'left', md: 'right' }, whiteSpace: { xs: 'normal', sm: 'nowrap' } }}>{email.date}</Typography>
+                    <Stack direction="row" spacing={0.75} justifyContent={{ xs: 'flex-start', md: 'flex-end' }} flexWrap="wrap" useFlexGap>
+                      <Tooltip title="Delete email">
+                        <span>
+                          <Button size="small" color="error" variant="outlined" startIcon={<DeleteIcon />} disabled={busyEmailId === email.id} onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            handleDeleteEmail(email);
+                          }}>
+                            Delete
+                          </Button>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title={email.unread ? 'Mark as read' : 'Mark as unread'}>
+                        <span>
+                          <Button size="small" variant="outlined" startIcon={email.unread ? <DraftsIcon /> : <MarkEmailUnreadIcon />} disabled={busyEmailId === email.id} onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            handleToggleUnread(email);
+                          }}>
+                            {email.unread ? 'Read' : 'Unread'}
+                          </Button>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Analyze this email and draft a meeting">
+                        <span>
+                          <Button size="small" variant="contained" startIcon={<AutoAwesomeIcon />} disabled={busyEmailId === email.id} onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            handleCreateMeetingDraft(email);
+                          }}>
+                            AI meeting
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    </Stack>
+                  </Stack>
                 </Box>
                     </Box>
                   )}
@@ -456,6 +581,56 @@ export function EmailsPage() {
           </Card>
         </Grid>
       </Grid>
+      <Dialog open={Boolean(meetingDraft)} onClose={() => setMeetingDraft(null)} fullWidth maxWidth="sm">
+        <DialogTitle>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <EventAvailableIcon color="primary" />
+            <Box>
+              <Typography variant="h6">Create meeting from email?</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Calendar: {meetingDraft?.accountEmail ?? 'Selected account'}
+              </Typography>
+            </Box>
+          </Stack>
+        </DialogTitle>
+        <DialogContent>
+          {meetingDraft && (
+            <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+              {!meetingDraft.canCreate && (
+                <Alert severity="warning">
+                  I found a possible meeting, but some details need checking: {meetingDraft.draft.missing?.join(', ') || meetingDraft.draft.reason || 'low confidence'}.
+                </Alert>
+              )}
+              <Alert severity="info">{meetingDraft.draft.reason}</Alert>
+              <TextField size="small" label="Title" value={meetingDraft.draft.title} onChange={(event) => setMeetingDraft({ ...meetingDraft, draft: { ...meetingDraft.draft, title: event.target.value } })} />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <TextField fullWidth size="small" label="Date" type="date" value={meetingDraft.draft.date} InputLabelProps={{ shrink: true }} onChange={(event) => setMeetingDraft({ ...meetingDraft, draft: { ...meetingDraft.draft, date: event.target.value, missing: meetingDraft.draft.missing.filter((item) => item !== 'date') } })} />
+                <TextField fullWidth size="small" label="Start" type="time" value={meetingDraft.draft.startTime} InputLabelProps={{ shrink: true }} onChange={(event) => setMeetingDraft({ ...meetingDraft, draft: { ...meetingDraft.draft, startTime: event.target.value, missing: meetingDraft.draft.missing.filter((item) => item !== 'startTime') } })} />
+                <TextField fullWidth size="small" label="End" type="time" value={meetingDraft.draft.endTime} InputLabelProps={{ shrink: true }} onChange={(event) => setMeetingDraft({ ...meetingDraft, draft: { ...meetingDraft.draft, endTime: event.target.value, missing: meetingDraft.draft.missing.filter((item) => item !== 'endTime') } })} />
+              </Stack>
+              <TextField size="small" label="Timezone" value={meetingDraft.draft.timezone} onChange={(event) => setMeetingDraft({ ...meetingDraft, draft: { ...meetingDraft.draft, timezone: event.target.value } })} />
+              <TextField size="small" label="Attendees" value={meetingDraft.draft.attendees.join(', ')} onChange={(event) => setMeetingDraft({ ...meetingDraft, draft: { ...meetingDraft.draft, attendees: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) } })} />
+              <TextField size="small" label="Description" multiline minRows={3} value={meetingDraft.draft.description ?? ''} onChange={(event) => setMeetingDraft({ ...meetingDraft, draft: { ...meetingDraft.draft, description: event.target.value } })} />
+              <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>Source email</Typography>
+                <Typography sx={{ fontWeight: 850 }}>{meetingDraft.sourceEmail.subject}</Typography>
+                <Typography variant="body2" color="text.secondary">{meetingDraft.sourceEmail.sender}</Typography>
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMeetingDraft(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            startIcon={<EventAvailableIcon />}
+            disabled={meetingCreating || meetingDraft?.provider === 'zoho' || meetingDraft?.provider === 'imap' || !meetingDraft?.draft.date || !meetingDraft?.draft.startTime || !meetingDraft?.draft.endTime || !meetingDraft?.draft.title}
+            onClick={confirmMeetingCreate}
+          >
+            {meetingCreating ? 'Creating...' : 'Create meeting'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

@@ -221,6 +221,13 @@ async function updateZohoMessageStatus(token: string, accountId: string, message
   });
 }
 
+async function setZohoMessageUnread(token: string, accountId: string, messageIdValue: string, unread: boolean) {
+  const endpoint = unread ? 'markAsUnread' : 'markAsRead';
+  await axios.put(`${mailBase()}/accounts/${accountId}/messages/${messageIdValue}/${endpoint}`, {}, {
+    headers: { Authorization: `Zoho-oauthtoken ${token}` }
+  });
+}
+
 export async function archiveZohoEmail(userId: string, messageIdValue: string) {
   const token = await getZohoAccessToken(userId);
   await updateZohoMessageStatus(token, await getZohoAccountId(token), messageIdValue, 'archive');
@@ -239,6 +246,16 @@ export async function deleteZohoEmail(userId: string, messageIdValue: string) {
 export async function deleteZohoEmailForConnectedAccount(tenantId: string, userId: string, accountId: string, providerAccountId: string, messageIdValue: string) {
   const token = await getZohoAccessTokenForConnectedAccount(tenantId, userId, accountId);
   await updateZohoMessageStatus(token, providerAccountId, messageIdValue, 'delete');
+}
+
+export async function setZohoEmailUnread(userId: string, messageIdValue: string, unread: boolean) {
+  const token = await getZohoAccessToken(userId);
+  await setZohoMessageUnread(token, await getZohoAccountId(token), messageIdValue, unread);
+}
+
+export async function setZohoEmailUnreadForConnectedAccount(tenantId: string, userId: string, accountId: string, providerAccountId: string, messageIdValue: string, unread: boolean) {
+  const token = await getZohoAccessTokenForConnectedAccount(tenantId, userId, accountId);
+  await setZohoMessageUnread(token, providerAccountId, messageIdValue, unread);
 }
 
 export async function sendZohoReply(userId: string, input: { to: string; subject: string; body: string }) {

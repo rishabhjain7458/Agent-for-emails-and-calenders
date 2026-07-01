@@ -234,3 +234,21 @@ export async function deleteMicrosoftEmailForConnectedAccount(tenantId: string, 
   const token = await getMicrosoftAccessTokenForConnectedAccount(tenantId, userId, accountId);
   await deleteMicrosoftEmailWithToken(token, messageId);
 }
+
+async function setMicrosoftEmailUnreadWithToken(token: string, messageId: string, unread: boolean) {
+  await axios.patch(`${graph}/me/messages/${messageId}`, {
+    isRead: !unread
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+export async function setMicrosoftEmailUnread(userId: string, messageId: string, unread: boolean) {
+  const token = await getMicrosoftAccessToken(userId);
+  await setMicrosoftEmailUnreadWithToken(token, messageId, unread);
+}
+
+export async function setMicrosoftEmailUnreadForConnectedAccount(tenantId: string, userId: string, accountId: string, messageId: string, unread: boolean) {
+  const token = await getMicrosoftAccessTokenForConnectedAccount(tenantId, userId, accountId);
+  await setMicrosoftEmailUnreadWithToken(token, messageId, unread);
+}

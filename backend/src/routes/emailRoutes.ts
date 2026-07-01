@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import Joi from 'joi';
-import { archive, attachment, detail, draftReply, emailSummary, inbox, refineReply, remove, saveEmailDraft, sendEmailReply, summary, thread } from '../controllers/emailController.js';
+import { aiMeetingDraft, archive, attachment, detail, draftReply, emailSummary, inbox, readState, refineReply, remove, saveEmailDraft, sendEmailReply, summary, thread } from '../controllers/emailController.js';
 import { validateBody } from '../middleware/validate.js';
 import { cacheGet } from '../middleware/responseCache.js';
 
@@ -19,6 +19,7 @@ emailRoutes.post('/send-reply', validateBody(Joi.object({
 emailRoutes.get('/:id/attachments/:attachmentId', attachment);
 emailRoutes.get('/:id', detail);
 emailRoutes.post('/:id/summary', emailSummary);
+emailRoutes.post('/:id/ai-meeting-draft', aiMeetingDraft);
 emailRoutes.post('/:id/ai-reply', validateBody(Joi.object({
   tone: Joi.string().valid('professional', 'short', 'friendly', 'firm').default('professional')
 })), draftReply);
@@ -31,5 +32,8 @@ emailRoutes.post('/:id/drafts', validateBody(Joi.object({
   subject: Joi.string().required(),
   body: Joi.string().required()
 })), saveEmailDraft);
+emailRoutes.patch('/:id/read-state', validateBody(Joi.object({
+  unread: Joi.boolean().required()
+})), readState);
 emailRoutes.post('/:id/archive', archive);
 emailRoutes.delete('/:id', remove);
