@@ -43,12 +43,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isNative) return;
 
     const listener = App.addListener('appUrlOpen', async ({ url }) => {
-      const parsed = new URL(url);
+      let parsed: URL;
+      try {
+        parsed = new URL(url);
+      } catch {
+        await Browser.close().catch(() => undefined);
+        window.location.href = '/login?auth_error=Invalid%20mobile%20login%20callback';
+        return;
+      }
       if (parsed.protocol !== 'oconnect:') return;
 
       const path = parsed.hostname === 'app' ? parsed.pathname : `/${parsed.hostname}${parsed.pathname}`;
       const search = parsed.search;
       const token = parsed.searchParams.get('token');
+      const error = parsed.searchParams.get('error') || parsed.searchParams.get('auth_error');
 
       if (token) {
         localStorage.setItem('sessionToken', token);
@@ -59,6 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       await Browser.close().catch(() => undefined);
+      if (error) {
+        window.location.href = `/login?auth_error=${encodeURIComponent(error)}`;
+        return;
+      }
       window.location.href = `${path || '/dashboard'}${search}`;
     });
 

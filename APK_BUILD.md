@@ -83,5 +83,6 @@ You can install that file on your Android phone for testing.
 ## Notes
 
 - Google/Outlook login opens in the device browser and returns to the app through `oconnect://app/...`.
+- The APK display name is `AI Executive Assistant`.
 - For Play Store release, create a signed release build in Android Studio.
 - If you change frontend code, run `npm run android:sync` again before rebuilding the APK.

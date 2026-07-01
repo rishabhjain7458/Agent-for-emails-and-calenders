@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.oconnect.assistant',
-  appName: 'O+ Connect',
+  appName: 'AI Executive Assistant',
   webDir: 'dist',
   bundledWebRuntime: false,
   server: {

@@ -111,6 +111,11 @@ function redirectAfterSocialError(provider: string, message: string, mobile = fa
   return `${baseUrl}/settings?social_error=${encodeURIComponent(`${provider}: ${message}`)}`;
 }
 
+function redirectAfterAuthError(provider: string, message: string, mobile = false) {
+  const baseUrl = mobile ? env.MOBILE_APP_URL : env.FRONTEND_URL;
+  return `${baseUrl}/login?auth_error=${encodeURIComponent(`${provider}: ${message}`)}`;
+}
+
 function socialErrorMessage(error: unknown) {
   const axiosError = error as AxiosError<any>;
   return axiosError.response?.data?.error?.message
@@ -196,6 +201,11 @@ export function googleConnect(req: Request, res: Response) {
 
 export async function googleCallback(req: Request, res: Response, next: NextFunction) {
   try {
+    const providerError = socialProviderErrorMessage(req);
+    if (providerError) {
+      res.redirect(redirectAfterAuthError('google', providerError, isMobileState(req.query.state, 'google')));
+      return;
+    }
     const { profile, tokens } = await exchangeCode(String(req.query.code ?? ''));
     const connectState = readConnectState(req.query.state, 'google');
     if (connectState) {
@@ -246,6 +256,11 @@ export function microsoftConnect(req: Request, res: Response) {
 
 export async function microsoftCallback(req: Request, res: Response, next: NextFunction) {
   try {
+    const providerError = socialProviderErrorMessage(req);
+    if (providerError) {
+      res.redirect(redirectAfterAuthError('microsoft', providerError, isMobileState(req.query.state, 'microsoft')));
+      return;
+    }
     const { profile, tokens } = await exchangeMicrosoftCode(String(req.query.code ?? ''));
     const connectState = readConnectState(req.query.state, 'microsoft');
     if (connectState) {
@@ -295,6 +310,11 @@ export function zohoConnect(req: Request, res: Response) {
 
 export async function zohoCallback(req: Request, res: Response, next: NextFunction) {
   try {
+    const providerError = socialProviderErrorMessage(req);
+    if (providerError) {
+      res.redirect(redirectAfterAuthError('zoho', providerError, isMobileState(req.query.state, 'zoho')));
+      return;
+    }
     const { profile, tokens } = await exchangeZohoCode(String(req.query.code ?? ''));
     const connectState = readConnectState(req.query.state, 'zoho');
     if (connectState) {

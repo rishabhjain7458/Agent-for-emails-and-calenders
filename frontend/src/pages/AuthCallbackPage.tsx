@@ -11,7 +11,16 @@ export function AuthCallbackPage() {
   useEffect(() => {
     async function finishLogin() {
       const token = params.get('token');
-      if (token) localStorage.setItem('sessionToken', token);
+      const error = params.get('error') || params.get('auth_error');
+      if (error) {
+        navigate(`/login?auth_error=${encodeURIComponent(error)}`, { replace: true });
+        return;
+      }
+      if (!token) {
+        navigate('/login?auth_error=Login%20did%20not%20return%20a%20session%20token', { replace: true });
+        return;
+      }
+      localStorage.setItem('sessionToken', token);
       await refresh();
       navigate('/dashboard', { replace: true });
     }
