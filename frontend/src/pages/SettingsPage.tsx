@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Capacitor } from '@capacitor/core';
+import type { PluginListenerHandle } from '@capacitor/core';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Card, CardContent, Chip, FormControlLabel, Grid, MenuItem, Stack, Switch, TextField, Typography } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
@@ -160,7 +161,9 @@ export function SettingsPage() {
   const [smtpHost, setSmtpHost] = useState('smtp.zoho.in');
   const [smtpPort, setSmtpPort] = useState('465');
   const [smtpPreset, setSmtpPreset] = useState<ZohoSmtpPreset>('india');
-  const [updateStatus, setUpdateStatus] = useState('Checking live update status...');
+  const [updateStatus, setUpdateStatus] = useState(Capacitor.isNativePlatform()
+    ? 'Tap Check for updates to make sure you have the latest app.'
+    : 'App updates can be checked from the installed mobile app.');
   const [checkingUpdate, setCheckingUpdate] = useState(false);
 
   useEffect(() => {
@@ -182,45 +185,45 @@ export function SettingsPage() {
       setNotice(`Social connect issue: ${socialError}`);
       window.history.replaceState({}, '', '/settings');
     }
-    refreshLiveUpdateStatus();
   }, []);
-
-  function bundleLabel(bundle: any) {
-    if (!bundle) return 'none';
-    return [bundle.version, bundle.id].filter(Boolean).join(' · ') || JSON.stringify(bundle);
-  }
-
-  async function refreshLiveUpdateStatus() {
-    if (!Capacitor.isNativePlatform()) {
-      setUpdateStatus('Live updates run only inside the Android/iOS app.');
-      return;
-    }
-
-    try {
-      const current = await CapacitorUpdater.current();
-      const pending = await CapacitorUpdater.getNextBundle();
-      setUpdateStatus(`Native ${current.native}; current ${bundleLabel(current.bundle)}; pending ${bundleLabel(pending)}.`);
-    } catch (error) {
-      setUpdateStatus(error instanceof Error ? error.message : 'Could not read live update status.');
-    }
-  }
 
   async function checkLiveUpdateNow() {
     if (!Capacitor.isNativePlatform()) {
-      setUpdateStatus('Open the installed APK to check live updates.');
+      setUpdateStatus('Open the installed mobile app to check for updates.');
       return;
     }
 
     setCheckingUpdate(true);
+    setUpdateStatus('Checking for updates...');
+    const listeners: PluginListenerHandle[] = [];
+    let finished = false;
+
+    const finish = (message: string) => {
+      if (finished) return;
+      finished = true;
+      setUpdateStatus(message);
+      setCheckingUpdate(false);
+      listeners.forEach((listener) => listener.remove());
+    };
+
     try {
+      listeners.push(await CapacitorUpdater.addListener('updateCheckResult', (event) => {
+        if (event.kind === 'up_to_date') finish('You are up to date.');
+        if (event.kind === 'blocked') finish('A full app update is required. Please install the latest APK.');
+        if (event.kind === 'failed') finish('Could not check for updates. Please try again in a few minutes.');
+      }));
+      listeners.push(await CapacitorUpdater.addListener('noNeedUpdate', () => finish('You are up to date.')));
+      listeners.push(await CapacitorUpdater.addListener('updateAvailable', () => setUpdateStatus('Update found. Downloading...')));
+      listeners.push(await CapacitorUpdater.addListener('downloadComplete', () => finish('Update downloaded. Close and reopen the app to apply it.')));
+      listeners.push(await CapacitorUpdater.addListener('downloadFailed', () => finish('Update found, but download failed. Check your internet and try again.')));
+      listeners.push(await CapacitorUpdater.addListener('updateFailed', () => finish('The last update could not be applied. Please try checking again.')));
       await CapacitorUpdater.notifyAppReady();
       const result = await CapacitorUpdater.triggerUpdateCheck();
-      await refreshLiveUpdateStatus();
-      setNotice(`Live update check ${result.status}. Reopen the app if a pending bundle appears.`);
+      if (result.status === 'unavailable') finish('Update checking is unavailable in this build. Install the latest APK once, then try again.');
+      if (result.status === 'already_running') setUpdateStatus('An update check is already running...');
+      window.setTimeout(() => finish('No update found right now.'), 9000);
     } catch (error) {
-      setUpdateStatus(error instanceof Error ? error.message : 'Live update check failed.');
-    } finally {
-      setCheckingUpdate(false);
+      finish(error instanceof Error ? 'Could not check for updates. Please try again.' : 'Could not check for updates. Please try again.');
     }
   }
 
@@ -338,17 +341,14 @@ export function SettingsPage() {
         <Grid item xs={12}>
           <SettingsSection
             title="App Updates"
-            subtitle="Check what Capgo bundle this device is actually running."
-            chip={<Chip size="small" icon={<SystemUpdateIcon />} label={Capacitor.isNativePlatform() ? 'APK live updates' : 'Web preview'} variant="outlined" />}
+            subtitle="Check for the latest app improvements."
+            chip={<Chip size="small" icon={<SystemUpdateIcon />} label="Updates" variant="outlined" />}
           >
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems={{ xs: 'stretch', md: 'center' }} justifyContent="space-between">
               <Typography color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>{updateStatus}</Typography>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                <Button variant="outlined" onClick={refreshLiveUpdateStatus}>Refresh status</Button>
-                <Button variant="contained" startIcon={<SystemUpdateIcon />} disabled={checkingUpdate} onClick={checkLiveUpdateNow}>
-                  {checkingUpdate ? 'Checking...' : 'Check now'}
-                </Button>
-              </Stack>
+              <Button variant="contained" startIcon={<SystemUpdateIcon />} disabled={checkingUpdate} onClick={checkLiveUpdateNow} sx={{ alignSelf: { xs: 'stretch', md: 'center' } }}>
+                {checkingUpdate ? 'Checking...' : 'Check for updates'}
+              </Button>
             </Stack>
           </SettingsSection>
         </Grid>
