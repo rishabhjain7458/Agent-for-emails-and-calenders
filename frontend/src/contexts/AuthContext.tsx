@@ -16,6 +16,13 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function getLoginErrorMessage(caught: unknown) {
+  if (caught instanceof Error && caught.message === 'Network Error') {
+    return 'Could not reach the API from the app. Check the backend URL and mobile CORS origins.';
+  }
+  return caught instanceof Error ? caught.message : 'Mobile login could not create a session.';
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('sessionToken');
       setUser(null);
       await Browser.close().catch(() => undefined);
-      const message = caught instanceof Error ? caught.message : 'Mobile login could not create a session.';
+      const message = getLoginErrorMessage(caught);
       window.location.replace(`/login?auth_error=${encodeURIComponent(message)}`);
     } finally {
       setLoading(false);

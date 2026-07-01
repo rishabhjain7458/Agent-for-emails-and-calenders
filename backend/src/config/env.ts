@@ -10,15 +10,28 @@ for (const key of required) {
   }
 }
 
+function parseOrigins(...values: Array<string | undefined>) {
+  return [...new Set(values
+    .flatMap((value) => (value ?? '').split(','))
+    .map((origin) => origin.trim().replace(/\/$/, ''))
+    .filter(Boolean))];
+}
+
+const frontendOrigins = parseOrigins(
+  process.env.FRONTEND_URL ?? 'http://localhost:5173',
+  process.env.CORS_ORIGINS,
+  'https://localhost',
+  'http://localhost',
+  'capacitor://localhost',
+  'ionic://localhost'
+);
+
 export const env = {
   NODE_ENV: process.env.NODE_ENV ?? 'development',
   PORT: Number(process.env.PORT ?? 4000),
   FRONTEND_URL: process.env.FRONTEND_URL ?? 'http://localhost:5173',
   MOBILE_APP_URL: process.env.MOBILE_APP_URL ?? 'oconnect://app',
-  FRONTEND_ORIGINS: (process.env.FRONTEND_URL ?? 'http://localhost:5173')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean),
+  FRONTEND_ORIGINS: frontendOrigins,
   DATABASE_URL: process.env.DATABASE_URL!,
   JWT_SECRET: process.env.JWT_SECRET!,
   TOKEN_ENCRYPTION_KEY: process.env.TOKEN_ENCRYPTION_KEY!,

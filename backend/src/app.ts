@@ -22,11 +22,12 @@ export function createApp() {
   }));
   app.use(cors({
     origin(origin, callback) {
-      if (!origin || env.FRONTEND_ORIGINS.includes(origin)) {
+      const normalizedOrigin = origin?.replace(/\/$/, '');
+      if (!normalizedOrigin || env.FRONTEND_ORIGINS.includes(normalizedOrigin)) {
         callback(null, true);
         return;
       }
-      callback(new Error('Origin is not allowed by CORS'));
+      callback(new Error(`Origin ${origin} is not allowed by CORS`));
     },
     credentials: true
   }));
