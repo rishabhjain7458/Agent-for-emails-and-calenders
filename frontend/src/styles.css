@@ -492,6 +492,8 @@ button {
   box-shadow: 0 6px 14px rgba(37, 87, 214, 0.2);
   cursor: pointer;
   min-height: 34px;
+  max-width: 100%;
+  overflow: hidden;
   transition: box-shadow 160ms ease, filter 160ms ease, transform 160ms ease;
 }
 
@@ -506,18 +508,23 @@ button {
 }
 
 .fc .fc-event-main {
-  overflow: visible;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .fc .fc-timegrid-event .fc-event-main,
 .fc .fc-daygrid-event .fc-event-main {
+  max-width: 100%;
   padding: 0;
 }
 
 .fc .fc-event-title,
 .fc .fc-event-time {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
   white-space: normal;
-  overflow: visible;
 }
 
 .fc .fc-timegrid-event-harness {

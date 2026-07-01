@@ -25,8 +25,8 @@ import { HttpError, send } from '../utils/http.js';
 
 function sortEvents(events: any[]) {
   return events.sort((a, b) => {
-    const aValue = a.start?.dateTime ?? a.start?.date ?? a.start?.dateTime;
-    const bValue = b.start?.dateTime ?? b.start?.date ?? b.start?.dateTime;
+    const aValue = a.start?.dateTime ?? a.start?.date;
+    const bValue = b.start?.dateTime ?? b.start?.date;
     return new Date(aValue).getTime() - new Date(bValue).getTime();
   });
 }
@@ -34,6 +34,18 @@ function sortEvents(events: any[]) {
 function splitConnectedEventId(id: string) {
   const [accountId, ...rest] = id.split(':');
   return rest.length ? { accountId, eventId: rest.join(':') } : null;
+}
+
+async function deleteCalendarEventForAccount(user: NonNullable<Express.Request['user']>, accountId: string, eventId: string) {
+  const account = await resolveAccountContext(user, accountId);
+  if (account.provider === 'zoho' || account.provider === 'imap') throw new HttpError(400, 'Mail-only spaces do not support calendar events yet.');
+  if (account.provider === 'microsoft') {
+    if (account.isPrimary) await deleteMicrosoftEvent(user.id, eventId);
+    else await deleteMicrosoftEventForConnectedAccount(user.tenantId, user.id, account.accountId, eventId);
+    return;
+  }
+  if (account.isPrimary) await deleteEvent(user.id, eventId);
+  else await deleteEventForConnectedAccount(user.tenantId, user.id, account.accountId, eventId);
 }
 
 export async function events(req: Request, res: Response, next: NextFunction) {
@@ -85,19 +97,23 @@ export async function create(req: Request, res: Response, next: NextFunction) {
 
 export async function remove(req: Request, res: Response, next: NextFunction) {
   try {
-    const connectedId = splitConnectedEventId(req.params.id);
-    if (connectedId) {
-      const account = await resolveAccountContext(req.user!, connectedId.accountId);
-      if (account.provider === 'zoho' || account.provider === 'imap') throw new HttpError(400, 'Mail-only spaces do not support calendar events yet.');
-      if (account.provider === 'microsoft') await deleteMicrosoftEventForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, connectedId.eventId);
-      else await deleteEventForConnectedAccount(req.user!.tenantId, req.user!.id, account.accountId, connectedId.eventId);
+    const requestedAccountId = req.query.accountId ? String(req.query.accountId) : '';
+    if (requestedAccountId && requestedAccountId !== 'all') {
+      const connectedId = splitConnectedEventId(req.params.id);
+      const eventId = connectedId?.accountId === requestedAccountId ? connectedId.eventId : req.params.id;
+      await deleteCalendarEventForAccount(req.user!, requestedAccountId, eventId);
       send(res, { deleted: true });
       return;
     }
 
-    if (req.user!.provider === 'zoho') throw new HttpError(400, 'Zoho Mail spaces do not support calendar events yet.');
-    if (req.user!.provider === 'microsoft') await deleteMicrosoftEvent(req.user!.id, req.params.id);
-    else await deleteEvent(req.user!.id, req.params.id);
+    const connectedId = splitConnectedEventId(req.params.id);
+    if (connectedId) {
+      await deleteCalendarEventForAccount(req.user!, connectedId.accountId, connectedId.eventId);
+      send(res, { deleted: true });
+      return;
+    }
+
+    await deleteCalendarEventForAccount(req.user!, 'primary', req.params.id);
     send(res, { deleted: true });
   } catch (error) {
     next(error);

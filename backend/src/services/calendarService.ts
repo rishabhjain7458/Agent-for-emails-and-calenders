@@ -33,7 +33,7 @@ async function listEventsWithAuth(auth: any, timeMin?: string, timeMax?: string,
   });
   return (result.data.items ?? []).map((event) => ({
     ...event,
-    id: meta.accountId ? `${meta.accountId}:${event.id}` : event.id,
+    id: meta.accountId && meta.accountId !== 'primary' ? `${meta.accountId}:${event.id}` : event.id,
     extendedProperties: {
       ...(event.extendedProperties ?? {}),
       private: {

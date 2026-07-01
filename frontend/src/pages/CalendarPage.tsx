@@ -92,6 +92,7 @@ export function CalendarPage() {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [calendarView, setCalendarView] = useState(isMobile ? 'timeGridDay' : 'timeGridWeek');
 
@@ -234,10 +235,18 @@ export function CalendarPage() {
 
   async function removeSelectedEvent() {
     if (!selectedEvent) return;
-    await deleteEvent(selectedEvent.id);
-    setSelectedEvent(null);
-    setNotice('Event deleted.');
-    await load();
+    setDeleting(true);
+    setError('');
+    try {
+      await deleteEvent(selectedEvent.id, selectedEvent.accountId ?? 'primary');
+      setSelectedEvent(null);
+      setNotice('Event deleted.');
+      await load();
+    } catch (caught: any) {
+      setError(caught?.response?.data?.error?.message ?? caught?.message ?? 'Event could not be deleted.');
+    } finally {
+      setDeleting(false);
+    }
   }
 
   function copyEventDetails() {
@@ -418,13 +427,13 @@ export function CalendarPage() {
                       <Typography component="span" className="mobile-month-event-title">{info.event.title}</Typography>
                     </Box>
                   ) : (
-                    <Box sx={{ px: 0.75, py: 0.4, overflow: 'hidden', borderLeft: `4px solid ${info.event.extendedProps.typeColor}`, minHeight: '100%' }}>
+                    <Box sx={{ px: 0.75, py: 0.4, maxWidth: '100%', overflow: 'hidden', borderLeft: `4px solid ${info.event.extendedProps.typeColor}`, minHeight: '100%' }}>
                       <Stack direction="row" spacing={0.5} alignItems="center" sx={{ minWidth: 0 }}>
                         <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: info.event.extendedProps.typeColor, border: '1px solid rgba(255,255,255,0.75)', flex: '0 0 auto' }} />
                         {info.timeText && <Typography component="div" variant="caption" sx={{ fontWeight: 800, lineHeight: 1.1 }}>{info.timeText}</Typography>}
                       </Stack>
-                      <Typography component="div" variant="caption" sx={{ fontWeight: 750, lineHeight: 1.2, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{info.event.title}</Typography>
-                      {info.event.extendedProps.accountEmail && <Typography component="div" variant="caption" sx={{ lineHeight: 1.2, opacity: 0.9 }}>{info.event.extendedProps.accountEmail}</Typography>}
+                      <Typography component="div" variant="caption" sx={{ fontWeight: 750, lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' }}>{info.event.title}</Typography>
+                      {info.event.extendedProps.accountEmail && <Typography component="div" variant="caption" noWrap sx={{ lineHeight: 1.2, opacity: 0.9 }}>{info.event.extendedProps.accountEmail}</Typography>}
                     </Box>
                   )
                 )}
@@ -528,7 +537,7 @@ export function CalendarPage() {
             {selectedEvent?.description && (
               <Box>
                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>Description</Typography>
-                <Typography sx={{ whiteSpace: 'pre-wrap' }}>{selectedEvent.description}</Typography>
+                <Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{selectedEvent.description}</Typography>
               </Box>
             )}
             {selectedEvent?.accountEmail && (
@@ -541,7 +550,7 @@ export function CalendarPage() {
         </DialogContent>
         <DialogActions>
           <Button startIcon={<ContentCopyIcon />} onClick={copyEventDetails}>Copy</Button>
-          <Button color="error" startIcon={<DeleteIcon />} onClick={removeSelectedEvent}>Delete</Button>
+          <Button color="error" disabled={deleting} startIcon={<DeleteIcon />} onClick={removeSelectedEvent}>{deleting ? 'Deleting...' : 'Delete'}</Button>
           <Button onClick={() => setSelectedEvent(null)}>Close</Button>
         </DialogActions>
       </Dialog>

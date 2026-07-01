@@ -32,7 +32,7 @@ async function listMicrosoftEventsWithToken(token: string, timeMin?: string, tim
   });
   return (data.value ?? []).map((event: any) => ({
     ...event,
-    id: meta.accountId ? `${meta.accountId}:${event.id}` : event.id,
+    id: meta.accountId && meta.accountId !== 'primary' ? `${meta.accountId}:${event.id}` : event.id,
     accountId: meta.accountId,
     accountEmail: meta.accountEmail,
     provider: 'microsoft'

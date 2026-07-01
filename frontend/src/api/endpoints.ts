@@ -135,8 +135,8 @@ export async function createEvent(payload: Record<string, unknown>) {
   return data.data;
 }
 
-export async function deleteEvent(id: string) {
-  const { data } = await api.delete(`/calendar/events/${id}`);
+export async function deleteEvent(id: string, accountId?: string) {
+  const { data } = await api.delete(`/calendar/events/${encodeURIComponent(id)}`, { params: { accountId } });
   return data.data;
 }
 
