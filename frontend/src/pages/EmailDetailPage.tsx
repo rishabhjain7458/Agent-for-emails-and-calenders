@@ -7,12 +7,10 @@ import ArchiveIcon from '@mui/icons-material/Archive';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SendIcon from '@mui/icons-material/Send';
 import SaveIcon from '@mui/icons-material/Save';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CodeIcon from '@mui/icons-material/Code';
 import DownloadIcon from '@mui/icons-material/Download';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import ImageIcon from '@mui/icons-material/Image';
-import LinkIcon from '@mui/icons-material/Link';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
@@ -111,23 +109,6 @@ function displayUrl(url: string) {
   } catch {
     return 'Open link';
   }
-}
-
-function extractLinks(body?: string) {
-  const matches = Array.from((body ?? '').matchAll(/https?:\/\/[^\s<>"\])]+/gi)).map((match) => match[0]);
-  const unique = Array.from(new Set(matches));
-  return unique.slice(0, 6).map((url) => {
-    try {
-      const parsed = new URL(url);
-      return {
-        url,
-        host: parsed.hostname.replace(/^www\./, ''),
-        title: parsed.pathname.split('/').filter(Boolean).slice(0, 2).join(' / ') || parsed.hostname.replace(/^www\./, '')
-      };
-    } catch {
-      return { url, host: 'Link', title: 'Open link' };
-    }
-  });
 }
 
 function sanitizeEmailHtml(value?: string, allowRemoteImages = false) {
@@ -264,7 +245,7 @@ function RichEmailBody({ html, text }: { html?: string; text?: string }) {
             srcDoc={srcDoc}
             onLoad={resizeFrame}
             title="Email body"
-            sx={{ border: 0, display: 'block', minHeight: 460, width: '100%', height }}
+            sx={{ border: 0, display: 'block', minHeight: { xs: 360, md: 460 }, width: '100%', height }}
           />
         ) : (
           <Box sx={{ p: { xs: 2, sm: 3 } }}>
@@ -432,68 +413,102 @@ export function EmailDetailPage() {
   }
 
   if (!email) return <PageHeader title="Email" subtitle="Loading message..." />;
-  const links = extractLinks(`${email.body ?? ''}\n${email.originalBody ?? ''}`);
   const hasOriginalHtml = /<\/?[a-z][\s\S]*>/i.test(email.originalBody ?? email.body ?? '');
   const priorityScore = emailPriorityScore(email);
+  const threadCount = threadMessages.length || 1;
 
   return (
     <>
-      <PageHeader title={email.subject} subtitle={email.sender} />
-      <Stack spacing={2.5}>
+      <PageHeader title="Email" subtitle="Review the message, draft a reply, or create follow-up work." compact />
+      <Stack spacing={2}>
         {notice && <Alert severity="success">{notice}</Alert>}
         {error && <Alert severity="error">{error}</Alert>}
-        <Card className="premium-panel" sx={{ maxWidth: 980, mx: 'auto', width: '100%' }}>
-          <CardContent>
+        <Card className="premium-panel" sx={{ maxWidth: 1100, mx: 'auto', width: '100%' }}>
+          <CardContent sx={{ p: { xs: 1.5, md: 2.25 } }}>
             <Stack spacing={2.25}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={1.5}>
+              <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'flex-start' }} gap={1.5}>
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="h5" sx={{ fontWeight: 850, overflowWrap: 'anywhere' }}>{email.subject}</Typography>
-                  <Typography color="text.secondary" variant="body2">{email.date}</Typography>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                    <Box sx={{ bgcolor: 'primary.main', borderRadius: '50%', color: '#fff', display: 'grid', flex: '0 0 auto', fontWeight: 850, height: 40, placeItems: 'center', width: 40 }}>
+                      {(email.sender || 'M').trim()[0]?.toUpperCase()}
+                    </Box>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 850, overflowWrap: 'anywhere' }}>{email.sender}</Typography>
+                      <Typography variant="caption" color="text.secondary">{email.date}</Typography>
+                    </Box>
+                  </Stack>
+                  <Typography variant="h5" sx={{ fontWeight: 900, lineHeight: 1.2, overflowWrap: 'anywhere' }}>{email.subject}</Typography>
+                  <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                    {email.unread && <Chip size="small" label="Unread" color="primary" />}
+                    <Chip size="small" label={`Priority ${priorityScore}`} color={priorityScore >= 70 ? 'warning' : priorityScore >= 45 ? 'primary' : 'default'} variant={priorityScore >= 70 ? 'filled' : 'outlined'} />
+                    {email.attachments?.length ? <Chip size="small" label={`${email.attachments.length} attachment${email.attachments.length === 1 ? '' : 's'}`} variant="outlined" /> : null}
+                    {threadCount > 1 && <Chip size="small" label={`${threadCount} thread messages`} variant="outlined" />}
+                    {email.accountEmail && <Chip size="small" label={email.accountEmail} variant="outlined" sx={{ maxWidth: { xs: 220, sm: 320 }, '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' } }} />}
+                  </Stack>
                 </Box>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  {email.unread && <Chip size="small" label="Unread" color="primary" />}
-                  <Chip size="small" label={`AI priority ${priorityScore}`} color={priorityScore >= 70 ? 'warning' : priorityScore >= 45 ? 'primary' : 'default'} variant={priorityScore >= 70 ? 'filled' : 'outlined'} />
-                  {email.accountEmail && <Chip size="small" label={email.accountEmail} variant="outlined" />}
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  flexWrap="wrap"
+                  useFlexGap
+                  justifyContent={{ xs: 'flex-start', md: 'flex-end' }}
+                  sx={{
+                    minWidth: { md: 280 },
+                    '& .MuiButton-root': {
+                      flex: { xs: '1 1 calc(50% - 8px)', sm: '0 0 auto' },
+                      minWidth: { xs: 0, sm: 64 }
+                    }
+                  }}
+                >
+                  <Button size="small" variant="contained" startIcon={<AutoAwesomeIcon />} onClick={createDraft}>{draft ? 'Regenerate reply' : 'Generate reply'}</Button>
+                  <Button size="small" variant="outlined" startIcon={<AutoAwesomeIcon />} disabled={actionBusy === 'summary'} onClick={loadAiSummary}>
+                    {actionBusy === 'summary' ? 'Summarizing...' : 'Summary'}
+                  </Button>
+                  <Button size="small" variant="outlined" startIcon={<TaskAltIcon />} disabled={actionBusy === 'task'} onClick={openTaskDraft}>Task</Button>
+                  <Button size="small" disabled={!!actionBusy} variant="outlined" startIcon={<ArchiveIcon />} onClick={archiveCurrentEmail}>{actionBusy === 'archive' ? 'Archiving...' : 'Archive'}</Button>
+                  <Button size="small" disabled={!!actionBusy} color="error" variant="outlined" startIcon={<DeleteIcon />} onClick={deleteCurrentEmail}>{actionBusy === 'delete' ? 'Deleting...' : 'Delete'}</Button>
+                  {hasOriginalHtml && (
+                    <Button size="small" variant="text" startIcon={<CodeIcon />} onClick={() => setOriginalOpen(true)}>HTML</Button>
+                  )}
                 </Stack>
               </Stack>
-              <Grid container spacing={1.25}>
-                <Grid item xs={12} md={4}>
-                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1.25, bgcolor: 'action.hover' }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 900 }}>Priority</Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 950 }}>{priorityScore}/100</Typography>
-                    <Typography variant="body2" color="text.secondary">Unread state, sender, keywords, and attachments.</Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={12} md={8}>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    <Button size="small" variant="outlined" startIcon={<AutoAwesomeIcon />} disabled={actionBusy === 'summary'} onClick={loadAiSummary}>
-                      {actionBusy === 'summary' ? 'Summarizing...' : 'AI summary'}
-                    </Button>
-                    <Button size="small" variant="contained" startIcon={<TaskAltIcon />} disabled={actionBusy === 'task'} onClick={openTaskDraft}>
-                      Turn into task
-                    </Button>
-                  </Stack>
-                </Grid>
-              </Grid>
-              {aiSummary && <Alert severity="info">{aiSummary}</Alert>}
-              <Stack direction="row" spacing={1.25} alignItems="center" sx={{ borderTop: '1px solid', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}>
-                <Box sx={{ bgcolor: 'primary.main', borderRadius: '50%', color: '#fff', display: 'grid', flex: '0 0 auto', fontWeight: 850, height: 38, placeItems: 'center', width: 38 }}>
-                  {(email.sender || 'M').trim()[0]?.toUpperCase()}
+              {aiSummary && <Alert severity="info" sx={{ '& .MuiAlert-message': { overflowWrap: 'anywhere' } }}>{aiSummary}</Alert>}
+              {!!email.attachments?.length && (
+                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'action.hover', p: 1.25 }}>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 900 }}>Attachments</Typography>
+                  <Grid container spacing={1}>
+                    {email.attachments.map((attachment) => (
+                      <Grid item xs={12} md={6} key={attachment.attachmentId}>
+                        <Box sx={{ alignItems: { xs: 'stretch', sm: 'center' }, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 1.5, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, p: 1 }}>
+                          <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
+                            {attachmentIcon(attachment.mimeType)}
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 850 }} noWrap>{attachment.filename}</Typography>
+                              <Typography variant="caption" color="text.secondary" noWrap>{attachment.mimeType || 'Attachment'} {formatAttachmentSize(attachment.size)}</Typography>
+                            </Box>
+                          </Stack>
+                          <Stack direction="row" spacing={0.75}>
+                            {canPreviewAttachment(attachment.mimeType) && (
+                              <Button size="small" startIcon={<VisibilityIcon />} onClick={() => openAttachment(attachment, true)}>View</Button>
+                            )}
+                            <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={() => openAttachment(attachment)}>Download</Button>
+                          </Stack>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
                 </Box>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 800, overflowWrap: 'anywhere' }}>{email.sender}</Typography>
-                  <Typography variant="caption" color="text.secondary">to me</Typography>
-                </Box>
-              </Stack>
+              )}
               <RichEmailBody html={email.originalBody} text={email.body} />
-              <Box>
+              {threadCount > 1 && (
+              <Box sx={{ borderTop: '1px solid', borderColor: 'divider', pt: 1.5 }}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                   <TimelineIcon color="primary" />
                   <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 900 }}>Thread timeline</Typography>
-                  <Chip size="small" label={`${threadMessages.length || 1} message${(threadMessages.length || 1) === 1 ? '' : 's'}`} />
+                  <Chip size="small" label={`${threadCount} messages`} />
                 </Stack>
                 <Stack spacing={1}>
-                  {(threadMessages.length ? threadMessages : [email]).map((message) => (
+                  {threadMessages.map((message) => (
                     <Box key={message.id} sx={{ border: '1px solid', borderColor: message.id === email.id ? 'primary.main' : 'divider', borderRadius: 2, bgcolor: message.id === email.id ? 'action.selected' : 'background.paper', p: 1.25 }}>
                       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} justifyContent="space-between">
                         <Box sx={{ minWidth: 0 }}>
@@ -507,87 +522,26 @@ export function EmailDetailPage() {
                   ))}
                 </Stack>
               </Box>
-              {!!email.attachments?.length && (
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Attachments</Typography>
-                  <Grid container spacing={1.25}>
-                    {email.attachments.map((attachment) => (
-                      <Grid item xs={12} sm={6} key={attachment.attachmentId}>
-                        <Box sx={{ alignItems: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 2, display: 'flex', gap: 1.25, p: 1.25 }}>
-                          {attachmentIcon(attachment.mimeType)}
-                          <Box sx={{ minWidth: 0, flex: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 800 }} noWrap>{attachment.filename}</Typography>
-                            <Typography variant="caption" color="text.secondary" noWrap>{attachment.mimeType || 'Attachment'} {formatAttachmentSize(attachment.size)}</Typography>
-                          </Box>
-                          {canPreviewAttachment(attachment.mimeType) && (
-                            <Button size="small" startIcon={<VisibilityIcon />} onClick={() => openAttachment(attachment, true)}>View</Button>
-                          )}
-                          <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={() => openAttachment(attachment)}>Download</Button>
-                        </Box>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              )}
-              {links.length > 0 && (
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontWeight: 800 }}>Links in this email</Typography>
-                  <Grid container spacing={1.25}>
-                    {links.map((link) => (
-                      <Grid item xs={12} sm={6} key={link.url}>
-                        <Box
-                          component="a"
-                          href={link.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          sx={{
-                            alignItems: 'center',
-                            border: '1px solid',
-                            borderColor: 'divider',
-                            borderRadius: 2,
-                            color: 'inherit',
-                            display: 'flex',
-                            gap: 1.25,
-                            p: 1.25,
-                            textDecoration: 'none',
-                            transition: 'background 160ms ease, transform 160ms ease',
-                            '&:hover': { bgcolor: 'action.hover', transform: { sm: 'translateY(-1px)' } }
-                          }}
-                        >
-                          <Box sx={{ bgcolor: 'primary.light', borderRadius: 1.5, color: 'primary.main', display: 'grid', flex: '0 0 auto', height: 38, placeItems: 'center', width: 38 }}>
-                            <LinkIcon />
-                          </Box>
-                          <Box sx={{ minWidth: 0, flex: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 800 }} noWrap>{link.title}</Typography>
-                            <Typography variant="caption" color="text.secondary" noWrap>{link.host}</Typography>
-                          </Box>
-                          <OpenInNewIcon color="primary" fontSize="small" />
-                        </Box>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              )}
-              {hasOriginalHtml && (
-                <Button sx={{ alignSelf: 'flex-start' }} variant="outlined" startIcon={<CodeIcon />} onClick={() => setOriginalOpen(true)}>
-                  View original HTML
-                </Button>
               )}
             </Stack>
           </CardContent>
         </Card>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ maxWidth: 980, mx: 'auto', width: '100%' }}>
-          <Button variant="contained" startIcon={<AutoAwesomeIcon />} onClick={createDraft}>{draft ? 'Regenerate Reply' : 'Generate AI Reply'}</Button>
-          <Button disabled={!!actionBusy} variant="outlined" startIcon={<ArchiveIcon />} onClick={archiveCurrentEmail}>{actionBusy === 'archive' ? 'Archiving...' : 'Archive'}</Button>
-          <Button disabled={!!actionBusy} color="error" variant="outlined" startIcon={<DeleteIcon />} onClick={deleteCurrentEmail}>{actionBusy === 'delete' ? 'Deleting...' : 'Delete'}</Button>
-        </Stack>
-        <Card className="premium-panel" sx={{ maxWidth: 980, mx: 'auto', width: '100%' }}>
-          <CardContent>
+        <Card className="premium-panel" sx={{ maxWidth: 1100, mx: 'auto', width: '100%' }}>
+          <CardContent sx={{ p: { xs: 1.5, md: 2.25 } }}>
             <Stack spacing={2}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 900 }}>Reply draft</Typography>
+                  <Typography variant="body2" color="text.secondary">Nothing is sent until you review and approve it.</Typography>
+                </Box>
+                <Button sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }} variant="outlined" startIcon={<AutoAwesomeIcon />} onClick={createDraft}>
+                  {draft ? 'Regenerate' : 'Generate'}
+                </Button>
+              </Stack>
               <TextField
                 label="Editable reply draft"
                 multiline
-                minRows={8}
+                minRows={7}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder="Generate or write a reply. Nothing is sent until you approve it."
