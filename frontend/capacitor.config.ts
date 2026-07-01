@@ -7,6 +7,13 @@ const config: CapacitorConfig = {
   bundledWebRuntime: false,
   server: {
     androidScheme: 'https'
+  },
+  plugins: {
+    CapacitorUpdater: {
+      appId: 'com.oconnect.assistant',
+      autoUpdate: 'atBackground',
+      version: '1.0.0'
+    }
   }
 };
 

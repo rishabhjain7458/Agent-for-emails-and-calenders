@@ -5,7 +5,10 @@ import { AuthProvider } from './contexts/AuthContext';
 import { SpaceProvider } from './contexts/SpaceContext';
 import { AppThemeProvider } from './contexts/ThemeModeContext';
 import { AppRoutes } from './router/router';
+import { initializeLiveUpdates } from './utils/liveUpdates';
 import './styles.css';
+
+void initializeLiveUpdates();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
