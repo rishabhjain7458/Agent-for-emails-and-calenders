@@ -2,6 +2,9 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Alert, Avatar, Box, Button, Card, CardContent, Chip, Divider, Grid, IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import type { AxiosError } from 'axios';
+import { Capacitor } from '@capacitor/core';
+import type { PluginListenerHandle } from '@capacitor/core';
+import { SpeechRecognition } from '@capgo/capacitor-speech-recognition';
 import MicIcon from '@mui/icons-material/Mic';
 import SendIcon from '@mui/icons-material/Send';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
@@ -211,8 +214,10 @@ export function AssistantPage() {
   const [speechSupported, setSpeechSupported] = useState(false);
   const [speechMessage, setSpeechMessage] = useState('');
   const recognitionRef = useRef<any>(null);
+  const nativeSpeechListenersRef = useRef<PluginListenerHandle[]>([]);
   const dictationBaseRef = useRef('');
   const sendingRef = useRef(false);
+  const isNative = Capacitor.isNativePlatform();
 
   async function loadConversations() {
     setHistoryLoading(true);
@@ -225,8 +230,31 @@ export function AssistantPage() {
   }
 
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
+    if (isNative) {
+      let mounted = true;
+
+      SpeechRecognition.available()
+        .then(({ available }) => {
+          if (!mounted) return;
+          setSpeechSupported(available);
+          setSpeechMessage(available ? 'Tap the mic to start dictation.' : 'Voice input is not available on this device.');
+        })
+        .catch(() => {
+          if (!mounted) return;
+          setSpeechSupported(false);
+          setSpeechMessage('Voice input is not available on this device.');
+        });
+
+      return () => {
+        mounted = false;
+        nativeSpeechListenersRef.current.forEach((listener) => listener.remove());
+        nativeSpeechListenersRef.current = [];
+        SpeechRecognition.stop().catch(() => undefined);
+      };
+    }
+
+    const BrowserSpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!BrowserSpeechRecognition) {
       setSpeechSupported(false);
       setSpeechMessage('Voice input is not supported by this browser. Use Chrome or Edge on localhost/HTTPS.');
       return;
@@ -234,7 +262,7 @@ export function AssistantPage() {
 
     setSpeechSupported(true);
     setSpeechMessage('Tap the mic to start dictation.');
-    const recognition = new SpeechRecognition();
+    const recognition = new BrowserSpeechRecognition();
     recognition.lang = 'en-US';
     recognition.interimResults = true;
     recognition.continuous = false;
@@ -275,7 +303,7 @@ export function AssistantPage() {
     };
 
     recognitionRef.current = recognition;
-  }, []);
+  }, [isNative]);
 
   useEffect(() => {
     loadConversations();
@@ -323,7 +351,81 @@ export function AssistantPage() {
     }
   }
 
-  async function requestMicrophoneAccess() {
+  async function requestNativeSpeechAccess() {
+    const current = await SpeechRecognition.checkPermissions().catch(() => ({ speechRecognition: 'prompt' }));
+    if (current.speechRecognition === 'granted') return true;
+
+    const requested = await SpeechRecognition.requestPermissions().catch(() => ({ speechRecognition: 'denied' }));
+    if (requested.speechRecognition === 'granted') return true;
+
+    setSpeechMessage('Microphone permission is blocked.');
+    setError('Voice input needs microphone permission. Open Android app settings, allow Microphone, then reopen the app.');
+    return false;
+  }
+
+  async function startNativeListening() {
+    const allowed = await requestNativeSpeechAccess();
+    if (!allowed) return;
+
+    const availability = await SpeechRecognition.available().catch(() => ({ available: false }));
+    if (!availability.available) {
+      setError('Speech recognition is not available on this device. Install or enable Google Speech Services, then try again.');
+      setSpeechMessage('Speech recognition is unavailable.');
+      return;
+    }
+
+    nativeSpeechListenersRef.current.forEach((listener) => listener.remove());
+    nativeSpeechListenersRef.current = [];
+    dictationBaseRef.current = input.trim();
+    setError('');
+    setSpeechMessage('Listening... speak now.');
+    setListening(true);
+
+    const partialListener = await SpeechRecognition.addListener('partialResults', (event) => {
+      const transcript = event.accumulatedText ?? event.matches?.[0] ?? event.accumulated ?? '';
+      setInput([dictationBaseRef.current, transcript.trim()].filter(Boolean).join(' '));
+    });
+    const stateListener = await SpeechRecognition.addListener('listeningState', (event) => {
+      if (event.status === 'started' || event.state === 'started') {
+        setListening(true);
+        setSpeechMessage('Listening... speak now.');
+      }
+      if (event.status === 'stopped' || event.state === 'stopped') {
+        setListening(false);
+        setSpeechMessage('Tap the mic again to continue dictation.');
+      }
+    });
+    const errorListener = await SpeechRecognition.addListener('error', (event) => {
+      setListening(false);
+      setSpeechMessage('Voice input stopped.');
+      setError(event.message || `Voice input error: ${event.code}`);
+    });
+    nativeSpeechListenersRef.current = [partialListener, stateListener, errorListener];
+
+    try {
+      const result = await SpeechRecognition.start({
+        language: 'en-US',
+        maxResults: 3,
+        partialResults: true,
+        popup: false,
+        prompt: 'Speak to AI Executive Assistant'
+      });
+      const transcript = result.matches?.[0]?.trim();
+      if (transcript) setInput([dictationBaseRef.current, transcript].filter(Boolean).join(' '));
+    } catch (error) {
+      setListening(false);
+      setSpeechMessage('Voice input stopped.');
+      setError(error instanceof Error ? error.message : 'Native voice input could not start.');
+    }
+  }
+
+  async function stopNativeListening() {
+    setListening(false);
+    setSpeechMessage('Voice input stopped.');
+    await SpeechRecognition.forceStop({ timeout: 1200 }).catch(() => SpeechRecognition.stop().catch(() => undefined));
+  }
+
+  async function requestBrowserMicrophoneAccess() {
     if (!navigator.mediaDevices?.getUserMedia) return true;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -337,6 +439,15 @@ export function AssistantPage() {
   }
 
   async function toggleListening() {
+    if (isNative) {
+      if (listening) {
+        await stopNativeListening();
+        return;
+      }
+      await startNativeListening();
+      return;
+    }
+
     if (!recognitionRef.current) {
       setError('Voice input is not available in this browser.');
       return;
@@ -349,7 +460,7 @@ export function AssistantPage() {
 
     setError('');
     dictationBaseRef.current = input.trim();
-    const allowed = await requestMicrophoneAccess();
+    const allowed = await requestBrowserMicrophoneAccess();
     if (!allowed) return;
     try {
       recognitionRef.current.start();
